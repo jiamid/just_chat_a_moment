@@ -109,10 +109,6 @@
       </div>
     </div>
 
-    <!-- 备案信息 -->
-    <div class="beian-info">
-      <a href="https://beian.miit.gov.cn/" class="hover:underline" target="_blank">粤ICP备2021161716号-2</a>
-    </div>
   </div>
 </template>
 
@@ -882,25 +878,4 @@ export default {
   }
 }
 
-.beian-info {
-  position: fixed;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  text-align: center;
-  font-size: 12px;
-  color: #666;
-  z-index: 1000;
-}
-
-.beian-info a {
-  color: #666;
-  text-decoration: none;
-  transition: color 0.3s;
-}
-
-.beian-info a:hover {
-  color: #333;
-  text-decoration: underline;
-}
 </style>

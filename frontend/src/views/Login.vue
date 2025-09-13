@@ -256,18 +256,18 @@ h2 {
   transform: translateX(-50%);
   text-align: center;
   font-size: 12px;
-  color: #666;
+  color: white;
   z-index: 1000;
 }
 
 .beian-info a {
-  color: #666;
+  color: white;
   text-decoration: none;
   transition: color 0.3s;
 }
 
 .beian-info a:hover {
-  color: #333;
+  color: #f0f0f0;
   text-decoration: underline;
 }
 </style>
