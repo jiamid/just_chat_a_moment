@@ -1,7 +1,14 @@
 <template>
   <div class="chat-container">
+    <!-- 移动端遮罩层 -->
+    <div
+      v-if="isMobile && showMobileNavbar"
+      class="mobile-overlay"
+      @click="hideMobileNavbar"
+    ></div>
+
     <!-- 左侧导航栏 -->
-    <div class="left-sidebar">
+    <div class="left-sidebar" :class="{ 'mobile-show': showMobileNavbar && isMobile }">
       <!-- Logo -->
       <div class="logo-section">
         <h1>Just Chat A Moment</h1>
@@ -51,8 +58,18 @@
     <div class="right-chat">
       <!-- 顶部：房间信息 -->
       <div class="chat-header">
-        <h2 v-if="roomId">房间 {{ roomId }}<span v-if="currentRoomCount > 0"> [{{ currentRoomCount }}]</span></h2>
-        <h2 v-else>选择房间开始聊天</h2>
+        <div class="header-left">
+          <!-- 移动端菜单按钮 -->
+          <button v-if="isMobile" @click="toggleMobileNavbar" class="menu-btn">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <line x1="3" y1="12" x2="21" y2="12"></line>
+              <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+          </button>
+          <h2 v-if="roomId">房间 {{ roomId }}<span v-if="currentRoomCount > 0"> [{{ currentRoomCount }}]</span></h2>
+          <h2 v-else>选择房间开始聊天</h2>
+        </div>
         <div class="connection-status" v-if="roomId">
           <span v-if="isConnected" class="status-indicator connected"></span>
           <span v-if="isConnected" class="status-text">已连接</span>
@@ -66,7 +83,7 @@
       </div>
 
       <!-- 中间：消息区域 -->
-      <div class="chat-main">
+      <div class="chat-main" @click="hideMobileNavbar">
         <!-- 未选择房间时的提示 -->
         <div v-if="!roomId" class="no-room-message">
           <div class="welcome-content">
@@ -138,7 +155,9 @@ export default {
       currentRoomCount: 0,
       systemMessage: '',
       jumpRoomId: '',
-      recentRooms: []
+      recentRooms: [],
+      showMobileNavbar: false,
+      isMobile: false
     }
   },
   computed: {
@@ -149,6 +168,7 @@ export default {
   async mounted () {
     this.roomId = this.currentRoomId
     this.loadRecentRooms()
+    this.checkMobileDevice()
     await this.loadUserInfo()
     await this.loadProtobuf()
     if (this.roomId) {
@@ -179,6 +199,8 @@ export default {
     if (this.ws) {
       this.ws.close()
     }
+    // 清理窗口大小变化监听器
+    window.removeEventListener('resize', this.checkMobileDevice)
   },
   methods: {
     async loadUserInfo () {
@@ -357,6 +379,10 @@ export default {
         this.currentRoomCount = 0 // 重置房间人数
         this.addToRecentRooms(roomId)
         this.$router.push(`/chat/${roomId}`)
+        // 移动端切换房间后隐藏导航栏
+        if (this.isMobile) {
+          this.showMobileNavbar = false
+        }
       }
     },
 
@@ -419,6 +445,29 @@ export default {
       // 只保留数字
       const value = event.target.value.replace(/[^0-9]/g, '')
       this.jumpRoomId = value
+    },
+
+    checkMobileDevice () {
+      // 检测是否为移动设备
+      this.isMobile = window.innerWidth <= 768
+      // 监听窗口大小变化
+      window.addEventListener('resize', () => {
+        this.isMobile = window.innerWidth <= 768
+        // 如果不是移动端，隐藏移动端导航栏
+        if (!this.isMobile) {
+          this.showMobileNavbar = false
+        }
+      })
+    },
+
+    toggleMobileNavbar () {
+      this.showMobileNavbar = !this.showMobileNavbar
+    },
+
+    hideMobileNavbar () {
+      if (this.isMobile) {
+        this.showMobileNavbar = false
+      }
     }
   }
 }
@@ -439,6 +488,35 @@ export default {
   display: flex;
   flex-direction: column;
   box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+  transition: transform 0.3s ease;
+  z-index: 1000;
+}
+
+/* 移动端遮罩层 */
+.mobile-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+}
+
+/* 移动端导航栏显示/隐藏 */
+@media (max-width: 768px) {
+  .left-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    transform: translateX(-100%);
+    z-index: 1000;
+  }
+
+  .left-sidebar.mobile-show {
+    transform: translateX(0);
+  }
 }
 
 .logo-section {
@@ -629,6 +707,34 @@ export default {
   justify-content: space-between;
   align-items: center;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.menu-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: #3498db;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.menu-btn:hover {
+  background: #2980b9;
+}
+
+.menu-btn svg {
+  stroke: currentColor;
 }
 
 .chat-header h2 {
@@ -853,16 +959,38 @@ export default {
 
 /* 响应式设计 */
 @media (max-width: 768px) {
+  .chat-container {
+    position: relative;
+  }
+
+  .right-chat {
+    width: 100%;
+  }
+
   .left-sidebar {
-    width: 200px;
+    width: 280px; /* 移动端导航栏宽度 */
   }
 
   .logo-section h1 {
-    font-size: 1rem;
+    font-size: 1.1rem;
+  }
+
+  .chat-header {
+    padding: 1rem;
   }
 
   .chat-header h2 {
     font-size: 1.2rem;
+  }
+
+  .menu-btn {
+    width: 36px;
+    height: 36px;
+  }
+
+  .menu-btn svg {
+    width: 18px;
+    height: 18px;
   }
 
   .welcome-content {
@@ -875,6 +1003,23 @@ export default {
 
   .room-buttons {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .message {
+    max-width: 85%;
+  }
+
+  .input-container {
+    padding: 1rem;
+  }
+
+  .connection-status {
+    font-size: 0.8rem;
+  }
+
+  .reconnect-btn {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.8rem;
   }
 }
 
