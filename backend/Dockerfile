@@ -23,11 +23,11 @@ RUN adduser \
     --uid "${UID}" \
     appuser
 
-# 安装系统依赖
-RUN apt-get update && apt-get install -y \
-    gcc \
-    g++ \
-    && rm -rf /var/lib/apt/lists/*
+# 安装系统依赖（bcrypt需要编译工具）
+# RUN apt-get update && apt-get install -y \
+#     gcc \
+#     g++ \
+#     && rm -rf /var/lib/apt/lists/*
 
 # 复制requirements文件并安装Python依赖
 # 使用缓存挂载来加速后续构建
