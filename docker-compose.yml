@@ -1,0 +1,57 @@
+services:
+  # 后端服务
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: just-chat-backend
+    # 移除端口暴露，只通过内部网络访问
+    volumes:
+      - ./data:/app/data
+      - ./backend:/app
+    environment:
+      - DATABASE_URL=sqlite+aiosqlite:///./data/data.db
+      - SECRET_KEY=your-secret-key-change-in-production
+      - ALGORITHM=HS256
+      - ACCESS_TOKEN_EXPIRE_MINUTES=30
+    networks:
+      - just-chat-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # 前端服务
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - VUE_APP_WS_HOST=${VUE_APP_WS_HOST:-}
+        - VUE_APP_WS_PORT=${VUE_APP_WS_PORT:-}
+        - VUE_APP_WS_PROTOCOL=${VUE_APP_WS_PROTOCOL:-ws}
+        - VUE_APP_API_BASE_URL=${VUE_APP_API_BASE_URL:-}
+    container_name: just-chat-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - just-chat-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  just-chat-network:
+    driver: bridge
+
+volumes:
+  # redis_data:
+  data:
