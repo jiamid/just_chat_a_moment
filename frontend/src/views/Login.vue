@@ -66,11 +66,6 @@
         </div>
       </form>
     </div>
-
-    <!-- 备案信息 -->
-    <div class="beian-info">
-      <a href="https://beian.miit.gov.cn/" class="hover:underline" target="_blank">粤ICP备2021161716号-2</a>
-    </div>
   </div>
 </template>
 
