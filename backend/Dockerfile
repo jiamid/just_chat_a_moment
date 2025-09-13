@@ -31,10 +31,7 @@ RUN adduser \
 
 # 复制requirements文件并安装Python依赖
 # 使用缓存挂载来加速后续构建
-RUN --mount=type=cache,target=/root/.cache/pip \
-    --mount=type=bind,source=requirements.txt,target=requirements.txt \
-    pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+RUN pip install -r requirements.txt
 
 # 复制应用代码
 COPY . .
