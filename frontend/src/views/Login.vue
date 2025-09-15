@@ -152,22 +152,31 @@ export default {
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: radial-gradient(1200px 600px at 10% 10%, rgba(99, 102, 241, 0.18), rgba(99, 102, 241, 0) 60%),
+              radial-gradient(900px 500px at 90% 20%, rgba(236, 72, 153, 0.18), rgba(236, 72, 153, 0) 60%),
+              linear-gradient(135deg, #0f1020 0%, #1b1c34 50%, #0c0d1a 100%);
 }
 
 .login-box {
-  background: white;
+  background: rgba(255, 255, 255, 0.06);
   padding: 2rem;
-  border-radius: 10px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
   width: 100%;
-  max-width: 400px;
+  max-width: 420px;
 }
 
 h2 {
   text-align: center;
   margin-bottom: 2rem;
-  color: #333;
+  color: #ffffff;
+  background: linear-gradient(90deg, #e5e7ff, #c7d2fe, #fbcfe8);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .form-tabs {
@@ -178,15 +187,19 @@ h2 {
 .form-tabs button {
   flex: 1;
   padding: 0.75rem;
-  border: none;
-  background: #f5f5f5;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: transparent;
+  color: #cdd0e5;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.3s ease;
+  border-radius: 10px;
 }
 
 .form-tabs button.active {
-  background: #667eea;
-  color: white;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
+  color: #ffffff;
+  border-color: transparent;
+  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.35);
 }
 
 .form-group {
@@ -197,50 +210,56 @@ h2 {
   display: block;
   margin-bottom: 0.5rem;
   font-weight: bold;
-  color: #333;
+  color: #cdd0e5;
 }
 
 .form-group input {
   width: 100%;
   padding: 0.75rem;
-  border: 1px solid #ddd;
-  border-radius: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
   font-size: 1rem;
   box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.06);
+  color: #e6e6f0;
 }
 
 .form-group input:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: transparent;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.45), 0 0 0 6px rgba(236, 72, 153, 0.25);
 }
 
 .submit-btn {
   width: 100%;
   padding: 0.75rem;
-  background: #667eea;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
   color: white;
   border: none;
-  border-radius: 5px;
+  border-radius: 12px;
   font-size: 1rem;
   cursor: pointer;
-  transition: background 0.3s;
+  transition: all 0.25s ease;
+  box-shadow: 0 10px 24px rgba(99, 102, 241, 0.35), 0 6px 16px rgba(236, 72, 153, 0.25);
 }
 
 .submit-btn:hover:not(:disabled) {
-  background: #5a6fd8;
+  filter: brightness(1.05);
+  transform: translateY(-1px);
 }
 
 .submit-btn:disabled {
-  background: #ccc;
+  opacity: 0.6;
   cursor: not-allowed;
 }
 
 .error-message {
   margin-top: 1rem;
   padding: 0.75rem;
-  background: #ffebee;
-  color: #c62828;
-  border-radius: 5px;
+  background: rgba(239, 68, 68, 0.15);
+  color: #fecaca;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-radius: 10px;
   text-align: center;
 }
 
@@ -264,5 +283,10 @@ h2 {
 .beian-info a:hover {
   color: #f0f0f0;
   text-decoration: underline;
+}
+
+/* 占位符颜色在暗色背景下更柔和 */
+::placeholder {
+  color: rgba(230, 230, 240, 0.55);
 }
 </style>

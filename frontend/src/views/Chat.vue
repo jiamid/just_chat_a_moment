@@ -477,17 +477,22 @@ export default {
 .chat-container {
   display: flex;
   height: 100vh;
-  background: #f5f5f5;
+  background: radial-gradient(1200px 600px at 10% 10%, rgba(99, 102, 241, 0.18), rgba(99, 102, 241, 0) 60%),
+              radial-gradient(900px 500px at 90% 20%, rgba(236, 72, 153, 0.18), rgba(236, 72, 153, 0) 60%),
+              linear-gradient(135deg, #0f1020 0%, #1b1c34 50%, #0c0d1a 100%);
 }
 
 /* 左侧导航栏 */
 .left-sidebar {
   width: 250px;
-  background: #2c3e50;
-  color: white;
+  background: rgba(255, 255, 255, 0.06);
+  color: #e6e6f0;
   display: flex;
   flex-direction: column;
-  box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 8px 0 32px rgba(0,0,0,0.3);
   transition: transform 0.3s ease;
   z-index: 1000;
 }
@@ -499,7 +504,7 @@ export default {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.6);
   z-index: 999;
 }
 
@@ -521,14 +526,18 @@ export default {
 
 .logo-section {
   padding: 1.5rem 1rem;
-  border-bottom: 1px solid #34495e;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .logo-section h1 {
   margin: 0;
   font-size: 1.2rem;
   font-weight: 600;
-  color: #ecf0f1;
+  color: #ffffff;
+  background: linear-gradient(90deg, #e5e7ff, #c7d2fe, #fbcfe8);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .rooms-section {
@@ -539,7 +548,7 @@ export default {
 .rooms-section h3 {
   margin: 0 0 1rem 0;
   font-size: 1rem;
-  color: #bdc3c7;
+  color: #cdd0e5;
   font-weight: 500;
 }
 
@@ -551,19 +560,22 @@ export default {
 
 .room-item {
   padding: 0.75rem;
-  background: #34495e;
-  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
   cursor: pointer;
   transition: all 0.3s ease;
   text-align: center;
 }
 
 .room-item:hover {
-  background: #3498db;
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .room-item.active {
-  background: #e74c3c;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.7) 0%, rgba(139, 92, 246, 0.7) 50%, rgba(236, 72, 153, 0.7) 100%);
+  border-color: transparent;
+  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.35);
 }
 
 .room-name {
@@ -573,7 +585,7 @@ export default {
 .room-jump {
   margin-top: 1.5rem;
   padding-top: 1rem;
-  border-top: 1px solid #34495e;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .room-jump h4 {
@@ -587,8 +599,9 @@ export default {
   display: flex;
   gap: 0.5rem;
   padding: 0.75rem;
-  background: #34495e;
-  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
   transition: all 0.3s ease;
 }
 
@@ -598,7 +611,7 @@ export default {
   background: transparent;
   border: none;
   border-radius: 0;
-  color: white;
+  color: #e6e6f0;
   font-size: 1rem;
   font-weight: 500;
   outline: none;
@@ -608,7 +621,7 @@ export default {
 }
 
 .jump-input::placeholder {
-  color: #7f8c8d;
+  color: rgba(230, 230, 240, 0.55);
   font-weight: 500;
 }
 
@@ -620,7 +633,7 @@ export default {
   flex: 1;
   padding: 0;
   background: transparent;
-  color: white;
+  color: #ffffff;
   border: none;
   border-radius: 0;
   cursor: pointer;
@@ -639,7 +652,7 @@ export default {
 
 .user-section {
   padding: 1rem;
-  border-top: 1px solid #34495e;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .user-info {
@@ -648,23 +661,25 @@ export default {
 
 .user-info .username {
   font-weight: 500;
-  color: #ecf0f1;
+  color: #ffffff;
 }
 
 .logout-btn {
   width: 100%;
   padding: 0.75rem;
-  background: #e74c3c;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: 12px;
   cursor: pointer;
   font-size: 1rem;
-  transition: background 0.3s ease;
+  transition: all 0.25s ease;
+  box-shadow: 0 10px 24px rgba(99, 102, 241, 0.35), 0 6px 16px rgba(236, 72, 153, 0.25);
 }
 
 .logout-btn:hover {
-  background: #c0392b;
+  filter: brightness(1.05);
+  transform: translateY(-1px);
 }
 
 /* 右侧聊天区域 */
@@ -672,13 +687,13 @@ export default {
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: white;
+  background: transparent;
 }
 
 /* 系统消息提示条 */
 .system-notification {
   height: 30px;
-  background: #3498db;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.9) 0%, rgba(139, 92, 246, 0.9) 50%, rgba(236, 72, 153, 0.9) 100%);
   color: white;
   display: flex;
   align-items: center;
@@ -700,13 +715,15 @@ export default {
 }
 
 .chat-header {
-  background: white;
+  background: rgba(255, 255, 255, 0.06);
   padding: 1rem 1.5rem;
-  border-bottom: 1px solid #ddd;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
 .header-left {
@@ -721,16 +738,17 @@ export default {
   justify-content: center;
   width: 40px;
   height: 40px;
-  background: #3498db;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: 12px;
   cursor: pointer;
-  transition: background 0.3s ease;
+  transition: all 0.25s ease;
+  box-shadow: 0 8px 20px rgba(99, 102, 241, 0.35), 0 4px 12px rgba(236, 72, 153, 0.25);
 }
 
 .menu-btn:hover {
-  background: #2980b9;
+  filter: brightness(1.05);
 }
 
 .menu-btn svg {
@@ -739,7 +757,7 @@ export default {
 
 .chat-header h2 {
   margin: 0;
-  color: #2c3e50;
+  color: #e6e6f0;
   font-size: 1.5rem;
 }
 
@@ -748,7 +766,7 @@ export default {
   align-items: center;
   gap: 0.5rem;
   font-size: 0.9rem;
-  color: #666;
+  color: #cdd0e5;
 }
 
 .status-indicator {
@@ -758,28 +776,29 @@ export default {
 }
 
 .status-indicator.connected {
-  background: #27ae60;
+  background: #22c55e;
 }
 
 .status-text {
-  color: #27ae60;
+  color: #86efac;
   font-weight: 500;
 }
 
 .reconnect-btn {
   padding: 0.5rem 1rem;
-  background: #e74c3c;
+  background: linear-gradient(135deg, #f97316 0%, #ef4444 100%);
   color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: 10px;
   cursor: pointer;
   font-size: 0.9rem;
   font-weight: 500;
-  transition: background 0.3s ease;
+  transition: all 0.25s ease;
+  box-shadow: 0 8px 20px rgba(239, 68, 68, 0.25);
 }
 
 .reconnect-btn:hover {
-  background: #c0392b;
+  filter: brightness(1.05);
 }
 
 .chat-main {
@@ -793,7 +812,7 @@ export default {
   flex: 1;
   padding: 1rem 1.5rem;
   overflow-y: auto;
-  background: #ffffff;
+  background: transparent;
   display: flex;
   flex-direction: column;
 }
@@ -808,15 +827,16 @@ export default {
 }
 
 .own-message {
-  background: #3498db;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.9) 0%, rgba(139, 92, 246, 0.9) 50%, rgba(236, 72, 153, 0.9) 100%);
   color: white;
   margin-left: auto;
   border-bottom-right-radius: 4px;
 }
 
 .other-message {
-  background: #f1f3f4;
-  color: #2c3e50;
+  background: rgba(255, 255, 255, 0.06);
+  color: #e6e6f0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   margin-right: auto;
   border-bottom-left-radius: 4px;
 }
@@ -844,7 +864,7 @@ export default {
 }
 
 .other-message .message-header {
-  color: rgba(44, 62, 80, 0.6);
+  color: rgba(230, 230, 240, 0.6);
 }
 
 .username {
@@ -857,50 +877,57 @@ export default {
 
 .input-container {
   padding: 1rem 1.5rem;
-  background: white;
-  border-top: 1px solid #ddd;
+  background: rgba(255, 255, 255, 0.06);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
   display: flex;
   gap: 1rem;
-  box-shadow: 0 -2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.25);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
 .message-input {
   flex: 1;
   padding: 0.75rem 1rem;
-  border: 2px solid #ecf0f1;
-  border-radius: 25px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
   font-size: 1rem;
   outline: none;
-  transition: border-color 0.3s ease;
+  transition: all 0.25s ease;
+  background: rgba(255, 255, 255, 0.06);
+  color: #e6e6f0;
 }
 
 .message-input:focus {
-  border-color: #3498db;
+  border-color: transparent;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.45), 0 0 0 6px rgba(236, 72, 153, 0.25);
 }
 
 .message-input:disabled {
-  background: #f8f9fa;
+  background: rgba(255, 255, 255, 0.04);
   cursor: not-allowed;
 }
 
 .send-btn {
   padding: 0.75rem 1.5rem;
-  background: #3498db;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
   color: white;
   border: none;
-  border-radius: 25px;
+  border-radius: 14px;
   cursor: pointer;
   font-size: 1rem;
   font-weight: 500;
-  transition: background 0.3s ease;
+  transition: all 0.25s ease;
+  box-shadow: 0 10px 24px rgba(99, 102, 241, 0.35), 0 6px 16px rgba(236, 72, 153, 0.25);
 }
 
 .send-btn:hover:not(:disabled) {
-  background: #2980b9;
+  filter: brightness(1.05);
+  transform: translateY(-1px);
 }
 
 .send-btn:disabled {
-  background: #bdc3c7;
+  opacity: 0.6;
   cursor: not-allowed;
 }
 
@@ -910,7 +937,7 @@ export default {
   align-items: center;
   justify-content: center;
   height: 100%;
-  background: #f8f9fa;
+  background: transparent;
 }
 
 .welcome-content {
@@ -920,13 +947,13 @@ export default {
 }
 
 .welcome-content h3 {
-  color: #2c3e50;
+  color: #e6e6f0;
   margin-bottom: 1rem;
   font-size: 1.5rem;
 }
 
 .welcome-content p {
-  color: #7f8c8d;
+  color: #cdd0e5;
   margin-bottom: 2rem;
   font-size: 1rem;
   line-height: 1.5;
