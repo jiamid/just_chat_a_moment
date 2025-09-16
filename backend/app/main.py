@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from .db import Base, engine
 from .auth import router as auth_router, get_current_user
 from .rooms import router as ws_router
+from .settings import settings
 from loguru import logger
 
 
@@ -17,15 +18,15 @@ async def lifespan(application: FastAPI):
     logger.info("⛔ Stopping Application")
 
 
-app = FastAPI(title="Just Chat A Moment API", lifespan=lifespan)
+app = FastAPI(title=settings.APP_NAME, lifespan=lifespan)
 
 # CORS（前端开发友好）
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=settings.CORS_ALLOW_ORIGINS,
+    allow_credentials=settings.CORS_ALLOW_CREDENTIALS,
+    allow_methods=settings.CORS_ALLOW_METHODS,
+    allow_headers=settings.CORS_ALLOW_HEADERS,
 )
 
 app.include_router(auth_router, prefix="/api")
