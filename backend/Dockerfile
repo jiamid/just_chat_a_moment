@@ -4,7 +4,7 @@ FROM python:${PYTHON_VERSION}-slim
 WORKDIR /app
 # 复制后端依赖列表并安装
 COPY requirements.txt .
-RUN pip install -U pip
+RUN pip install -U pip -i https://mirrors.aliyun.com/pypi/simple/
 RUN pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/
 
 # 复制后端代码
