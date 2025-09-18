@@ -1,10 +1,29 @@
+from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List, Any
 from pydantic import field_validator
 
+BASE_DIR = Path(__file__).resolve().parent.parent
+ENV_FILE = BASE_DIR / ".env"
+
+
+class OpenAiSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="OPENAI_", env_file=ENV_FILE, env_file_encoding='utf-8',
+                                      extra='ignore')
+    api_key: str = ''
+
+
+class SesSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="SES_", env_file=ENV_FILE, env_file_encoding='utf-8', extra='ignore')
+    secret: str = ''
+    secret_id: str = ''
+    secret_key: str = ''
+    template_id: int = ''
+    region:str = 'ap-hongkong'
+
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(env_file=ENV_FILE, env_file_encoding="utf-8", extra="ignore")
 
     APP_NAME: str = "Just Chat A Moment API"
 
@@ -32,5 +51,8 @@ class Settings(BaseSettings):
                 return items
         return v
 
+    openai: OpenAiSettings = OpenAiSettings()
+    ses: SesSettings = SesSettings()
 
-settings = Settings() 
+
+settings = Settings()

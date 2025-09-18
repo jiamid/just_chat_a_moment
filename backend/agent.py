@@ -33,7 +33,7 @@ class Deps:
 
 weather_agent = Agent(
     model=OpenAIChatModel('gpt-4.1-mini', provider=OpenAIProvider(
-        api_key=settings.OPENAI_API_KEY,
+        api_key=settings.openai.api_key,
     )),
 
     # 'Be concise, reply with one sentence.' is enough for some models (like openai) to use
