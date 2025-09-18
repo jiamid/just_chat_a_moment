@@ -12,5 +12,6 @@ aiosqlite==0.20.0
 greenlet==3.0.3
 grpcio-tools==1.75.0
 email-validator
+pydantic_validation_decorator
 loguru
 httpx
