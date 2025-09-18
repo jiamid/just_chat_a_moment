@@ -4,6 +4,7 @@ FROM python:${PYTHON_VERSION}-slim
 WORKDIR /app
 # 复制后端依赖列表并安装
 COPY requirements.txt .
+RUN pip install -U pip
 RUN pip install --no-cache-dir -r requirements.txt
 
 # 复制后端代码
