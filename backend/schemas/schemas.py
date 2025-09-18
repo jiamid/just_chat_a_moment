@@ -1,4 +1,5 @@
 from pydantic import BaseModel, EmailStr, Field
+from schemas.base import BaseResponse
 
 
 class EmailBase(BaseModel):
@@ -30,3 +31,17 @@ class UserRead(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+
+# 响应模型，继承BaseResponse
+class SesSignResponse(BaseResponse):
+    data: SesSign
+
+class UserReadResponse(BaseResponse):
+    data: UserRead
+
+class TokenResponse(BaseResponse):
+    data: Token
+
+class UserInfoResponse(BaseResponse):
+    data: UserRead

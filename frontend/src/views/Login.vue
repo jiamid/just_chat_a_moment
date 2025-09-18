@@ -81,8 +81,7 @@
 </template>
 
 <script>
-import axios from 'axios'
-import config from '../config.js'
+import { api } from '@/utils/request.js'
 
 export default {
   name: 'Login',
@@ -121,21 +120,16 @@ export default {
           await this.register()
         }
       } catch (err) {
-        this.error = err.response?.data?.detail || '操作失败'
+        this.error = err.message || '操作失败'
       } finally {
         this.loading = false
       }
     },
 
     async login () {
-      const formData = new FormData()
-      formData.append('username', this.form.email)
-      formData.append('password', this.form.password)
-
-      const response = await axios.post(config.getApiUrl('/auth/login'), formData, {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
-        }
+      const response = await api.auth.login({
+        username: this.form.email,
+        password: this.form.password
       })
 
       localStorage.setItem('token', response.data.access_token)
@@ -143,7 +137,7 @@ export default {
     },
 
     async register () {
-      await axios.post(config.getApiUrl('/auth/register'), {
+      await api.auth.register({
         email: this.form.email,
         username: this.form.username,
         password: this.form.password,
@@ -173,9 +167,7 @@ export default {
       }
       try {
         this.loading = true
-        const resp = await axios.post(config.getApiUrl('/auth/gen_sms'), { email: this.form.email }, {
-          headers: { 'Content-Type': 'application/json' }
-        })
+        const resp = await api.auth.getSmsCode({ email: this.form.email })
         // 后端返回 { email, expires_at, sign }
         this.form.expires_at = resp.data.expires_at
         this.form.sign = resp.data.sign
@@ -193,7 +185,7 @@ export default {
           }
         }, 1000)
       } catch (err) {
-        this.error = err.response?.data?.detail || '获取验证码失败'
+        this.error = err.message || '获取验证码失败'
       } finally {
         this.loading = false
       }

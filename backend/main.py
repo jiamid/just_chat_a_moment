@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from db.db import Base, engine
 from register import register_router
+from exceptions.handle import handle_exception
 from config.settings import settings
 from loguru import logger
 
@@ -28,6 +29,7 @@ app.add_middleware(
     allow_headers=settings.CORS_ALLOW_HEADERS,
 )
 
+handle_exception(app)
 register_router(app)
 
 

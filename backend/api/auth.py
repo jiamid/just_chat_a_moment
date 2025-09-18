@@ -6,14 +6,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from loguru import logger
 from db.db import get_db
 from models.models import User
-from schemas.schemas import UserCreate, UserRead, Token, SesSign,EmailBase
+from schemas.schemas import UserCreate, UserRead, Token, SesSign, EmailBase, SesSignResponse, UserReadResponse, TokenResponse
 from service.sms_service import email_bot
 from config.auth import get_password_hash,verify_password,create_access_token
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/gen_sms", response_model=SesSign)
+@router.post("/gen_sms", response_model=SesSignResponse)
 async def gen_sms(user: EmailBase, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)):
     # 检查邮箱、用户名唯一
     result = await db.execute(select(User).where(User.email == user.email))
@@ -28,10 +28,10 @@ async def gen_sms(user: EmailBase, background_tasks: BackgroundTasks, db: AsyncS
         sign=sign
     )
     background_tasks.add_task(email_bot.async_send_email, email=user.email,code=code)
-    return ses_sign
+    return SesSignResponse(data=ses_sign)
 
 
-@router.post("/register", response_model=UserRead)
+@router.post("/register", response_model=UserReadResponse)
 async def register(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
     # 检查邮箱、用户名唯一
     result = await db.execute(select(User).where(User.email == user_in.email))
@@ -56,10 +56,10 @@ async def register(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
     db.add(user)
     await db.commit()
     await db.refresh(user)
-    return user
+    return UserReadResponse(data=user)
 
 
-@router.post("/login", response_model=Token)
+@router.post("/login", response_model=TokenResponse)
 async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.email == form_data.username))
     user = result.scalar_one_or_none()
@@ -67,5 +67,5 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSessi
         raise HTTPException(status_code=400, detail="Incorrect email or password")
 
     access_token = create_access_token({"sub": str(user.id)})
-    return Token(access_token=access_token)
+    return TokenResponse(data=Token(access_token=access_token))
 

@@ -130,9 +130,9 @@
 </template>
 
 <script>
-import axios from 'axios'
 import protobuf from 'protobufjs'
 import config from '@/config'
+import { api } from '@/utils/request.js'
 
 export default {
   name: 'Chat',
@@ -205,10 +205,7 @@ export default {
   methods: {
     async loadUserInfo () {
       try {
-        const token = localStorage.getItem('token')
-        const response = await axios.get(config.getApiUrl('/me'), {
-          headers: { Authorization: `Bearer ${token}` }
-        })
+        const response = await api.user.getMe()
         this.username = response.data.username
       } catch (err) {
         this.$router.push('/login')
