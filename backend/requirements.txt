@@ -6,7 +6,7 @@ pydantic-settings
 passlib[bcrypt]==1.7.4
 bcrypt==3.2.2
 python-jose[cryptography]==3.3.0
-protobuf==5.27.2
+protobuf
 python-multipart==0.0.9
 aiosqlite==0.20.0
 greenlet==3.0.3
