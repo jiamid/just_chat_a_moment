@@ -13,3 +13,4 @@ greenlet==3.0.3
 grpcio-tools==1.75.0
 email-validator
 loguru
+httpx
