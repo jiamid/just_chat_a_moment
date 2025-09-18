@@ -9,11 +9,11 @@ from passlib.context import CryptContext
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from loguru import logger
-from .db import get_db
-from .models import User
-from .schemas import UserCreate, UserRead, Token, SesSign,EmailBase
-from .settings import settings
-from .sms_service import email_bot
+from db.db import get_db
+from models.models import User
+from schemas.schemas import UserCreate, UserRead, Token, SesSign,EmailBase
+from config.settings import settings
+from service.sms_service import email_bot
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")

@@ -6,10 +6,10 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
 from jose import jwt
 from sqlalchemy import select
 
-from .settings import settings
-from .db import AsyncSessionLocal
-from .models import User
-from .pb import chat_pb2
+from config.settings import settings
+from db.db import AsyncSessionLocal
+from models.models import User
+from protos import chat_pb2
 
 router = APIRouter(prefix="/ws", tags=["ws"])
 

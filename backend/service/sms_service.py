@@ -14,7 +14,7 @@ import httpx
 import json
 import datetime
 import secrets
-from .settings import settings
+from config.settings import settings
 
 class SESMailer:
     def __init__(self, secret_id, secret_key, template_id, region="ap-hongkong",code_secret:str='jiamid'):

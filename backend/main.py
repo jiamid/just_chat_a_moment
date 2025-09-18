@@ -1,10 +1,10 @@
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-from .db import Base, engine
-from .auth import router as auth_router, get_current_user
-from .rooms import router as ws_router
-from .settings import settings
+from db.db import Base, engine
+from api.auth import router as auth_router, get_current_user
+from api.rooms import router as ws_router
+from config.settings import settings
 from loguru import logger
 
 

@@ -19,7 +19,7 @@ from pydantic import BaseModel
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai import Agent, RunContext
-from app.settings import settings
+from config.settings import settings
 
 # 'if-token-present' means nothing will be sent (and the example will work) if you don't have logfire configured
 logfire.configure(send_to_logfire='if-token-present')

@@ -13,4 +13,4 @@ COPY . .
 # 暴露应用端口（默认为 9099，参考 AppConfig.app_port）
 EXPOSE 8000
 # 启动 FastAPI 应用
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
