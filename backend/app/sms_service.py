@@ -14,7 +14,7 @@ import httpx
 import json
 import datetime
 import secrets
-from settings import settings
+from .settings import settings
 
 class SESMailer:
     def __init__(self, secret_id, secret_key, template_id, region="ap-hongkong",code_secret:str='jiamid'):
@@ -170,11 +170,3 @@ email_bot = SESMailer(
     settings.ses.region,
     settings.ses.secret
 )
-
-if __name__ == '__main__':
-
-    code, expires_at, sign = email_bot.generate_code(1, 'jiamid@qq.com')
-    print(code)
-    print(expires_at)
-    print(sign)
-    print(email_bot.verify_code(code, expires_at, sign, 'jiamid@qq.com'))

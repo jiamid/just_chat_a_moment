@@ -5,7 +5,7 @@ const config = {
     // 使用相对路径，通过nginx代理
     host: process.env.VUE_APP_WS_HOST || '',
     port: process.env.VUE_APP_WS_PORT || '',
-    protocol: process.env.VUE_APP_WS_PROTOCOL || 'wss'
+    protocol: process.env.VUE_APP_WS_PROTOCOL || 'ws'
   },
 
   // API配置

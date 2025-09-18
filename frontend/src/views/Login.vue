@@ -49,12 +49,23 @@
         </div>
 
         <div v-if="!isLogin" class="form-group">
-          <label>头像URL（可选）</label>
-          <input
-            v-model="form.avatar_url"
-            type="url"
-            placeholder="请输入头像URL"
-          />
+          <label>验证码</label>
+          <div class="code-row">
+            <input
+              v-model="form.code"
+              type="text"
+              required
+              placeholder="请输入邮箱验证码"
+            />
+            <button
+              type="button"
+              class="code-btn"
+              :disabled="countdown > 0 || loading || !form.email"
+              @click="getCode"
+            >
+              {{ countdown > 0 ? `${countdown}s` : '获取验证码' }}
+            </button>
+          </div>
         </div>
 
         <button type="submit" :disabled="loading" class="submit-btn">
@@ -84,8 +95,18 @@ export default {
         email: '',
         username: '',
         password: '',
-        avatar_url: ''
-      }
+        code: '',
+        sign: '',
+        expires_at: 0
+      },
+      countdown: 0,
+      timer: null
+    }
+  },
+  beforeUnmount () {
+    if (this.timer) {
+      clearInterval(this.timer)
+      this.timer = null
     }
   },
   methods: {
@@ -126,14 +147,16 @@ export default {
         email: this.form.email,
         username: this.form.username,
         password: this.form.password,
-        avatar_url: this.form.avatar_url || null
+        code: this.form.code,
+        sign: this.form.sign,
+        expires_at: this.form.expires_at
       })
 
       // 注册成功后切换到登录模式，并自动填充邮箱和密码
       this.isLogin = true
       // 保持邮箱和密码不变，清空用户名和头像
       this.form.username = ''
-      this.form.avatar_url = ''
+      this.form.code = ''
 
       // 显示成功消息
       this.error = ''
@@ -141,6 +164,39 @@ export default {
         // 可以添加一个成功提示
         console.log('注册成功，请登录')
       })
+    },
+
+    async getCode () {
+      if (!this.form.email) {
+        this.error = '请先输入邮箱'
+        return
+      }
+      try {
+        this.loading = true
+        const resp = await axios.post(config.getApiUrl('/auth/gen_sms'), { email: this.form.email }, {
+          headers: { 'Content-Type': 'application/json' }
+        })
+        // 后端返回 { email, expires_at, sign }
+        this.form.expires_at = resp.data.expires_at
+        this.form.sign = resp.data.sign
+        this.error = ''
+        // 开始倒计时 120s
+        this.countdown = 120
+        if (this.timer) clearInterval(this.timer)
+        this.timer = setInterval(() => {
+          if (this.countdown > 0) {
+            this.countdown -= 1
+          }
+          if (this.countdown <= 0) {
+            clearInterval(this.timer)
+            this.timer = null
+          }
+        }, 1000)
+      } catch (err) {
+        this.error = err.response?.data?.detail || '获取验证码失败'
+      } finally {
+        this.loading = false
+      }
     }
   }
 }
@@ -283,6 +339,29 @@ h2 {
 .beian-info a:hover {
   color: #f0f0f0;
   text-decoration: underline;
+}
+
+.code-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.code-row input {
+  flex: 1;
+}
+
+.code-btn {
+  padding: 0.75rem 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: transparent;
+  color: #cdd0e5;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.code-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 /* 占位符颜色在暗色背景下更柔和 */

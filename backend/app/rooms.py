@@ -6,7 +6,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
 from jose import jwt
 from sqlalchemy import select
 
-from .auth import ALGORITHM, SECRET_KEY
+from .settings import settings
 from .db import AsyncSessionLocal
 from .models import User
 from .pb import chat_pb2
@@ -88,7 +88,7 @@ async def websocket_endpoint(
 
     if token:
         try:
-            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
             user_id = int(payload.get("sub"))
             async with AsyncSessionLocal() as db:
                 result = await db.execute(select(User).where(User.id == user_id))

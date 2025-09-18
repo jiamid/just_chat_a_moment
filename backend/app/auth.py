@@ -3,6 +3,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.background import BackgroundTasks
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlalchemy import select
@@ -10,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from loguru import logger
 from .db import get_db
 from .models import User
-from .schemas import UserCreate, UserRead, Token, SesSign, EmailStr
+from .schemas import UserCreate, UserRead, Token, SesSign,EmailBase
 from .settings import settings
 from .sms_service import email_bot
 
@@ -58,19 +59,20 @@ async def get_current_user(db: AsyncSession = Depends(get_db), token: str = Depe
 
 
 @router.post("/gen_sms", response_model=SesSign)
-async def gen_sms(email: EmailStr, db: AsyncSession = Depends(get_db)):
+async def gen_sms(user: EmailBase, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)):
     # 检查邮箱、用户名唯一
-    result = await db.execute(select(User).where(User.email == email))
+    result = await db.execute(select(User).where(User.email == user.email))
     if result.scalar_one_or_none() is not None:
         raise HTTPException(status_code=400, detail="Email already registered")
 
-    code, expires_at, sign = email_bot.generate_code(300, email)
+    code, expires_at, sign = email_bot.generate_code(300, user.email)
     logger.info(f"code={code}, expires_at={expires_at}, sign={sign}")
     ses_sign = SesSign(
-        email=email,
+        email=user.email,
         expires_at=expires_at,
         sign=sign
     )
+    background_tasks.add_task(email_bot.async_send_email, email=user.email,code=code)
     return ses_sign
 
 
@@ -84,6 +86,11 @@ async def register(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.username == user_in.username))
     if result.scalar_one_or_none() is not None:
         raise HTTPException(status_code=400, detail="Username already taken")
+
+    # 校验邮箱验证码
+    is_valid, message = email_bot.verify_code(user_in.code, user_in.expires_at, user_in.sign, user_in.email)
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=message)
 
     user = User(
         email=user_in.email,
