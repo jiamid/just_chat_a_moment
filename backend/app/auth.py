@@ -7,11 +7,12 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
+from loguru import logger
 from .db import get_db
 from .models import User
-from .schemas import UserCreate, UserRead, Token
+from .schemas import UserCreate, UserRead, Token, SesSign, EmailStr
 from .settings import settings
+from .sms_service import email_bot
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
@@ -54,6 +55,23 @@ async def get_current_user(db: AsyncSession = Depends(get_db), token: str = Depe
     if user is None:
         raise credentials_exception
     return user
+
+
+@router.post("/gen_sms", response_model=SesSign)
+async def gen_sms(email: EmailStr, db: AsyncSession = Depends(get_db)):
+    # 检查邮箱、用户名唯一
+    result = await db.execute(select(User).where(User.email == email))
+    if result.scalar_one_or_none() is not None:
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    code, expires_at, sign = email_bot.generate_code(300, email)
+    logger.info(f"code={code}, expires_at={expires_at}, sign={sign}")
+    ses_sign = SesSign(
+        email=email,
+        expires_at=expires_at,
+        sign=sign
+    )
+    return ses_sign
 
 
 @router.post("/register", response_model=UserRead)
