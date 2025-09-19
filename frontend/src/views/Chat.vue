@@ -819,14 +819,39 @@ export default {
 
     // 尝试播放音乐
     async attemptPlay (musicName) {
-      if (!this.currentAudio) return
+      if (!this.currentAudio) {
+        console.warn('尝试播放音乐失败: 音频对象不存在')
+        return
+      }
+
+      console.log('尝试播放音乐详情:', {
+        musicName,
+        audioReadyState: this.currentAudio.readyState,
+        audioSrc: this.currentAudio.src,
+        audioVolume: this.currentAudio.volume,
+        audioMuted: this.currentAudio.muted,
+        audioPaused: this.currentAudio.paused,
+        audioDuration: this.currentAudio.duration,
+        isMobile: this.isMobile,
+        hasUserInteracted: this.hasUserInteracted,
+        audioContextState: this.audioContext ? this.audioContext.state : 'no-context',
+        isAudioContextReady: this.isAudioContextReady,
+        retryCount: this.audioPlayRetryCount
+      })
 
       try {
-        console.log('尝试播放音乐:', musicName)
+        console.log('开始播放音乐:', musicName)
         await this.currentAudio.play()
         console.log('音乐播放成功:', musicName)
       } catch (err) {
-        console.error('音乐播放失败:', err)
+        console.error('音乐播放失败详情:', {
+          error: err,
+          name: err.name,
+          message: err.message,
+          musicName,
+          retryCount: this.audioPlayRetryCount,
+          maxRetryCount: this.maxRetryCount
+        })
 
         // 移动端重试机制
         if (this.isMobile && this.audioPlayRetryCount < this.maxRetryCount) {
@@ -845,17 +870,39 @@ export default {
 
     // 处理播放错误
     handlePlayError (err, musicName) {
-      console.error('音乐播放错误:', err)
+      console.error('音乐播放错误详情:', {
+        error: err,
+        name: err.name,
+        message: err.message,
+        musicName,
+        isMobile: this.isMobile,
+        hasUserInteracted: this.hasUserInteracted,
+        audioContextState: this.audioContext ? this.audioContext.state : 'no-context',
+        isAudioContextReady: this.isAudioContextReady,
+        audioReadyState: this.currentAudio ? this.currentAudio.readyState : 'no-audio'
+      })
 
       // 移动端特殊处理：如果是用户交互限制，提示用户
-      if (err.name === 'NotAllowedError' && this.isMobile) {
-        console.log('移动端音频播放被阻止，等待用户交互')
-        this.showSystemMessage('请点击屏幕任意位置启用音乐播放')
+      if (err.name === 'NotAllowedError') {
+        if (this.isMobile) {
+          console.log('移动端音频播放被阻止，等待用户交互')
+          this.showSystemMessage('请点击屏幕任意位置启用音乐播放')
+        } else {
+          console.log('桌面端音频播放被阻止')
+          this.showSystemMessage('请点击页面任意位置启用音乐播放')
+        }
       } else if (err.name === 'AbortError') {
         console.log('音乐播放被中断:', musicName)
+        // 不显示错误消息，因为可能是用户主动停止
+      } else if (err.name === 'NotSupportedError') {
+        console.error('音频格式不支持:', musicName)
+        this.showSystemMessage('音频格式不支持，请检查音乐文件')
+      } else if (err.name === 'NetworkError') {
+        console.error('网络错误，无法加载音频:', musicName)
+        this.showSystemMessage('网络错误，无法加载音乐')
       } else {
         console.error('未知播放错误:', err)
-        this.showSystemMessage('音乐播放失败，请重试')
+        this.showSystemMessage(`音乐播放失败: ${err.message || '未知错误'}`)
       }
 
       this.isPlaying = false
@@ -961,6 +1008,9 @@ export default {
 
     // 处理音乐播放请求
     handleMusicPlay (musicId) {
+      console.log('处理音乐播放请求:', musicId)
+      this.logMusicStatus()
+
       if (this.isMobile && !this.hasUserInteracted) {
         // 移动端且用户未交互，加入队列
         console.log('移动端用户未交互，音乐加入播放队列:', musicId)
@@ -985,6 +1035,31 @@ export default {
         // 清空队列中的其他音乐（只播放最新的）
         this.pendingMusicQueue = []
       }
+    },
+
+    // 音乐播放状态监控
+    logMusicStatus () {
+      console.log('音乐播放状态:', {
+        isPlaying: this.isPlaying,
+        currentMusicId: this.currentMusicId,
+        hasUserInteracted: this.hasUserInteracted,
+        isMobile: this.isMobile,
+        audioContextState: this.audioContext ? this.audioContext.state : 'no-context',
+        isAudioContextReady: this.isAudioContextReady,
+        audioPlayRetryCount: this.audioPlayRetryCount,
+        pendingMusicQueue: this.pendingMusicQueue,
+        currentAudio: this.currentAudio
+          ? {
+              readyState: this.currentAudio.readyState,
+              src: this.currentAudio.src,
+              volume: this.currentAudio.volume,
+              muted: this.currentAudio.muted,
+              paused: this.currentAudio.paused,
+              duration: this.currentAudio.duration,
+              currentTime: this.currentAudio.currentTime
+            }
+          : null
+      })
     }
   }
 }
