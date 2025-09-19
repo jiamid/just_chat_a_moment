@@ -662,7 +662,7 @@ export default {
       }
     },
 
-    playMusic (musicId) {
+    async playMusic (musicId) {
       console.log('尝试播放音乐:', musicId)
       console.log('当前音乐配置:', this.musicConfig)
 
@@ -677,6 +677,20 @@ export default {
       // 停止当前播放的音乐
       this.stopMusic()
 
+      // 移动端特殊处理：确保音频上下文处于运行状态
+      if (this.isMobile && this.audioContext) {
+        if (this.audioContext.state === 'suspended') {
+          try {
+            await this.audioContext.resume()
+            console.log('移动端音频上下文已恢复')
+            // 等待一小段时间确保音频上下文完全恢复
+            await new Promise(resolve => setTimeout(resolve, 50))
+          } catch (err) {
+            console.error('恢复移动端音频上下文失败:', err)
+          }
+        }
+      }
+
       try {
         this.currentAudio = new Audio(musicInfo.url)
         this.currentMusicId = musicId
@@ -687,6 +701,8 @@ export default {
         if (this.isMobile) {
           this.currentAudio.preload = 'auto'
           this.currentAudio.crossOrigin = 'anonymous'
+          // 设置音量，确保音频能正常播放
+          this.currentAudio.volume = 1.0
         }
 
         console.log('创建音频对象成功，开始播放')
@@ -702,6 +718,10 @@ export default {
 
         this.currentAudio.addEventListener('play', () => {
           console.log('音乐开始播放:', musicInfo.name)
+        })
+
+        this.currentAudio.addEventListener('pause', () => {
+          console.log('音乐暂停:', musicInfo.name)
         })
 
         this.currentAudio.addEventListener('ended', () => {
@@ -722,25 +742,37 @@ export default {
           this.currentAudio = null
         })
 
-        // 开始播放
-        const playPromise = this.currentAudio.play()
-
-        if (playPromise !== undefined) {
-          playPromise.then(() => {
-            console.log('音乐播放成功')
-          }).catch(err => {
-            console.error('音乐播放失败:', err)
-
-            // 移动端特殊处理：如果是用户交互限制，提示用户
-            if (err.name === 'NotAllowedError' && this.isMobile) {
-              console.log('移动端音频播放被阻止，等待用户交互')
-              this.showSystemMessage('请点击屏幕任意位置启用音乐播放')
-            }
-
-            this.isPlaying = false
-            this.currentMusicId = null
-            this.currentAudio = null
+        // 移动端特殊处理：等待音频可以播放后再播放
+        if (this.isMobile) {
+          this.currentAudio.addEventListener('canplaythrough', () => {
+            console.log('音乐完全加载完成，开始播放:', musicInfo.name)
+            this.currentAudio.play().catch(err => {
+              console.error('移动端音乐播放失败:', err)
+              this.handlePlayError(err, musicInfo.name)
+            })
           })
+
+          // 设置超时，防止音频加载过慢
+          setTimeout(() => {
+            if (this.currentAudio && this.currentAudio.readyState >= 2) {
+              console.log('音频加载超时，尝试播放:', musicInfo.name)
+              this.currentAudio.play().catch(err => {
+                console.error('移动端音乐播放失败(超时):', err)
+                this.handlePlayError(err, musicInfo.name)
+              })
+            }
+          }, 2000)
+        } else {
+          // 桌面端直接播放
+          const playPromise = this.currentAudio.play()
+          if (playPromise !== undefined) {
+            playPromise.then(() => {
+              console.log('音乐播放成功')
+            }).catch(err => {
+              console.error('音乐播放失败:', err)
+              this.handlePlayError(err, musicInfo.name)
+            })
+          }
         }
       } catch (err) {
         console.error('创建音频对象失败:', err)
@@ -748,6 +780,26 @@ export default {
         this.currentMusicId = null
         this.currentAudio = null
       }
+    },
+
+    // 处理播放错误
+    handlePlayError (err, musicName) {
+      console.error('音乐播放错误:', err)
+
+      // 移动端特殊处理：如果是用户交互限制，提示用户
+      if (err.name === 'NotAllowedError' && this.isMobile) {
+        console.log('移动端音频播放被阻止，等待用户交互')
+        this.showSystemMessage('请点击屏幕任意位置启用音乐播放')
+      } else if (err.name === 'AbortError') {
+        console.log('音乐播放被中断:', musicName)
+      } else {
+        console.error('未知播放错误:', err)
+        this.showSystemMessage('音乐播放失败，请重试')
+      }
+
+      this.isPlaying = false
+      this.currentMusicId = null
+      this.currentAudio = null
     },
 
     stopMusic () {
@@ -786,23 +838,27 @@ export default {
 
     // 设置用户交互检测
     setupUserInteractionDetection () {
-      const enableAudio = () => {
+      const enableAudio = async () => {
         this.hasUserInteracted = true
         console.log('用户已交互，允许音频播放')
 
-        // 恢复音频上下文（如果被暂停）
-        if (this.audioContext && this.audioContext.state === 'suspended') {
-          this.audioContext.resume().then(() => {
-            console.log('音频上下文已恢复')
-            // 播放队列中的音乐
-            this.processPendingMusicQueue()
-          }).catch(err => {
-            console.error('恢复音频上下文失败:', err)
-          })
-        } else {
-          // 直接播放队列中的音乐
-          this.processPendingMusicQueue()
+        // 确保音频上下文处于运行状态
+        if (this.audioContext) {
+          if (this.audioContext.state === 'suspended') {
+            try {
+              await this.audioContext.resume()
+              console.log('音频上下文已恢复')
+            } catch (err) {
+              console.error('恢复音频上下文失败:', err)
+            }
+          }
+
+          // 等待一小段时间确保音频上下文完全恢复
+          await new Promise(resolve => setTimeout(resolve, 100))
         }
+
+        // 播放队列中的音乐
+        this.processPendingMusicQueue()
       }
 
       // 监听各种用户交互事件
