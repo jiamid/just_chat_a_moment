@@ -218,7 +218,10 @@ export default {
       // 移动端音频播放相关
       hasUserInteracted: false,
       audioContext: null,
-      pendingMusicQueue: []
+      pendingMusicQueue: [],
+      audioPlayRetryCount: 0,
+      maxRetryCount: 3,
+      isAudioContextReady: false
     }
   },
   computed: {
@@ -665,6 +668,7 @@ export default {
     async playMusic (musicId) {
       console.log('尝试播放音乐:', musicId)
       console.log('当前音乐配置:', this.musicConfig)
+      console.log('移动端状态:', this.isMobile, '用户已交互:', this.hasUserInteracted, '音频上下文就绪:', this.isAudioContextReady)
 
       const musicInfo = this.musicConfig[musicId]
       if (!musicInfo || !musicInfo.url) {
@@ -678,15 +682,29 @@ export default {
       this.stopMusic()
 
       // 移动端特殊处理：确保音频上下文处于运行状态
-      if (this.isMobile && this.audioContext) {
-        if (this.audioContext.state === 'suspended') {
+      if (this.isMobile) {
+        if (!this.hasUserInteracted) {
+          console.log('移动端用户未交互，音乐加入播放队列')
+          this.pendingMusicQueue.push(musicId)
+          this.showSystemMessage('请点击屏幕任意位置启用音乐播放')
+          return
+        }
+
+        if (this.audioContext && !this.isAudioContextReady) {
+          console.log('移动端音频上下文未就绪，尝试恢复')
           try {
             await this.audioContext.resume()
-            console.log('移动端音频上下文已恢复')
-            // 等待一小段时间确保音频上下文完全恢复
-            await new Promise(resolve => setTimeout(resolve, 50))
+            // 等待音频上下文完全恢复
+            let retryCount = 0
+            while (this.audioContext.state !== 'running' && retryCount < 5) {
+              await new Promise(resolve => setTimeout(resolve, 100))
+              retryCount++
+            }
+            this.isAudioContextReady = this.audioContext.state === 'running'
+            console.log('移动端音频上下文恢复结果:', this.isAudioContextReady)
           } catch (err) {
             console.error('恢复移动端音频上下文失败:', err)
+            this.isAudioContextReady = false
           }
         }
       }
@@ -696,16 +714,19 @@ export default {
         this.currentMusicId = musicId
         this.isPlaying = true
         this.isMuted = false
+        this.audioPlayRetryCount = 0
 
         // 移动端特殊处理：设置音频属性
         if (this.isMobile) {
           this.currentAudio.preload = 'auto'
           this.currentAudio.crossOrigin = 'anonymous'
-          // 设置音量，确保音频能正常播放
           this.currentAudio.volume = 1.0
+          // 移动端特殊属性
+          this.currentAudio.setAttribute('playsinline', 'true')
+          this.currentAudio.setAttribute('webkit-playsinline', 'true')
         }
 
-        console.log('创建音频对象成功，开始播放')
+        console.log('创建音频对象成功，准备播放')
 
         // 音乐播放事件监听
         this.currentAudio.addEventListener('loadstart', () => {
@@ -718,6 +739,7 @@ export default {
 
         this.currentAudio.addEventListener('play', () => {
           console.log('音乐开始播放:', musicInfo.name)
+          this.audioPlayRetryCount = 0 // 重置重试计数
         })
 
         this.currentAudio.addEventListener('pause', () => {
@@ -726,59 +748,98 @@ export default {
 
         this.currentAudio.addEventListener('ended', () => {
           console.log('音乐播放结束:', musicInfo.name)
-          console.log('清理音乐状态，currentMusicId:', this.currentMusicId)
           this.isPlaying = false
           this.currentMusicId = null
           this.currentAudio = null
           this.isMuted = false
-          console.log('音乐状态已清理')
         })
 
         this.currentAudio.addEventListener('error', (e) => {
           console.error('音乐播放错误:', e)
-          console.error('音频URL:', musicInfo.url)
-          this.isPlaying = false
-          this.currentMusicId = null
-          this.currentAudio = null
+          this.handlePlayError(e, musicInfo.name)
         })
 
-        // 移动端特殊处理：等待音频可以播放后再播放
+        // 移动端特殊处理：使用更可靠的播放策略
         if (this.isMobile) {
-          this.currentAudio.addEventListener('canplaythrough', () => {
-            console.log('音乐完全加载完成，开始播放:', musicInfo.name)
-            this.currentAudio.play().catch(err => {
-              console.error('移动端音乐播放失败:', err)
-              this.handlePlayError(err, musicInfo.name)
-            })
-          })
-
-          // 设置超时，防止音频加载过慢
-          setTimeout(() => {
-            if (this.currentAudio && this.currentAudio.readyState >= 2) {
-              console.log('音频加载超时，尝试播放:', musicInfo.name)
-              this.currentAudio.play().catch(err => {
-                console.error('移动端音乐播放失败(超时):', err)
-                this.handlePlayError(err, musicInfo.name)
-              })
-            }
-          }, 2000)
+          this.playMusicMobile(musicInfo)
         } else {
           // 桌面端直接播放
-          const playPromise = this.currentAudio.play()
-          if (playPromise !== undefined) {
-            playPromise.then(() => {
-              console.log('音乐播放成功')
-            }).catch(err => {
-              console.error('音乐播放失败:', err)
-              this.handlePlayError(err, musicInfo.name)
-            })
-          }
+          this.playMusicDesktop(musicInfo)
         }
       } catch (err) {
         console.error('创建音频对象失败:', err)
-        this.isPlaying = false
-        this.currentMusicId = null
-        this.currentAudio = null
+        this.handlePlayError(err, musicInfo.name)
+      }
+    },
+
+    // 移动端音乐播放
+    async playMusicMobile (musicInfo) {
+      console.log('移动端音乐播放策略')
+
+      // 策略1：等待 canplay 事件
+      const canPlayHandler = () => {
+        console.log('移动端音乐可以播放，尝试播放:', musicInfo.name)
+        this.currentAudio.removeEventListener('canplay', canPlayHandler)
+        this.attemptPlay(musicInfo.name)
+      }
+
+      this.currentAudio.addEventListener('canplay', canPlayHandler)
+
+      // 策略2：超时保护
+      setTimeout(() => {
+        if (this.currentAudio && this.currentAudio.readyState >= 2) {
+          console.log('移动端音乐加载超时，尝试播放:', musicInfo.name)
+          this.currentAudio.removeEventListener('canplay', canPlayHandler)
+          this.attemptPlay(musicInfo.name)
+        }
+      }, 3000)
+
+      // 策略3：立即尝试（某些情况下可能有效）
+      setTimeout(() => {
+        if (this.currentAudio && this.currentAudio.readyState >= 1) {
+          console.log('移动端音乐立即尝试播放:', musicInfo.name)
+          this.attemptPlay(musicInfo.name)
+        }
+      }, 500)
+    },
+
+    // 桌面端音乐播放
+    playMusicDesktop (musicInfo) {
+      console.log('桌面端音乐播放')
+      const playPromise = this.currentAudio.play()
+      if (playPromise !== undefined) {
+        playPromise.then(() => {
+          console.log('桌面端音乐播放成功')
+        }).catch(err => {
+          console.error('桌面端音乐播放失败:', err)
+          this.handlePlayError(err, musicInfo.name)
+        })
+      }
+    },
+
+    // 尝试播放音乐
+    async attemptPlay (musicName) {
+      if (!this.currentAudio) return
+
+      try {
+        console.log('尝试播放音乐:', musicName)
+        await this.currentAudio.play()
+        console.log('音乐播放成功:', musicName)
+      } catch (err) {
+        console.error('音乐播放失败:', err)
+
+        // 移动端重试机制
+        if (this.isMobile && this.audioPlayRetryCount < this.maxRetryCount) {
+          this.audioPlayRetryCount++
+          console.log(`移动端音乐播放重试 ${this.audioPlayRetryCount}/${this.maxRetryCount}`)
+
+          // 等待一段时间后重试
+          setTimeout(() => {
+            this.attemptPlay(musicName)
+          }, 1000 * this.audioPlayRetryCount)
+        } else {
+          this.handlePlayError(err, musicName)
+        }
       }
     },
 
@@ -830,15 +891,26 @@ export default {
       try {
         // 创建音频上下文，用于移动端音频播放
         this.audioContext = new (window.AudioContext || window.webkitAudioContext)()
-        console.log('音频上下文创建成功')
+        console.log('音频上下文创建成功，状态:', this.audioContext.state)
+
+        // 监听音频上下文状态变化
+        this.audioContext.addEventListener('statechange', () => {
+          console.log('音频上下文状态变化:', this.audioContext.state)
+          this.isAudioContextReady = this.audioContext.state === 'running'
+        })
+
+        this.isAudioContextReady = this.audioContext.state === 'running'
       } catch (err) {
         console.warn('音频上下文创建失败:', err)
+        this.isAudioContextReady = false
       }
     },
 
     // 设置用户交互检测
     setupUserInteractionDetection () {
       const enableAudio = async () => {
+        if (this.hasUserInteracted) return // 避免重复触发
+
         this.hasUserInteracted = true
         console.log('用户已交互，允许音频播放')
 
@@ -847,14 +919,28 @@ export default {
           if (this.audioContext.state === 'suspended') {
             try {
               await this.audioContext.resume()
-              console.log('音频上下文已恢复')
+              console.log('音频上下文已恢复，状态:', this.audioContext.state)
+
+              // 等待音频上下文完全恢复
+              let retryCount = 0
+              while (this.audioContext.state !== 'running' && retryCount < 10) {
+                await new Promise(resolve => setTimeout(resolve, 100))
+                retryCount++
+                console.log(`等待音频上下文恢复... ${retryCount}/10`)
+              }
+
+              if (this.audioContext.state === 'running') {
+                this.isAudioContextReady = true
+                console.log('音频上下文已完全恢复')
+              } else {
+                console.warn('音频上下文恢复超时')
+              }
             } catch (err) {
               console.error('恢复音频上下文失败:', err)
             }
+          } else {
+            this.isAudioContextReady = true
           }
-
-          // 等待一小段时间确保音频上下文完全恢复
-          await new Promise(resolve => setTimeout(resolve, 100))
         }
 
         // 播放队列中的音乐
