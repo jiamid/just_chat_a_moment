@@ -214,11 +214,7 @@ export default {
       currentAudio: null,
       isPlaying: false,
       currentMusicId: null,
-      isMuted: false,
-      // 移动端音频播放相关
-      hasUserInteracted: false,
-      audioContext: null,
-      pendingMusicQueue: []
+      isMuted: false
     }
   },
   computed: {
@@ -231,8 +227,6 @@ export default {
     this.loadRecentRooms()
     this.checkMobileDevice()
     this.setupKeyboardDetection()
-    this.setupAudioContext()
-    this.setupUserInteractionDetection()
     await this.loadUserInfo()
     await this.loadProtobuf()
     if (this.roomId) {
@@ -267,10 +261,6 @@ export default {
     }
     // 清理音频资源
     this.stopMusic()
-    // 清理音频上下文
-    if (this.audioContext) {
-      this.audioContext.close()
-    }
     // 清理窗口大小变化监听器
     window.removeEventListener('resize', this.checkMobileDevice)
     // 清理键盘检测监听器
@@ -407,7 +397,7 @@ export default {
             // 自动播放音乐（如果有音乐信息）
             if (musicInfo) {
               console.log('准备自动播放音乐:', message.content)
-              this.handleMusicPlay(message.content)
+              this.playMusic(message.content)
             } else {
               console.log('不播放音乐，原因: 没有音乐信息')
             }
@@ -683,12 +673,6 @@ export default {
         this.isPlaying = true
         this.isMuted = false
 
-        // 移动端特殊处理：设置音频属性
-        if (this.isMobile) {
-          this.currentAudio.preload = 'auto'
-          this.currentAudio.crossOrigin = 'anonymous'
-        }
-
         console.log('创建音频对象成功，开始播放')
 
         // 音乐播放事件监听
@@ -723,25 +707,12 @@ export default {
         })
 
         // 开始播放
-        const playPromise = this.currentAudio.play()
-
-        if (playPromise !== undefined) {
-          playPromise.then(() => {
-            console.log('音乐播放成功')
-          }).catch(err => {
-            console.error('音乐播放失败:', err)
-
-            // 移动端特殊处理：如果是用户交互限制，提示用户
-            if (err.name === 'NotAllowedError' && this.isMobile) {
-              console.log('移动端音频播放被阻止，等待用户交互')
-              this.showSystemMessage('请点击屏幕任意位置启用音乐播放')
-            }
-
-            this.isPlaying = false
-            this.currentMusicId = null
-            this.currentAudio = null
-          })
-        }
+        this.currentAudio.play().catch(err => {
+          console.error('音乐播放失败:', err)
+          this.isPlaying = false
+          this.currentMusicId = null
+          this.currentAudio = null
+        })
       } catch (err) {
         console.error('创建音频对象失败:', err)
         this.isPlaying = false
@@ -770,78 +741,6 @@ export default {
         this.isMuted = !this.isMuted
         this.currentAudio.muted = this.isMuted
         console.log('音乐静音状态:', this.isMuted ? '已静音' : '已取消静音')
-      }
-    },
-
-    // 设置音频上下文
-    setupAudioContext () {
-      try {
-        // 创建音频上下文，用于移动端音频播放
-        this.audioContext = new (window.AudioContext || window.webkitAudioContext)()
-        console.log('音频上下文创建成功')
-      } catch (err) {
-        console.warn('音频上下文创建失败:', err)
-      }
-    },
-
-    // 设置用户交互检测
-    setupUserInteractionDetection () {
-      const enableAudio = () => {
-        this.hasUserInteracted = true
-        console.log('用户已交互，允许音频播放')
-
-        // 恢复音频上下文（如果被暂停）
-        if (this.audioContext && this.audioContext.state === 'suspended') {
-          this.audioContext.resume().then(() => {
-            console.log('音频上下文已恢复')
-            // 播放队列中的音乐
-            this.processPendingMusicQueue()
-          }).catch(err => {
-            console.error('恢复音频上下文失败:', err)
-          })
-        } else {
-          // 直接播放队列中的音乐
-          this.processPendingMusicQueue()
-        }
-      }
-
-      // 监听各种用户交互事件
-      const events = ['touchstart', 'touchend', 'click', 'keydown']
-      events.forEach(event => {
-        document.addEventListener(event, enableAudio, { once: true, passive: true })
-      })
-
-      // 微信环境特殊处理
-      if (typeof window.WeixinJSBridge !== 'undefined') {
-        window.WeixinJSBridge.on('ready', enableAudio)
-      }
-    },
-
-    // 处理音乐播放请求
-    handleMusicPlay (musicId) {
-      if (this.isMobile && !this.hasUserInteracted) {
-        // 移动端且用户未交互，加入队列
-        console.log('移动端用户未交互，音乐加入播放队列:', musicId)
-        this.pendingMusicQueue.push(musicId)
-
-        // 显示提示信息
-        this.showSystemMessage('点击屏幕任意位置启用音乐播放')
-        return
-      }
-
-      // 直接播放音乐
-      this.playMusic(musicId)
-    },
-
-    // 处理队列中的音乐
-    processPendingMusicQueue () {
-      if (this.pendingMusicQueue.length > 0) {
-        console.log('处理队列中的音乐:', this.pendingMusicQueue)
-        const musicId = this.pendingMusicQueue.shift()
-        this.playMusic(musicId)
-
-        // 清空队列中的其他音乐（只播放最新的）
-        this.pendingMusicQueue = []
       }
     }
   }
