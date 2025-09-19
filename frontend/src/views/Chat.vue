@@ -108,7 +108,10 @@
       </div>
 
       <!-- 底部：输入区域 -->
-      <div class="input-container" v-if="roomId">
+      <div class="input-container" v-if="roomId" :class="{
+        'keyboard-open': isKeyboardOpen && isMobile && !showMobileNavbar,
+        'navbar-open': showMobileNavbar && isMobile
+      }">
         <input
           v-model="newMessage"
           @keyup.enter="sendMessage"
@@ -157,7 +160,9 @@ export default {
       jumpRoomId: '',
       recentRooms: [],
       showMobileNavbar: false,
-      isMobile: false
+      isMobile: false,
+      isKeyboardOpen: false,
+      initialViewportHeight: 0
     }
   },
   computed: {
@@ -169,6 +174,7 @@ export default {
     this.roomId = this.currentRoomId
     this.loadRecentRooms()
     this.checkMobileDevice()
+    this.setupKeyboardDetection()
     await this.loadUserInfo()
     await this.loadProtobuf()
     if (this.roomId) {
@@ -201,6 +207,12 @@ export default {
     }
     // 清理窗口大小变化监听器
     window.removeEventListener('resize', this.checkMobileDevice)
+    // 清理键盘检测监听器
+    window.removeEventListener('resize', this.handleKeyboardToggle)
+    // 清理视口变化监听器
+    if (window.visualViewport) {
+      window.visualViewport.removeEventListener('resize', this.handleKeyboardToggle)
+    }
   },
   methods: {
     async loadUserInfo () {
@@ -465,6 +477,34 @@ export default {
       if (this.isMobile) {
         this.showMobileNavbar = false
       }
+    },
+
+    setupKeyboardDetection () {
+      // 记录初始视口高度，使用更准确的方法
+      this.initialViewportHeight = Math.max(window.innerHeight, window.screen.height)
+
+      // 监听窗口大小变化来检测键盘
+      window.addEventListener('resize', this.handleKeyboardToggle)
+
+      // 监听视口变化事件（移动端浏览器）
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', this.handleKeyboardToggle)
+      }
+    },
+
+    handleKeyboardToggle () {
+      if (!this.isMobile) return
+
+      // 使用更准确的视口高度检测
+      const currentHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight
+      const heightDifference = this.initialViewportHeight - currentHeight
+
+      // 如果高度减少超过100px，认为是键盘弹起
+      if (heightDifference > 100) {
+        this.isKeyboardOpen = true
+      } else {
+        this.isKeyboardOpen = false
+      }
     }
   }
 }
@@ -474,9 +514,11 @@ export default {
 .chat-container {
   display: flex;
   height: 100vh;
+  height: 100dvh; /* 使用动态视口高度，更好地处理移动端 */
   background: radial-gradient(1200px 600px at 10% 10%, rgba(99, 102, 241, 0.18), rgba(99, 102, 241, 0) 60%),
               radial-gradient(900px 500px at 90% 20%, rgba(236, 72, 153, 0.18), rgba(236, 72, 153, 0) 60%),
               linear-gradient(135deg, #0f1020 0%, #1b1c34 50%, #0c0d1a 100%);
+  overflow: hidden; /* 防止整体滚动 */
 }
 
 /* 左侧导航栏 */
@@ -512,8 +554,11 @@ export default {
     top: 0;
     left: 0;
     height: 100vh;
+    height: 100dvh; /* 移动端使用动态视口高度 */
     transform: translateX(-100%);
     z-index: 1000;
+    display: flex;
+    flex-direction: column;
   }
 
   .left-sidebar.mobile-show {
@@ -540,6 +585,8 @@ export default {
 .rooms-section {
   flex: 1;
   padding: 1rem;
+  min-height: 0; /* 确保flex子元素可以正确收缩 */
+  overflow-y: auto; /* 如果内容过多，允许滚动 */
 }
 
 .rooms-section h3 {
@@ -650,6 +697,7 @@ export default {
 .user-section {
   padding: 1rem;
   border-top: 1px solid rgba(255, 255, 255, 0.12);
+  flex-shrink: 0; /* 防止用户区域被压缩 */
 }
 
 .user-info {
@@ -685,6 +733,8 @@ export default {
   display: flex;
   flex-direction: column;
   background: transparent;
+  min-height: 0; /* 确保flex子元素可以正确收缩 */
+  overflow: hidden; /* 防止内容溢出 */
 }
 
 /* 系统消息提示条 */
@@ -803,6 +853,7 @@ export default {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-height: 0; /* 确保flex子元素可以正确收缩 */
 }
 
 .messages-container {
@@ -881,6 +932,22 @@ export default {
   box-shadow: 0 -4px 20px rgba(0,0,0,0.25);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
+  transition: transform 0.3s ease;
+}
+
+/* 移动端键盘弹起时的输入框样式 */
+.input-container.keyboard-open {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 998; /* 降低z-index，确保不会遮挡导航栏 */
+  transform: translateY(0);
+}
+
+/* 移动端导航栏展开时隐藏键盘弹起状态的输入框 */
+.input-container.navbar-open.keyboard-open {
+  display: none;
 }
 
 .message-input {
@@ -985,14 +1052,33 @@ export default {
 @media (max-width: 768px) {
   .chat-container {
     position: relative;
+    height: 100vh;
+    height: 100dvh; /* 移动端使用动态视口高度 */
+    overflow: hidden;
   }
 
   .right-chat {
     width: 100%;
+    min-height: 0;
   }
 
   .left-sidebar {
     width: 280px; /* 移动端导航栏宽度 */
+  }
+
+  /* 确保移动端用户区域正确显示 */
+  .user-section {
+    padding: 0.75rem 1rem;
+    margin-top: auto; /* 确保用户区域在底部 */
+  }
+
+  .user-info {
+    margin-bottom: 0.75rem;
+  }
+
+  .logout-btn {
+    font-size: 0.9rem;
+    padding: 0.6rem 0.75rem;
   }
 
   .logo-section h1 {
@@ -1035,6 +1121,31 @@ export default {
 
   .input-container {
     padding: 1rem;
+  }
+
+  /* 移动端键盘弹起时调整输入框样式 */
+  .input-container.keyboard-open {
+    padding: 0.75rem 1rem;
+    border-radius: 0;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 998; /* 确保不会遮挡导航栏(z-index: 1000) */
+    transform: translateY(0);
+  }
+
+  /* 移动端导航栏展开时隐藏键盘弹起状态的输入框 */
+  .input-container.navbar-open.keyboard-open {
+    display: none;
+  }
+
+  /* 确保移动端消息容器正确滚动 */
+  .messages-container {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch; /* iOS平滑滚动 */
   }
 
   .connection-status {
