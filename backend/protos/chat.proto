@@ -16,4 +16,5 @@ enum MessageType {
   USER_TEXT = 2; // 用户文本
   QUERY_COUNT = 3; // 查询房间人数
   ROOM_COUNT = 4;  // 房间人数响应
+  MUSIC = 5;    // 音乐消息
 }

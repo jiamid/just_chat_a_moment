@@ -7,16 +7,18 @@
 @Contact : jiamid@qq.com
 @Desc    : 
 """
-from fastapi import FastAPI,APIRouter
+from fastapi import FastAPI, APIRouter
 from api.auth import router as auth_router
 from api.rooms import router as ws_router
 from api.me import router as me_router
+from api.music import router as music_router
+
 
 def register_router(app: FastAPI):
     base_router = APIRouter(prefix="/api")
     base_router.include_router(auth_router)
     base_router.include_router(me_router)
-
+    base_router.include_router(music_router)
 
     app.include_router(base_router)
     app.include_router(ws_router)

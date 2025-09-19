@@ -28,3 +28,7 @@ class BaseResponse(BaseModel):
     @classmethod
     def error(cls, msg: str):
         return cls(code=500, message=msg).to_response()
+
+    @classmethod
+    def success(cls, data: Optional[Any] = None):
+        return cls(data=data).to_response()

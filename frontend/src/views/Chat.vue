@@ -49,6 +49,12 @@
       <div class="user-section">
         <div class="user-info">
           <span class="username">{{ username }}</span>
+          <!-- 连接状态 -->
+          <div class="connection-status-navbar">
+            <span v-if="isConnected" class="status-indicator connected"></span>
+            <span v-if="isConnected" class="status-text">已连接</span>
+            <button v-else @click="reconnect" class="reconnect-btn">重连</button>
+          </div>
         </div>
         <button @click="logout" class="logout-btn">退出登录</button>
       </div>
@@ -71,9 +77,16 @@
           <h2 v-else>选择房间开始聊天</h2>
         </div>
         <div class="connection-status" v-if="roomId">
-          <span v-if="isConnected" class="status-indicator connected"></span>
-          <span v-if="isConnected" class="status-text">已连接</span>
-          <button v-else @click="reconnect" class="reconnect-btn">重连</button>
+          <!-- 音乐控制按钮 -->
+          <button v-if="currentMusicId" @click="toggleMute" class="music-icon-btn" :class="{ 'muted': isMuted }" title="点击切换静音">
+            <div class="music-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 18V5l12-2v13"></path>
+                <circle cx="6" cy="18" r="3"></circle>
+                <circle cx="18" cy="16" r="3"></circle>
+              </svg>
+            </div>
+          </button>
         </div>
       </div>
 
@@ -83,7 +96,7 @@
       </div>
 
       <!-- 中间：消息区域 -->
-      <div class="chat-main" @click="hideMobileNavbar">
+      <div class="chat-main" @click="hideMobileNavbar(); hideMusicMenu()">
         <!-- 未选择房间时的提示 -->
         <div v-if="!roomId" class="no-room-message">
           <div class="welcome-content">
@@ -112,6 +125,39 @@
         'keyboard-open': isKeyboardOpen && isMobile && !showMobileNavbar,
         'navbar-open': showMobileNavbar && isMobile
       }">
+        <!-- 音乐按钮 -->
+        <div class="music-container">
+          <button
+            @click="toggleMusicMenu"
+            :disabled="!isConnected"
+            class="music-btn"
+            title="选择音乐"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 18V5l12-2v13"></path>
+              <circle cx="6" cy="18" r="3"></circle>
+              <circle cx="18" cy="16" r="3"></circle>
+            </svg>
+          </button>
+
+          <!-- 音乐选择菜单 -->
+          <div v-if="showMusicMenu" class="music-menu" @click.stop>
+            <div class="music-menu-header">
+              <span>选择音乐</span>
+            </div>
+            <div class="music-list">
+              <div
+                v-for="(music, id) in musicConfig"
+                :key="id"
+                @click="sendMusic(id)"
+                class="music-item"
+              >
+                <span class="music-name">🎵 {{ music.name }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <input
           v-model="newMessage"
           @keyup.enter="sendMessage"
@@ -162,7 +208,13 @@ export default {
       showMobileNavbar: false,
       isMobile: false,
       isKeyboardOpen: false,
-      initialViewportHeight: 0
+      initialViewportHeight: 0,
+      musicConfig: {},
+      showMusicMenu: false,
+      currentAudio: null,
+      isPlaying: false,
+      currentMusicId: null,
+      isMuted: false
     }
   },
   computed: {
@@ -178,6 +230,7 @@ export default {
     await this.loadUserInfo()
     await this.loadProtobuf()
     if (this.roomId) {
+      await this.loadMusicConfig()
       this.connectWebSocket()
     }
   },
@@ -196,6 +249,7 @@ export default {
           if (!this.ChatMessage) {
             await this.loadProtobuf()
           }
+          await this.loadMusicConfig()
           this.connectWebSocket()
         }
       }
@@ -205,6 +259,8 @@ export default {
     if (this.ws) {
       this.ws.close()
     }
+    // 清理音频资源
+    this.stopMusic()
     // 清理窗口大小变化监听器
     window.removeEventListener('resize', this.checkMobileDevice)
     // 清理键盘检测监听器
@@ -221,6 +277,18 @@ export default {
         this.username = response.data.username
       } catch (err) {
         this.$router.push('/login')
+      }
+    },
+
+    async loadMusicConfig () {
+      if (!this.roomId) return
+      try {
+        console.log('开始加载音乐配置，房间ID:', this.roomId)
+        const response = await api.music.getConfig(this.roomId)
+        this.musicConfig = response.data
+        console.log('音乐配置加载成功:', this.musicConfig)
+      } catch (err) {
+        console.error('获取音乐配置失败:', err)
       }
     },
 
@@ -246,7 +314,8 @@ export default {
                     SYSTEM: 1,
                     USER_TEXT: 2,
                     QUERY_COUNT: 3,
-                    ROOM_COUNT: 4
+                    ROOM_COUNT: 4,
+                    MUSIC: 5
                   }
                 }
               }
@@ -297,8 +366,49 @@ export default {
           } else if (message.type === 1) {
             // SYSTEM 消息显示在顶部提示条
             this.showSystemMessage(message.content)
+          } else if (message.type === 5) {
+            // MUSIC 消息
+            console.log('收到音乐消息:', message)
+            const musicInfo = this.musicConfig[message.content]
+            console.log('音乐信息:', musicInfo)
+
+            const newMessage = {
+              id: Date.now() + Math.random(),
+              user: message.user,
+              content: musicInfo ? `🎵 ${musicInfo.name}` : `🎵 音乐: ${message.content}`,
+              timestamp: message.timestamp,
+              isOwn: message.user === this.username,
+              showHeader: true,
+              isMusic: true,
+              musicId: message.content,
+              musicUrl: musicInfo ? musicInfo.url : null
+            }
+
+            // 检查是否需要隐藏用户名（与上一条消息是同一用户）
+            if (this.messages.length > 0) {
+              const lastMessage = this.messages[this.messages.length - 1]
+              if (lastMessage.user === newMessage.user && lastMessage.isOwn === newMessage.isOwn) {
+                newMessage.showHeader = false
+              }
+            }
+
+            this.messages.push(newMessage)
+
+            // 自动播放音乐（如果有音乐信息）
+            if (musicInfo) {
+              console.log('准备自动播放音乐:', message.content)
+              this.playMusic(message.content)
+            } else {
+              console.log('不播放音乐，原因: 没有音乐信息')
+            }
+
+            this.$nextTick(() => {
+              setTimeout(() => {
+                this.scrollToBottom()
+              }, 100)
+            })
           } else {
-            // 用户消息
+            // 用户文本消息
             const newMessage = {
               id: Date.now() + Math.random(),
               user: message.user,
@@ -505,6 +615,133 @@ export default {
       } else {
         this.isKeyboardOpen = false
       }
+    },
+
+    toggleMusicMenu () {
+      this.showMusicMenu = !this.showMusicMenu
+    },
+
+    hideMusicMenu () {
+      this.showMusicMenu = false
+    },
+
+    sendMusic (musicId) {
+      if (!this.isConnected || !this.ChatMessage) {
+        console.log('Cannot send music:', {
+          isConnected: this.isConnected,
+          hasChatMessage: !!this.ChatMessage
+        })
+        return
+      }
+
+      try {
+        const message = this.ChatMessage.create({
+          user: this.username,
+          room_id: this.roomId,
+          content: musicId,
+          timestamp: Date.now(),
+          type: 5 // MUSIC
+        })
+
+        const buffer = this.ChatMessage.encode(message).finish()
+        this.ws.send(buffer)
+        this.showMusicMenu = false
+        console.log('音乐消息发送成功:', musicId)
+      } catch (err) {
+        console.error('Failed to send music message:', err)
+      }
+    },
+
+    playMusic (musicId) {
+      console.log('尝试播放音乐:', musicId)
+      console.log('当前音乐配置:', this.musicConfig)
+
+      const musicInfo = this.musicConfig[musicId]
+      if (!musicInfo || !musicInfo.url) {
+        console.warn('音乐信息不存在或URL为空:', musicId, musicInfo)
+        return
+      }
+
+      console.log('找到音乐信息:', musicInfo)
+
+      // 停止当前播放的音乐
+      this.stopMusic()
+
+      try {
+        this.currentAudio = new Audio(musicInfo.url)
+        this.currentMusicId = musicId
+        this.isPlaying = true
+        this.isMuted = false
+
+        console.log('创建音频对象成功，开始播放')
+
+        // 音乐播放事件监听
+        this.currentAudio.addEventListener('loadstart', () => {
+          console.log('开始加载音乐:', musicInfo.name)
+        })
+
+        this.currentAudio.addEventListener('canplay', () => {
+          console.log('音乐可以播放:', musicInfo.name)
+        })
+
+        this.currentAudio.addEventListener('play', () => {
+          console.log('音乐开始播放:', musicInfo.name)
+        })
+
+        this.currentAudio.addEventListener('ended', () => {
+          console.log('音乐播放结束:', musicInfo.name)
+          console.log('清理音乐状态，currentMusicId:', this.currentMusicId)
+          this.isPlaying = false
+          this.currentMusicId = null
+          this.currentAudio = null
+          this.isMuted = false
+          console.log('音乐状态已清理')
+        })
+
+        this.currentAudio.addEventListener('error', (e) => {
+          console.error('音乐播放错误:', e)
+          console.error('音频URL:', musicInfo.url)
+          this.isPlaying = false
+          this.currentMusicId = null
+          this.currentAudio = null
+        })
+
+        // 开始播放
+        this.currentAudio.play().catch(err => {
+          console.error('音乐播放失败:', err)
+          this.isPlaying = false
+          this.currentMusicId = null
+          this.currentAudio = null
+        })
+      } catch (err) {
+        console.error('创建音频对象失败:', err)
+        this.isPlaying = false
+        this.currentMusicId = null
+        this.currentAudio = null
+      }
+    },
+
+    stopMusic () {
+      if (this.currentAudio) {
+        try {
+          this.currentAudio.pause()
+          this.currentAudio.currentTime = 0
+          this.currentAudio = null
+        } catch (err) {
+          console.error('停止音乐播放失败:', err)
+        }
+      }
+      this.isPlaying = false
+      this.currentMusicId = null
+      this.isMuted = false
+    },
+
+    toggleMute () {
+      if (this.currentAudio) {
+        this.isMuted = !this.isMuted
+        this.currentAudio.muted = this.isMuted
+        console.log('音乐静音状态:', this.isMuted ? '已静音' : '已取消静音')
+      }
     }
   }
 }
@@ -707,6 +944,46 @@ export default {
 .user-info .username {
   font-weight: 500;
   color: #ffffff;
+}
+
+/* 导航栏连接状态 */
+.connection-status-navbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+}
+
+.connection-status-navbar .status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.connection-status-navbar .status-indicator.connected {
+  background: #22c55e;
+}
+
+.connection-status-navbar .status-text {
+  color: #86efac;
+  font-weight: 500;
+}
+
+.connection-status-navbar .reconnect-btn {
+  padding: 0.25rem 0.5rem;
+  background: linear-gradient(135deg, #f97316 0%, #ef4444 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 500;
+  transition: all 0.25s ease;
+}
+
+.connection-status-navbar .reconnect-btn:hover {
+  filter: brightness(1.05);
 }
 
 .logout-btn {
@@ -935,6 +1212,107 @@ export default {
   transition: transform 0.3s ease;
 }
 
+/* 音乐容器 */
+.music-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.music-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 8px 20px rgba(99, 102, 241, 0.35), 0 4px 12px rgba(236, 72, 153, 0.25);
+}
+
+.music-btn:hover:not(:disabled) {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+}
+
+.music-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.music-btn svg {
+  stroke: currentColor;
+}
+
+/* 音乐选择菜单 */
+.music-menu {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  margin-bottom: 0.5rem;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  z-index: 1000;
+  min-width: 200px;
+  max-width: 300px;
+  animation: slideUp 0.2s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.music-menu-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  color: #1f2937;
+  font-weight: 600;
+}
+
+.music-list {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.music-item {
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #374151;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.music-item:last-child {
+  border-bottom: none;
+}
+
+.music-item:hover {
+  background: rgba(99, 102, 241, 0.1);
+  color: #6366f1;
+}
+
+.music-name {
+  font-weight: 500;
+}
+
 /* 移动端键盘弹起时的输入框样式 */
 .input-container.keyboard-open {
   position: fixed;
@@ -1156,6 +1534,52 @@ export default {
     padding: 0.4rem 0.8rem;
     font-size: 0.8rem;
   }
+}
+
+/* 音乐图标按钮 */
+.music-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.music-icon-btn:hover {
+  filter: brightness(1.1);
+  transform: scale(1.05);
+}
+
+.music-icon-btn.muted {
+  /* 静音时保持原色，只停止转圈动画 */
+}
+
+.music-icon {
+  position: relative;
+  z-index: 2;
+}
+
+.music-icon svg {
+  stroke: currentColor;
+  animation: spin 2s linear infinite;
+}
+
+.music-icon-btn.muted .music-icon svg {
+  animation: none;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 </style>

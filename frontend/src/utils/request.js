@@ -95,6 +95,12 @@ export const api = {
   user: {
     // 获取用户信息
     getMe: () => request.get('/me')
+  },
+
+  // 音乐相关
+  music: {
+    // 获取音乐配置
+    getConfig: (roomId) => request.get(`/music/config/${roomId}`)
   }
 }
 

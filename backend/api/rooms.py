@@ -122,7 +122,7 @@ async def websocket_endpoint(
                 # 无法解析则忽略
                 continue
 
-            # 只处理用户文本消息
+            # 处理用户文本消息和音乐消息
             if incoming.type == chat_pb2.MessageType.USER_TEXT:
                 outgoing = chat_pb2.ChatMessage(
                     user=username,
@@ -130,6 +130,15 @@ async def websocket_endpoint(
                     content=incoming.content,
                     timestamp=int(time.time() * 1000),
                     type=chat_pb2.MessageType.USER_TEXT,
+                )
+                await room_manager.broadcast(room_id, outgoing.SerializeToString())
+            elif incoming.type == chat_pb2.MessageType.MUSIC:
+                outgoing = chat_pb2.ChatMessage(
+                    user=username,
+                    room_id=room_id,
+                    content=incoming.content,
+                    timestamp=int(time.time() * 1000),
+                    type=chat_pb2.MessageType.MUSIC,
                 )
                 await room_manager.broadcast(room_id, outgoing.SerializeToString())
 
