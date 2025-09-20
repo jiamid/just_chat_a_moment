@@ -102,6 +102,10 @@ export default {
       timer: null
     }
   },
+  async mounted () {
+    // 检查是否有token，如果有则尝试自动登录
+    await this.checkAutoLogin()
+  },
   beforeUnmount () {
     if (this.timer) {
       clearInterval(this.timer)
@@ -109,6 +113,24 @@ export default {
     }
   },
   methods: {
+    async checkAutoLogin () {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        return
+      }
+
+      try {
+        // 验证token是否有效
+        await api.user.getMe()
+        // token有效，直接跳转到聊天页面
+        this.$router.push('/chat')
+      } catch (error) {
+        // token无效或过期，清除localStorage中的token
+        localStorage.removeItem('token')
+        console.log('token无效，已清除:', error.message)
+      }
+    },
+
     async handleSubmit () {
       this.loading = true
       this.error = ''
