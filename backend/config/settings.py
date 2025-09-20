@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     # Auth
     SECRET_KEY: str = "change-this-secret-key"
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 30
 
     # CORS
     CORS_ALLOW_ORIGINS: List[str] = ["*"]
