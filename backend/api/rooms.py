@@ -133,11 +133,13 @@ async def websocket_endpoint(
                 )
                 await room_manager.broadcast(room_id, outgoing.SerializeToString())
             elif incoming.type == chat_pb2.MessageType.MUSIC:
+                # 设置音乐消息的延迟播放时间戳（0.5秒后）
+                delayed_timestamp = int((time.time() + 0.5) * 1000)
                 outgoing = chat_pb2.ChatMessage(
                     user=username,
                     room_id=room_id,
                     content=incoming.content,
-                    timestamp=int(time.time() * 1000),
+                    timestamp=delayed_timestamp,
                     type=chat_pb2.MessageType.MUSIC,
                 )
                 await room_manager.broadcast(room_id, outgoing.SerializeToString())

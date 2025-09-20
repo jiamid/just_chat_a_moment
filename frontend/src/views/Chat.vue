@@ -468,8 +468,8 @@ export default {
 
             // 自动播放音乐（如果有音乐信息）
             if (musicInfo) {
-              console.log('准备自动播放音乐:', message.content)
-              this.playMusic(message.content)
+              console.log('准备延迟播放音乐:', message.content, '播放时间戳:', message.timestamp)
+              this.playMusicWithDelay(message.content, message.timestamp)
             } else {
               console.log('不播放音乐，原因: 没有音乐信息')
             }
@@ -877,6 +877,39 @@ export default {
         console.log('当前音乐已停止')
       } catch (err) {
         console.error('停止音乐播放失败:', err)
+      }
+    },
+
+    // 延迟播放音乐（根据服务端设置的时间戳）
+    playMusicWithDelay (musicId, targetTimestamp) {
+      console.log('尝试延迟播放音乐:', musicId, '目标时间戳:', targetTimestamp)
+      console.log('当前音乐配置:', this.musicConfig)
+
+      const musicInfo = this.musicConfig[musicId]
+      if (!musicInfo || !musicInfo.url) {
+        console.warn('音乐信息不存在或URL为空:', musicId, musicInfo)
+        return
+      }
+
+      console.log('找到音乐信息:', musicInfo)
+
+      // 计算延迟时间
+      const currentTime = Date.now()
+      const delay = targetTimestamp - currentTime
+
+      console.log('当前时间:', currentTime, '延迟时间:', delay, 'ms')
+
+      if (delay <= 0) {
+        // 如果延迟时间已过，立即播放
+        console.log('延迟时间已过，立即播放音乐')
+        this.playMusicFromServer(musicInfo.url, musicId)
+      } else {
+        // 设置延迟播放
+        console.log('设置延迟播放，等待', delay, 'ms')
+        setTimeout(() => {
+          console.log('延迟时间到达，开始播放音乐')
+          this.playMusicFromServer(musicInfo.url, musicId)
+        }, delay)
       }
     },
 
