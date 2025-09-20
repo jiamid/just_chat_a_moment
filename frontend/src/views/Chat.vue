@@ -96,7 +96,7 @@
       </div>
 
       <!-- 移动端静音提示 -->
-      <div v-if="isMobile && currentMusicId && isMuted" class="mobile-mute-notification">
+      <div v-if="isMobile && currentMusicId && isMuted && !isUserMuted" class="mobile-mute-notification">
         <div class="mute-icon">🔇</div>
         <span>移动端自动静音播放，点击音乐按钮可开启声音</span>
       </div>
@@ -217,10 +217,14 @@ export default {
       initialViewportHeight: 0,
       musicConfig: {},
       showMusicMenu: false,
-      currentAudio: null,
       isPlaying: false,
       currentMusicId: null,
-      isMuted: false
+      isMuted: false,
+      isUserMuted: false, // 用户主动静音状态
+      // 音频解锁相关状态
+      audioUnlocked: false,
+      audioContext: null,
+      audioElement: null
     }
   },
   computed: {
@@ -233,6 +237,7 @@ export default {
     this.loadRecentRooms()
     this.checkMobileDevice()
     this.setupKeyboardDetection()
+    this.initAudio() // 初始化音频系统
     await this.loadUserInfo()
     await this.loadProtobuf()
     if (this.roomId) {
@@ -266,7 +271,7 @@ export default {
       this.ws.close()
     }
     // 清理音频资源
-    this.stopMusic()
+    this.cleanupAudio()
     // 清理窗口大小变化监听器
     window.removeEventListener('resize', this.checkMobileDevice)
     // 清理键盘检测监听器
@@ -277,6 +282,67 @@ export default {
     }
   },
   methods: {
+    // 初始化音频系统
+    initAudio () {
+      try {
+        // 创建HTML Audio元素
+        this.audioElement = document.createElement('audio')
+        this.audioElement.setAttribute('playsinline', 'true')
+        this.audioElement.setAttribute('preload', 'auto')
+        document.body.appendChild(this.audioElement)
+
+        // 创建AudioContext（备用）
+        if (window.AudioContext || window.webkitAudioContext) {
+          this.audioContext = new (window.AudioContext || window.webkitAudioContext)()
+        }
+
+        // 添加用户交互监听器来解锁音频
+        this.addAudioUnlockListeners()
+
+        console.log('音频系统初始化完成')
+      } catch (err) {
+        console.error('音频系统初始化失败:', err)
+      }
+    },
+
+    // 添加音频解锁监听器
+    addAudioUnlockListeners () {
+      const unlockAudio = () => {
+        if (!this.audioUnlocked) {
+          this.unlockAudio()
+        }
+      }
+
+      // 监听用户交互事件
+      window.addEventListener('touchstart', unlockAudio, { once: true })
+      window.addEventListener('click', unlockAudio, { once: true })
+      window.addEventListener('keydown', unlockAudio, { once: true })
+    },
+
+    // 解锁音频
+    unlockAudio () {
+      if (!this.audioUnlocked) {
+        try {
+          // 尝试启动AudioContext
+          if (this.audioContext && this.audioContext.state === 'suspended') {
+            this.audioContext.resume()
+          }
+
+          // 尝试播放音频元素（即使没有src也可以）
+          if (this.audioElement) {
+            this.audioElement.play().catch(() => {
+              // 忽略初始播放失败，这是正常的
+            })
+          }
+
+          this.audioUnlocked = true
+          console.log('音频已解锁')
+        } catch (err) {
+          console.error('音频解锁失败:', err)
+        }
+      }
+    },
+
     async loadUserInfo () {
       try {
         const response = await api.user.getMe()
@@ -658,6 +724,163 @@ export default {
       }
     },
 
+    // 清理音频资源
+    cleanupAudio () {
+      try {
+        // 停止当前播放
+        if (this.audioElement) {
+          this.audioElement.pause()
+          this.audioElement.currentTime = 0
+          this.audioElement.src = ''
+          if (this.audioElement.parentNode) {
+            this.audioElement.parentNode.removeChild(this.audioElement)
+          }
+          this.audioElement = null
+        }
+
+        // 清理AudioContext
+        if (this.audioContext) {
+          this.audioContext.close()
+          this.audioContext = null
+        }
+
+        // 重置状态
+        this.isPlaying = false
+        this.currentMusicId = null
+        this.isMuted = false
+        this.isUserMuted = false
+        this.audioUnlocked = false
+
+        console.log('音频资源已清理')
+      } catch (err) {
+        console.error('清理音频资源失败:', err)
+      }
+    },
+
+    // 新的音乐播放方法
+    playMusicFromServer (musicUrl, musicId) {
+      console.log('准备播放服务端推送的音乐:', musicUrl, musicId)
+
+      if (!this.audioUnlocked) {
+        console.warn('音频尚未解锁，播放可能会失败')
+      }
+
+      if (!musicUrl) {
+        console.warn('音乐URL为空，无法播放')
+        return
+      }
+
+      try {
+        // 停止当前播放的音乐
+        this.stopCurrentMusic()
+
+        // 设置新的音频源
+        this.audioElement.src = musicUrl
+        this.currentMusicId = musicId
+        this.isPlaying = true
+        this.isMuted = false
+        this.isUserMuted = false // 重置用户静音状态
+
+        // 添加事件监听器
+        this.setupAudioEventListeners()
+
+        // 开始播放
+        const playPromise = this.audioElement.play()
+
+        if (playPromise !== undefined) {
+          playPromise.then(() => {
+            console.log('音乐开始播放:', musicUrl)
+          }).catch(err => {
+            console.error('音乐播放失败:', err)
+
+            // 移动端播放失败时，尝试静音播放
+            if (this.isMobile) {
+              console.log('移动端播放失败，尝试静音播放')
+              this.isMuted = true
+              this.isUserMuted = false // 系统自动静音，不是用户主动静音
+              this.audioElement.muted = true
+
+              // 再次尝试播放
+              this.audioElement.play().catch(muteErr => {
+                console.error('静音播放也失败:', muteErr)
+                this.stopCurrentMusic()
+              })
+            } else {
+              // 桌面端播放失败，直接清理状态
+              this.stopCurrentMusic()
+            }
+          })
+        }
+      } catch (err) {
+        console.error('播放音乐时发生错误:', err)
+        this.stopCurrentMusic()
+      }
+    },
+
+    // 设置音频事件监听器
+    setupAudioEventListeners () {
+      if (!this.audioElement) return
+
+      // 移除旧的事件监听器
+      this.removeAudioEventListeners()
+
+      // 添加新的事件监听器
+      this.audioElement.addEventListener('loadstart', () => {
+        console.log('开始加载音乐')
+      })
+
+      this.audioElement.addEventListener('canplay', () => {
+        console.log('音乐可以播放')
+      })
+
+      this.audioElement.addEventListener('play', () => {
+        console.log('音乐开始播放')
+      })
+
+      this.audioElement.addEventListener('ended', () => {
+        console.log('音乐播放结束')
+        this.stopCurrentMusic()
+      })
+
+      this.audioElement.addEventListener('error', (e) => {
+        console.error('音乐播放错误:', e)
+        this.stopCurrentMusic()
+      })
+    },
+
+    // 移除音频事件监听器
+    removeAudioEventListeners () {
+      if (!this.audioElement) return
+
+      const events = ['loadstart', 'canplay', 'play', 'ended', 'error']
+      events.forEach(event => {
+        this.audioElement.removeEventListener(event, () => {})
+      })
+    },
+
+    // 停止当前音乐播放
+    stopCurrentMusic () {
+      try {
+        if (this.audioElement) {
+          this.audioElement.pause()
+          this.audioElement.currentTime = 0
+          this.audioElement.src = ''
+        }
+
+        this.removeAudioEventListeners()
+
+        this.isPlaying = false
+        this.currentMusicId = null
+        this.isMuted = false
+        this.isUserMuted = false
+
+        console.log('当前音乐已停止')
+      } catch (err) {
+        console.error('停止音乐播放失败:', err)
+      }
+    },
+
+    // 播放音乐（从音乐ID）
     playMusic (musicId) {
       console.log('尝试播放音乐:', musicId)
       console.log('当前音乐配置:', this.musicConfig)
@@ -670,101 +893,20 @@ export default {
 
       console.log('找到音乐信息:', musicInfo)
 
-      // 停止当前播放的音乐
-      this.stopMusic()
-
-      try {
-        this.currentAudio = new Audio(musicInfo.url)
-        this.currentMusicId = musicId
-        this.isPlaying = true
-        this.isMuted = false
-
-        console.log('创建音频对象成功，开始播放')
-
-        // 音乐播放事件监听
-        this.currentAudio.addEventListener('loadstart', () => {
-          console.log('开始加载音乐:', musicInfo.name)
-        })
-
-        this.currentAudio.addEventListener('canplay', () => {
-          console.log('音乐可以播放:', musicInfo.name)
-        })
-
-        this.currentAudio.addEventListener('play', () => {
-          console.log('音乐开始播放:', musicInfo.name)
-        })
-
-        this.currentAudio.addEventListener('ended', () => {
-          console.log('音乐播放结束:', musicInfo.name)
-          console.log('清理音乐状态，currentMusicId:', this.currentMusicId)
-          this.isPlaying = false
-          this.currentMusicId = null
-          this.currentAudio = null
-          this.isMuted = false
-          console.log('音乐状态已清理')
-        })
-
-        this.currentAudio.addEventListener('error', (e) => {
-          console.error('音乐播放错误:', e)
-          console.error('音频URL:', musicInfo.url)
-          this.isPlaying = false
-          this.currentMusicId = null
-          this.currentAudio = null
-        })
-
-        // 开始播放
-        this.currentAudio.play().catch(err => {
-          console.error('音乐播放失败:', err)
-
-          // 移动端播放失败时，尝试静音播放
-          if (this.isMobile && this.currentAudio) {
-            console.log('移动端播放失败，尝试静音播放')
-            this.isMuted = true
-            this.currentAudio.muted = true
-
-            // 再次尝试播放
-            this.currentAudio.play().catch(muteErr => {
-              console.error('静音播放也失败:', muteErr)
-              this.isPlaying = false
-              this.currentMusicId = null
-              this.currentAudio = null
-              this.isMuted = false
-            })
-          } else {
-            // 桌面端播放失败，直接清理状态
-            this.isPlaying = false
-            this.currentMusicId = null
-            this.currentAudio = null
-            this.isMuted = false
-          }
-        })
-      } catch (err) {
-        console.error('创建音频对象失败:', err)
-        this.isPlaying = false
-        this.currentMusicId = null
-        this.currentAudio = null
-      }
+      // 使用新的播放方法
+      this.playMusicFromServer(musicInfo.url, musicId)
     },
 
+    // 停止音乐播放
     stopMusic () {
-      if (this.currentAudio) {
-        try {
-          this.currentAudio.pause()
-          this.currentAudio.currentTime = 0
-          this.currentAudio = null
-        } catch (err) {
-          console.error('停止音乐播放失败:', err)
-        }
-      }
-      this.isPlaying = false
-      this.currentMusicId = null
-      this.isMuted = false
+      this.stopCurrentMusic()
     },
 
     toggleMute () {
-      if (this.currentAudio) {
+      if (this.audioElement && this.isPlaying) {
         this.isMuted = !this.isMuted
-        this.currentAudio.muted = this.isMuted
+        this.isUserMuted = this.isMuted // 用户主动操作，记录用户静音状态
+        this.audioElement.muted = this.isMuted
         console.log('音乐静音状态:', this.isMuted ? '已静音' : '已取消静音')
       }
     }
