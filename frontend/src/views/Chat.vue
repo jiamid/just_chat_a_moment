@@ -95,6 +95,12 @@
         {{ systemMessage }}
       </div>
 
+      <!-- 移动端静音提示 -->
+      <div v-if="isMobile && currentMusicId && isMuted" class="mobile-mute-notification">
+        <div class="mute-icon">🔇</div>
+        <span>移动端自动静音播放，点击音乐按钮可开启声音</span>
+      </div>
+
       <!-- 中间：消息区域 -->
       <div class="chat-main" @click="hideMobileNavbar(); hideMusicMenu()">
         <!-- 未选择房间时的提示 -->
@@ -709,9 +715,28 @@ export default {
         // 开始播放
         this.currentAudio.play().catch(err => {
           console.error('音乐播放失败:', err)
-          this.isPlaying = false
-          this.currentMusicId = null
-          this.currentAudio = null
+
+          // 移动端播放失败时，尝试静音播放
+          if (this.isMobile && this.currentAudio) {
+            console.log('移动端播放失败，尝试静音播放')
+            this.isMuted = true
+            this.currentAudio.muted = true
+
+            // 再次尝试播放
+            this.currentAudio.play().catch(muteErr => {
+              console.error('静音播放也失败:', muteErr)
+              this.isPlaying = false
+              this.currentMusicId = null
+              this.currentAudio = null
+              this.isMuted = false
+            })
+          } else {
+            // 桌面端播放失败，直接清理状态
+            this.isPlaying = false
+            this.currentMusicId = null
+            this.currentAudio = null
+            this.isMuted = false
+          }
         })
       } catch (err) {
         console.error('创建音频对象失败:', err)
@@ -1025,6 +1050,24 @@ export default {
   font-size: 0.9rem;
   font-weight: 500;
   animation: slideDown 0.3s ease-out;
+}
+
+/* 移动端静音提示 */
+.mobile-mute-notification {
+  height: 40px;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.9) 0%, rgba(251, 191, 36, 0.9) 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 500;
+  animation: slideDown 0.3s ease-out;
+  gap: 0.5rem;
+}
+
+.mobile-mute-notification .mute-icon {
+  font-size: 1rem;
 }
 
 @keyframes slideDown {
