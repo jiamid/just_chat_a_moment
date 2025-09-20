@@ -53,7 +53,7 @@
           <div class="connection-status-navbar">
             <span v-if="isConnected" class="status-indicator connected"></span>
             <span v-if="isConnected" class="status-text">已连接</span>
-            <button v-else @click="reconnect" class="reconnect-btn">重连</button>
+            <button v-else-if="roomId" @click="reconnect" class="reconnect-btn">重连</button>
           </div>
         </div>
         <button @click="logout" class="logout-btn">退出登录</button>
