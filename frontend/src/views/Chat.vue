@@ -947,6 +947,21 @@ export default {
 }
 </script>
 
+<style>
+/* 全局样式：禁止页面滚动 */
+html, body {
+  overflow: hidden;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+#app {
+  height: 100%;
+  overflow: hidden;
+}
+</style>
+
 <style scoped>
 .chat-container {
   display: flex;
@@ -956,6 +971,12 @@ export default {
               radial-gradient(900px 500px at 90% 20%, rgba(236, 72, 153, 0.18), rgba(236, 72, 153, 0) 60%),
               linear-gradient(135deg, #0f1020 0%, #1b1c34 50%, #0c0d1a 100%);
   overflow: hidden; /* 防止整体滚动 */
+  position: fixed; /* 固定定位，防止页面滚动 */
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
 }
 
 /* 左侧导航栏 */
