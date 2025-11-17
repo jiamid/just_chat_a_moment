@@ -38,19 +38,27 @@ class RoomManager:
                     del self.room_tasks[room_id]
                 self.room_id_to_connections.pop(room_id, None)
 
+    async def _send_to_connection(self, room_id: int, websocket: WebSocket, data: bytes) -> None:
+        """向单个连接发送数据，处理错误"""
+        try:
+            await websocket.send_bytes(data)
+        except Exception:
+            # 广播失败时主动断开连接
+            try:
+                await websocket.close()
+            except Exception:
+                pass
+            # 从连接列表中移除
+            self.disconnect(room_id, websocket)
+
     async def broadcast(self, room_id: int, data: bytes) -> None:
         connections = list(self.room_id_to_connections.get(room_id, set()))
-        for ws in connections:
-            try:
-                await ws.send_bytes(data)
-            except Exception:
-                # 广播失败时主动断开连接
-                try:
-                    await ws.close()
-                except Exception:
-                    pass
-                # 从连接列表中移除
-                self.disconnect(room_id, ws)
+        if not connections:
+            return
+        
+        # 使用 asyncio.gather() 并发发送给所有连接
+        tasks = [self._send_to_connection(room_id, ws, data) for ws in connections]
+        await asyncio.gather(*tasks, return_exceptions=True)
 
     async def _broadcast_room_count_periodically(self, room_id: int) -> None:
         """每10秒广播一次房间人数"""
