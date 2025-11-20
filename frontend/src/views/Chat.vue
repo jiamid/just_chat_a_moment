@@ -11,7 +11,7 @@
     <div class="left-sidebar" :class="{ 'mobile-show': showMobileNavbar && isMobile }">
       <!-- Logo -->
       <div class="logo-section">
-        <h1>Just Chat A Moment</h1>
+        <img src="https://cdn.jiamid.com/just_chat_a_moment.webp" alt="Just Chat A Moment" class="logo-image" />
       </div>
 
       <!-- 房间列表 -->
@@ -967,9 +967,11 @@ html, body {
   display: flex;
   height: 100vh;
   height: 100dvh; /* 使用动态视口高度，更好地处理移动端 */
-  background: radial-gradient(1200px 600px at 10% 10%, rgba(99, 102, 241, 0.18), rgba(99, 102, 241, 0) 60%),
-              radial-gradient(900px 500px at 90% 20%, rgba(236, 72, 153, 0.18), rgba(236, 72, 153, 0) 60%),
-              linear-gradient(135deg, #0f1020 0%, #1b1c34 50%, #0c0d1a 100%);
+  background: radial-gradient(1200px 800px at 10% 20%, rgba(139, 92, 246, 0.25), rgba(139, 92, 246, 0) 60%),
+              radial-gradient(1000px 700px at 90% 30%, rgba(236, 72, 153, 0.25), rgba(236, 72, 153, 0) 60%),
+              radial-gradient(1100px 600px at 50% 80%, rgba(59, 130, 246, 0.2), rgba(59, 130, 246, 0) 60%),
+              radial-gradient(900px 500px at 30% 70%, rgba(168, 85, 247, 0.15), rgba(168, 85, 247, 0) 50%),
+              linear-gradient(135deg, #1a1625 0%, #2a1f3e 20%, #1e1b2e 40%, #251f35 60%, #1a1625 80%, #1a1625 100%);
   overflow: hidden; /* 防止整体滚动 */
   position: fixed; /* 固定定位，防止页面滚动 */
   top: 0;
@@ -1025,19 +1027,16 @@ html, body {
 }
 
 .logo-section {
-  padding: 1.5rem 1rem;
+  padding: 1rem 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 }
 
-.logo-section h1 {
-  margin: 0;
-  font-size: 1.2rem;
-  font-weight: 600;
-  color: #ffffff;
-  background: linear-gradient(90deg, #e5e7ff, #c7d2fe, #fbcfe8);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+.logo-image {
+  width: 100%;
+  height: auto;
+  max-height: 60px;
+  object-fit: contain;
+  display: block;
 }
 
 .rooms-section {
@@ -1075,9 +1074,9 @@ html, body {
 }
 
 .room-item.active {
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.7) 0%, rgba(139, 92, 246, 0.7) 50%, rgba(236, 72, 153, 0.7) 100%);
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.7) 0%, rgba(168, 85, 247, 0.7) 30%, rgba(192, 38, 211, 0.7) 60%, rgba(220, 38, 38, 0.7) 100%);
   border-color: transparent;
-  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.35);
+  box-shadow: 0 8px 24px rgba(139, 92, 246, 0.4);
 }
 
 .room-name {
@@ -1210,14 +1209,14 @@ html, body {
 .logout-btn {
   width: 100%;
   padding: 0.75rem;
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
+  background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 30%, #c026d3 60%, #dc2626 100%);
   color: white;
   border: none;
   border-radius: 12px;
   cursor: pointer;
   font-size: 1rem;
   transition: all 0.25s ease;
-  box-shadow: 0 10px 24px rgba(99, 102, 241, 0.35), 0 6px 16px rgba(236, 72, 153, 0.25);
+  box-shadow: 0 8px 24px rgba(139, 92, 246, 0.4), 0 4px 12px rgba(220, 38, 127, 0.3);
 }
 
 .logout-btn:hover {
@@ -1238,7 +1237,7 @@ html, body {
 /* 系统消息提示条 */
 .system-notification {
   height: 30px;
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.9) 0%, rgba(139, 92, 246, 0.9) 50%, rgba(236, 72, 153, 0.9) 100%);
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.9) 0%, rgba(168, 85, 247, 0.9) 30%, rgba(192, 38, 211, 0.9) 60%, rgba(220, 38, 38, 0.9) 100%);
   color: white;
   display: flex;
   align-items: center;
@@ -1301,13 +1300,13 @@ html, body {
   justify-content: center;
   width: 40px;
   height: 40px;
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
+  background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 30%, #c026d3 60%, #dc2626 100%);
   color: white;
   border: none;
   border-radius: 12px;
   cursor: pointer;
   transition: all 0.25s ease;
-  box-shadow: 0 8px 20px rgba(99, 102, 241, 0.35), 0 4px 12px rgba(236, 72, 153, 0.25);
+  box-shadow: 0 8px 20px rgba(139, 92, 246, 0.4), 0 4px 12px rgba(220, 38, 127, 0.3);
 }
 
 .menu-btn:hover {
@@ -1391,7 +1390,7 @@ html, body {
 }
 
 .own-message {
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.9) 0%, rgba(139, 92, 246, 0.9) 50%, rgba(236, 72, 153, 0.9) 100%);
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.9) 0%, rgba(168, 85, 247, 0.9) 30%, rgba(192, 38, 211, 0.9) 60%, rgba(220, 38, 38, 0.9) 100%);
   color: white;
   margin-left: auto;
   border-bottom-right-radius: 4px;
@@ -1464,13 +1463,13 @@ html, body {
   justify-content: center;
   width: 40px;
   height: 40px;
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
+  background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 30%, #c026d3 60%, #dc2626 100%);
   color: white;
   border: none;
   border-radius: 12px;
   cursor: pointer;
   transition: all 0.25s ease;
-  box-shadow: 0 8px 20px rgba(99, 102, 241, 0.35), 0 4px 12px rgba(236, 72, 153, 0.25);
+  box-shadow: 0 8px 20px rgba(139, 92, 246, 0.4), 0 4px 12px rgba(220, 38, 127, 0.3);
 }
 
 .music-btn:hover:not(:disabled) {
@@ -1591,7 +1590,7 @@ html, body {
 
 .send-btn {
   padding: 0.75rem 1.5rem;
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
+  background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 30%, #c026d3 60%, #dc2626 100%);
   color: white;
   border: none;
   border-radius: 14px;
@@ -1599,7 +1598,7 @@ html, body {
   font-size: 1rem;
   font-weight: 500;
   transition: all 0.25s ease;
-  box-shadow: 0 10px 24px rgba(99, 102, 241, 0.35), 0 6px 16px rgba(236, 72, 153, 0.25);
+  box-shadow: 0 8px 24px rgba(139, 92, 246, 0.4), 0 4px 12px rgba(220, 38, 127, 0.3);
 }
 
 .send-btn:hover:not(:disabled) {
@@ -1698,8 +1697,8 @@ html, body {
     padding: 0.6rem 0.75rem;
   }
 
-  .logo-section h1 {
-    font-size: 1.1rem;
+  .logo-image {
+    max-height: 50px;
   }
 
   .chat-header {
@@ -1782,7 +1781,7 @@ html, body {
   justify-content: center;
   width: 32px;
   height: 32px;
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
+  background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 30%, #c026d3 60%, #dc2626 100%);
   color: white;
   border: none;
   border-radius: 50%;
@@ -1796,10 +1795,6 @@ html, body {
 .music-icon-btn:hover {
   filter: brightness(1.1);
   transform: scale(1.05);
-}
-
-.music-icon-btn.muted {
-  /* 静音时保持原色，只停止转圈动画 */
 }
 
 .music-icon {

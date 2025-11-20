@@ -1,7 +1,17 @@
 <template>
   <div class="login-container">
     <div class="login-box">
-      <h2>Just Chat A Moment</h2>
+      <div class="logo-section">
+        <img
+          v-show="logoLoaded"
+          src="https://cdn.jiamid.com/just_chat_a_moment.webp"
+          alt="Just Chat A Moment"
+          class="logo-image"
+          @load="logoLoaded = true"
+          @error="logoLoaded = false"
+        />
+        <h2 v-show="!logoLoaded" class="logo-text">Just Chat A Moment</h2>
+      </div>
       <div class="form-tabs">
         <button
           :class="{ active: isLogin }"
@@ -90,6 +100,7 @@ export default {
       isLogin: true,
       loading: false,
       error: '',
+      logoLoaded: false,
       form: {
         email: '',
         username: '',
@@ -222,54 +233,97 @@ export default {
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background: radial-gradient(1200px 600px at 10% 10%, rgba(99, 102, 241, 0.18), rgba(99, 102, 241, 0) 60%),
-              radial-gradient(900px 500px at 90% 20%, rgba(236, 72, 153, 0.18), rgba(236, 72, 153, 0) 60%),
-              linear-gradient(135deg, #0f1020 0%, #1b1c34 50%, #0c0d1a 100%);
+  background: radial-gradient(1200px 800px at 10% 20%, rgba(139, 92, 246, 0.25), rgba(139, 92, 246, 0) 60%),
+              radial-gradient(1000px 700px at 90% 30%, rgba(236, 72, 153, 0.25), rgba(236, 72, 153, 0) 60%),
+              radial-gradient(1100px 600px at 50% 80%, rgba(59, 130, 246, 0.2), rgba(59, 130, 246, 0) 60%),
+              radial-gradient(900px 500px at 30% 70%, rgba(168, 85, 247, 0.15), rgba(168, 85, 247, 0) 50%),
+              linear-gradient(135deg, #1a1625 0%, #2a1f3e 20%, #1e1b2e 40%, #251f35 60%, #1a1625 80%, #1a1625 100%);
 }
 
 .login-box {
-  background: rgba(255, 255, 255, 0.06);
-  padding: 2rem;
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  background: rgba(30, 41, 59, 0.6);
+  padding: 2.5rem 2rem;
+  border-radius: 20px;
+  border: 1px solid rgba(71, 85, 105, 0.3);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.5),
+              0 10px 30px rgba(0, 0, 0, 0.3),
+              inset 0 1px 0 rgba(255, 255, 255, 0.05);
   width: 100%;
   max-width: 420px;
 }
 
-h2 {
-  text-align: center;
+.logo-section {
+  display: flex;
+  justify-content: center;
+  align-items: center;
   margin-bottom: 2rem;
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+  border: none;
+  box-shadow: none;
+  position: relative;
+}
+
+.logo-image {
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  display: block;
+  position: relative;
+  z-index: 1;
+}
+
+.logo-text {
+  margin: 0;
+  text-align: center;
   color: #ffffff;
-  background: linear-gradient(90deg, #e5e7ff, #c7d2fe, #fbcfe8);
+  background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 40%, #c026d3 70%, #dc2626 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
+  font-size: 1.5rem;
+  font-weight: 600;
+  position: relative;
+  z-index: 1;
+  line-height: 1.2;
 }
 
 .form-tabs {
   display: flex;
   margin-bottom: 1.5rem;
+  gap: 0.5rem;
+  background: rgba(30, 41, 59, 0.5);
+  padding: 0.25rem;
+  border-radius: 12px;
+  border: 1px solid rgba(71, 85, 105, 0.3);
 }
 
 .form-tabs button {
   flex: 1;
   padding: 0.75rem;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: none;
   background: transparent;
-  color: #cdd0e5;
+  color: rgba(255, 255, 255, 0.6);
   cursor: pointer;
   transition: all 0.3s ease;
-  border-radius: 10px;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+.form-tabs button:hover {
+  color: rgba(255, 255, 255, 0.8);
+  background: rgba(71, 85, 105, 0.3);
 }
 
 .form-tabs button.active {
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
+  background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 40%, #c026d3 70%, #dc2626 100%);
   color: #ffffff;
-  border-color: transparent;
-  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.35);
+  box-shadow: 0 4px 16px rgba(139, 92, 246, 0.5),
+              0 2px 8px rgba(220, 38, 127, 0.3);
 }
 
 .form-group {
@@ -279,58 +333,97 @@ h2 {
 .form-group label {
   display: block;
   margin-bottom: 0.5rem;
-  font-weight: bold;
-  color: #cdd0e5;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.9rem;
 }
 
 .form-group input {
   width: 100%;
-  padding: 0.75rem;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 10px;
+  padding: 0.875rem 1rem;
+  border: 1px solid rgba(71, 85, 105, 0.4);
+  border-radius: 12px;
   font-size: 1rem;
   box-sizing: border-box;
-  background: rgba(255, 255, 255, 0.06);
-  color: #e6e6f0;
+  background: rgba(30, 41, 59, 0.6);
+  color: #ffffff;
+  transition: all 0.3s ease;
+}
+
+.form-group input:hover {
+  border-color: rgba(100, 116, 139, 0.5);
+  background: rgba(30, 41, 59, 0.7);
 }
 
 .form-group input:focus {
   outline: none;
-  border-color: transparent;
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.45), 0 0 0 6px rgba(236, 72, 153, 0.25);
+  border-color: rgba(139, 92, 246, 0.8);
+  background: rgba(30, 41, 59, 0.8);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.3),
+              0 0 0 6px rgba(220, 38, 127, 0.15),
+              inset 0 1px 2px rgba(255, 255, 255, 0.05);
 }
 
 .submit-btn {
   width: 100%;
-  padding: 0.75rem;
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
+  padding: 0.875rem;
+  background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 30%, #c026d3 60%, #dc2626 100%);
   color: white;
   border: none;
   border-radius: 12px;
   font-size: 1rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.25s ease;
-  box-shadow: 0 10px 24px rgba(99, 102, 241, 0.35), 0 6px 16px rgba(236, 72, 153, 0.25);
+  transition: all 0.3s ease;
+  box-shadow: 0 8px 24px rgba(139, 92, 246, 0.4),
+              0 4px 12px rgba(220, 38, 127, 0.3),
+              inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.submit-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.submit-btn:hover:not(:disabled)::before {
+  left: 100%;
 }
 
 .submit-btn:hover:not(:disabled) {
-  filter: brightness(1.05);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(139, 92, 246, 0.5),
+              0 6px 16px rgba(220, 38, 127, 0.4),
+              inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.submit-btn:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .submit-btn:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
+  background: rgba(139, 92, 246, 0.3);
 }
 
 .error-message {
   margin-top: 1rem;
-  padding: 0.75rem;
-  background: rgba(239, 68, 68, 0.15);
-  color: #fecaca;
-  border: 1px solid rgba(239, 68, 68, 0.35);
-  border-radius: 10px;
+  padding: 0.875rem;
+  background: linear-gradient(135deg, rgba(220, 38, 127, 0.2) 0%, rgba(220, 38, 127, 0.15) 100%);
+  color: #ffb3d9;
+  border: 1px solid rgba(220, 38, 127, 0.4);
+  border-radius: 12px;
   text-align: center;
+  font-size: 0.9rem;
+  box-shadow: inset 0 1px 2px rgba(220, 38, 127, 0.2);
 }
 
 .beian-info {
@@ -365,21 +458,70 @@ h2 {
 }
 
 .code-btn {
-  padding: 0.75rem 0.9rem;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: transparent;
-  color: #cdd0e5;
-  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  border: 1px solid rgba(71, 85, 105, 0.4);
+  background: rgba(30, 41, 59, 0.6);
+  color: rgba(255, 255, 255, 0.9);
+  border-radius: 12px;
   cursor: pointer;
+  font-weight: 500;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.code-btn:hover:not(:disabled) {
+  background: rgba(30, 41, 59, 0.8);
+  border-color: rgba(100, 116, 139, 0.6);
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .code-btn:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
+  background: rgba(30, 41, 59, 0.3);
+  border-color: rgba(71, 85, 105, 0.2);
 }
 
 /* 占位符颜色在暗色背景下更柔和 */
 ::placeholder {
-  color: rgba(230, 230, 240, 0.55);
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .login-container {
+    padding: 1rem;
+  }
+
+  .login-box {
+    padding: 2rem 1.5rem;
+    max-width: 100%;
+    border-radius: 16px;
+  }
+
+  .logo-image {
+    max-width: 240px;
+  }
+
+  .logo-text {
+    font-size: 1.2rem;
+  }
+
+  .logo-section {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+  }
+
+  .form-tabs {
+    margin-bottom: 1.25rem;
+  }
+
+  .form-tabs button {
+    padding: 0.625rem;
+    font-size: 0.9rem;
+  }
 }
 </style>
