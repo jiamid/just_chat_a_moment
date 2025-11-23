@@ -17,4 +17,10 @@ enum MessageType {
   QUERY_COUNT = 3; // 查询房间人数
   ROOM_COUNT = 4;  // 房间人数响应
   MUSIC = 5;    // 音乐消息
+  DRAWING = 6;  // 画图数据（画布内容）
+  DRAWING_REQUEST = 7; // 申请成为画画人
+  DRAWING_CLEAR = 8; // 清空画布
+  DRAWING_STATE = 9; // 画图状态（当前画画人信息）
+  DRAWING_STOP = 10; // 退出画画
+  DRAWING_REQUEST_APPROVE = 11; // 同意画画申请
 }

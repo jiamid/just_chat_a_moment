@@ -60,8 +60,112 @@
       </div>
     </div>
 
+    <!-- 中间画布区域（仅在画图面板打开时显示，桌面端） -->
+    <div v-if="showDrawingPanel && roomId && !isMobile" class="drawing-area">
+      <div class="drawing-panel">
+        <div class="drawing-header">
+          <div class="drawing-status">
+            <span v-if="currentDrawer" class="drawer-info">
+              {{ currentDrawer === username ? '你正在画画' : `${currentDrawer} 正在画画` }}
+              <span v-if="currentDrawer === username" class="drawer-timer">
+                (剩余 {{ formatDrawerTime(drawerTimeRemaining) }})
+              </span>
+            </span>
+            <span v-else class="drawer-info">暂无画画人</span>
+          </div>
+          <div class="drawing-controls">
+            <button
+              v-if="currentDrawer !== username"
+              @click="requestDrawing"
+              :disabled="!isConnected"
+              class="drawing-btn request-btn"
+            >
+              申请画画
+            </button>
+            <button
+              v-if="currentDrawer === username"
+              @click="clearDrawing"
+              :disabled="!isConnected"
+              class="drawing-btn clear-btn"
+            >
+              清空画布
+            </button>
+            <button
+              v-if="currentDrawer === username"
+              @click="exitDrawing"
+              :disabled="!isConnected"
+              class="drawing-btn stop-btn"
+            >
+              退出画画
+            </button>
+          </div>
+        </div>
+        <div class="drawing-tools" v-if="currentDrawer === username">
+          <div class="color-picker">
+            <span>颜色：</span>
+            <button
+              v-for="color in ['#000000', '#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF']"
+              :key="color"
+              @click="changeDrawingColor(color)"
+              class="color-btn"
+              :class="{ 'active': drawingColor === color && !isEraser }"
+              :style="{ backgroundColor: color }"
+              :title="color"
+            ></button>
+            <button
+              @click="toggleEraser"
+              class="color-btn eraser-btn"
+              :class="{ 'active': isEraser }"
+              title="橡皮擦"
+            >
+              🧹
+            </button>
+          </div>
+          <div class="line-width-picker">
+            <span>粗细：</span>
+            <button
+              v-for="width in [1, 3, 5, 8, 12]"
+              :key="width"
+              @click="changeDrawingLineWidth(width)"
+              class="width-btn"
+              :class="{ 'active': drawingLineWidth === width }"
+            >
+              {{ width }}px
+            </button>
+          </div>
+        </div>
+        <div class="drawing-container" ref="drawingContainer">
+          <div class="canvas-wrapper" v-if="!isMobile">
+            <canvas
+              ref="drawingCanvas"
+              @mousedown="startDrawing"
+              @mousemove="draw"
+              @mouseup="stopDrawing"
+              @mouseleave="stopDrawing"
+              @touchstart.prevent="startDrawing"
+              @touchmove.prevent="draw"
+              @touchend.prevent="stopDrawing"
+              class="drawing-canvas"
+            ></canvas>
+          </div>
+          <canvas
+            v-else
+            ref="drawingCanvas"
+            @mousedown="startDrawing"
+            @mousemove="draw"
+            @mouseup="stopDrawing"
+            @mouseleave="stopDrawing"
+            @touchstart.prevent="startDrawing"
+            @touchmove.prevent="draw"
+            @touchend.prevent="stopDrawing"
+            class="drawing-canvas"
+          ></canvas>
+        </div>
+      </div>
+    </div>
+
     <!-- 右侧聊天区域 -->
-    <div class="right-chat">
+    <div class="right-chat" :class="{ 'with-drawing': showDrawingPanel && roomId }">
       <!-- 顶部：房间信息 -->
       <div class="chat-header">
         <div class="header-left">
@@ -77,6 +181,19 @@
           <h2 v-else>选择房间开始聊天</h2>
         </div>
         <div class="connection-status" v-if="roomId">
+          <!-- 画图按钮 -->
+          <button
+            @click="toggleDrawingPanel"
+            :disabled="!isConnected"
+            class="drawing-icon-btn"
+            :class="{ 'active': showDrawingPanel }"
+            title="你画我猜"
+          >
+            <svg width="24" height="24" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+              <path d="M512 1024C229.888 1024 0 794.112 0 512S229.888 0 512 0s512 229.888 512 512c0 30.72-2.56 60.928-8.192 90.624-11.776 66.56-95.232 67.584-175.616 68.608-49.664 0.512-111.616 1.536-127.488 20.992-24.576 29.696-22.528 85.504-20.48 139.776 3.072 77.312 6.144 164.352-77.312 181.76-33.28 6.656-68.096 10.24-102.912 10.24z m0-970.24c-252.416 0-458.24 205.312-458.24 458.24s205.312 458.24 458.24 458.24c31.232 0 61.952-3.072 92.16-9.216 34.816-7.168 37.376-46.08 34.304-126.976-2.048-61.44-4.608-130.56 32.768-176.128 32.256-38.912 98.304-39.424 168.448-40.448 50.176-0.512 118.784-1.536 122.88-24.576 4.608-26.624 7.168-53.76 7.168-80.896 0.512-252.416-205.312-458.24-457.728-458.24z" fill="currentColor"></path>
+              <path d="M462.336 319.488c-61.44 0-111.616-50.176-111.616-111.616s50.176-111.616 111.616-111.616 111.616 50.176 111.616 111.616-49.664 111.616-111.616 111.616z m0-169.472c-31.744 0-57.856 26.112-57.856 57.856s26.112 57.856 57.856 57.856c31.744 0 57.856-26.112 57.856-57.856s-25.6-57.856-57.856-57.856zM246.784 475.136c-54.784 0-99.84-44.544-99.84-99.84 0-54.784 44.544-99.84 99.84-99.84 54.784 0 99.84 44.544 99.84 99.84-0.512 54.784-45.056 99.84-99.84 99.84z m0-145.92c-25.088 0-45.568 20.48-45.568 45.568s20.48 45.568 45.568 45.568 45.568-20.48 45.568-45.568-20.48-45.568-45.568-45.568zM738.816 484.352c-68.608 0-123.904-55.808-123.904-123.904s55.808-123.904 123.904-123.904c68.096 0 123.904 55.808 123.904 123.904s-55.808 123.904-123.904 123.904z m0-194.048c-38.4 0-70.144 31.232-70.144 70.144 0 38.4 31.232 70.144 70.144 70.144S808.96 399.36 808.96 360.448c0-38.4-31.744-70.144-70.144-70.144zM270.848 693.248c-41.472 0-75.264-33.792-75.264-75.264S229.376 542.72 270.848 542.72s75.264 33.792 75.264 75.264-33.792 75.264-75.264 75.264z m0-97.28c-11.776 0-21.504 9.728-21.504 21.504s9.728 21.504 21.504 21.504c11.776 0 21.504-9.728 21.504-21.504s-9.728-21.504-21.504-21.504zM464.896 826.368c-34.816 0-63.488-28.672-63.488-63.488 0-34.816 28.16-63.488 63.488-63.488s63.488 28.16 63.488 63.488-28.672 63.488-63.488 63.488z m0-72.704c-5.12 0-9.216 4.096-9.216 9.216s4.096 9.216 9.216 9.216 9.216-4.096 9.216-9.216c0-4.608-4.096-9.216-9.216-9.216z" fill="currentColor"></path>
+            </svg>
+          </button>
           <!-- 音乐选择按钮 -->
           <div class="music-container-header">
             <button
@@ -131,19 +248,120 @@
           </div>
         </div>
 
-        <!-- 已选择房间时的消息列表 -->
-        <div v-else class="messages-container" ref="messagesContainer">
-          <div
-            v-for="message in messages"
-            :key="message.id"
-            :class="['message', message.isOwn ? 'own-message' : 'other-message', { 'grouped': message.showHeader === false }]"
-          >
-            <div v-if="message.showHeader" class="message-header">
-              <span class="username">{{ message.user }}</span>
+        <!-- 已选择房间时的内容 -->
+        <template v-else>
+          <!-- 移动端：画布在聊天区域内显示（桌面端画布在中间区域） -->
+          <div v-if="showDrawingPanel && isMobile" class="drawing-panel mobile-drawing-panel">
+            <div class="drawing-header">
+              <div class="drawing-status">
+                <span v-if="currentDrawer" class="drawer-info">
+                  {{ currentDrawer === username ? '你正在画画' : `${currentDrawer} 正在画画` }}
+                  <span v-if="currentDrawer === username" class="drawer-timer">
+                    (剩余 {{ formatTime(drawerTimeRemaining) }})
+                  </span>
+                </span>
+                <span v-else class="drawer-info">暂无画画人</span>
+              </div>
+              <div class="drawing-controls">
+                <button
+                  v-if="currentDrawer !== username"
+                  @click="requestDrawing"
+                  :disabled="!isConnected"
+                  class="drawing-btn request-btn"
+                >
+                  申请画画
+                </button>
+                <button
+                  v-if="currentDrawer === username"
+                  @click="clearDrawing"
+                  :disabled="!isConnected"
+                  class="drawing-btn clear-btn"
+                >
+                  清空画布
+                </button>
+                <button
+                  v-if="currentDrawer === username"
+                  @click="exitDrawing"
+                  :disabled="!isConnected"
+                  class="drawing-btn stop-btn"
+                >
+                  退出画画
+                </button>
+              </div>
             </div>
-            <div class="message-content">{{ message.content }}</div>
+            <div class="drawing-tools" v-if="currentDrawer === username">
+              <div class="color-picker">
+                <span>颜色：</span>
+                <button
+                  v-for="color in ['#000000', '#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF']"
+                  :key="color"
+                  @click="changeDrawingColor(color)"
+                  class="color-btn"
+                  :class="{ 'active': drawingColor === color && !isEraser }"
+                  :style="{ backgroundColor: color }"
+                  :title="color"
+                ></button>
+                <button
+                  @click="toggleEraser"
+                  class="color-btn eraser-btn"
+                  :class="{ 'active': isEraser }"
+                  title="橡皮擦"
+                >
+                  🧹
+                </button>
+              </div>
+              <div class="line-width-picker">
+                <span>粗细：</span>
+                <button
+                  v-for="width in [1, 3, 5, 8, 12]"
+                  :key="width"
+                  @click="changeDrawingLineWidth(width)"
+                  class="width-btn"
+                  :class="{ 'active': drawingLineWidth === width }"
+                >
+                  {{ width }}px
+                </button>
+              </div>
+            </div>
+            <div class="drawing-container" ref="drawingContainerMobile">
+              <canvas
+                ref="drawingCanvasMobile"
+                @mousedown="startDrawing"
+                @mousemove="draw"
+                @mouseup="stopDrawing"
+                @mouseleave="stopDrawing"
+                @touchstart.prevent="startDrawing"
+                @touchmove.prevent="draw"
+                @touchend.prevent="stopDrawing"
+                class="drawing-canvas"
+              ></canvas>
+            </div>
           </div>
-        </div>
+
+          <!-- 消息列表 -->
+          <div class="messages-container" ref="messagesContainer">
+            <div
+              v-for="message in messages"
+              :key="message.id"
+              :class="['message', message.isOwn ? 'own-message' : 'other-message', { 'grouped': message.showHeader === false }]"
+            >
+              <div v-if="message.showHeader" class="message-header">
+                <span class="username">{{ message.user }}</span>
+              </div>
+              <div class="message-content">{{ message.content }}</div>
+              <!-- 申请画画消息的同意按钮 -->
+              <div v-if="message.isDrawingRequest && currentDrawer === username && message.user !== username" class="drawing-request-action">
+                <button
+                  @click="approveDrawingRequest(message.user)"
+                  :disabled="!isConnected"
+                  class="approve-btn-inline"
+                >
+                  同意
+                </button>
+              </div>
+            </div>
+          </div>
+        </template>
       </div>
 
       <!-- 底部：输入区域 -->
@@ -210,7 +428,23 @@ export default {
       audioUnlocked: false,
       audioContext: null,
       audioElement: null,
-      musicMenuStyle: {}
+      musicMenuStyle: {},
+      // 画图功能相关状态
+      showDrawingPanel: false,
+      currentDrawer: null, // 当前画画人的用户名
+      drawerStartTime: null, // 画画人开始时间（毫秒时间戳）
+      drawingRequests: [], // 申请画画列表
+      drawerTimer: null, // 倒计时定时器
+      drawerTimeRemaining: 600, // 剩余时间（秒），默认10分钟
+      canvas: null, // 画布元素
+      ctx: null, // 画布上下文
+      isDrawingActive: false, // 是否正在绘制（鼠标/触摸按下状态）
+      lastX: 0,
+      lastY: 0,
+      drawingColor: '#000000',
+      drawingLineWidth: 3,
+      drawingThrottleTimer: null, // 节流定时器
+      isEraser: false // 是否使用橡皮擦
     }
   },
   computed: {
@@ -250,21 +484,6 @@ export default {
           this.connectWebSocket()
         }
       }
-    }
-  },
-  beforeUnmount () {
-    if (this.ws) {
-      this.ws.close()
-    }
-    // 清理音频资源
-    this.cleanupAudio()
-    // 清理窗口大小变化监听器
-    window.removeEventListener('resize', this.checkMobileDevice)
-    // 清理键盘检测监听器
-    window.removeEventListener('resize', this.handleKeyboardToggle)
-    // 清理视口变化监听器
-    if (window.visualViewport) {
-      window.visualViewport.removeEventListener('resize', this.handleKeyboardToggle)
     }
   },
   methods: {
@@ -373,7 +592,13 @@ export default {
                     USER_TEXT: 2,
                     QUERY_COUNT: 3,
                     ROOM_COUNT: 4,
-                    MUSIC: 5
+                    MUSIC: 5,
+                    DRAWING: 6,
+                    DRAWING_REQUEST: 7,
+                    DRAWING_CLEAR: 8,
+                    DRAWING_STATE: 9,
+                    DRAWING_STOP: 10,
+                    DRAWING_REQUEST_APPROVE: 11
                   }
                 }
               }
@@ -465,6 +690,99 @@ export default {
                 this.scrollToBottom()
               }, 100)
             })
+          } else if (message.type === 6) {
+            // DRAWING 消息 - 画图数据
+            // 如果用户正在绘制，忽略接收到的画图数据（避免覆盖正在绘制的内容）
+            if (this.isDrawingActive && message.user === this.username) {
+              return
+            }
+            // 如果画图面板未打开，先打开画图面板
+            if (!this.showDrawingPanel) {
+              this.showDrawingPanel = true
+              this.$nextTick(() => {
+                this.initCanvas()
+                // 监听窗口大小变化，重新初始化画布
+                window.addEventListener('resize', this.handleResize)
+                // 画布初始化后加载图片
+                setTimeout(() => {
+                  this.handleDrawingData(message.content)
+                }, 100)
+              })
+            } else {
+              // 画图面板已打开，直接加载图片
+              this.handleDrawingData(message.content)
+            }
+          } else if (message.type === 7) {
+            // DRAWING_REQUEST 消息 - 申请画画
+            // 在聊天框中显示申请消息
+            if (message.user !== this.username) {
+              // 如果当前用户是画画人，添加到申请列表（用于跟踪）
+              if (this.currentDrawer === this.username) {
+                if (!this.drawingRequests.includes(message.user)) {
+                  this.drawingRequests.push(message.user)
+                }
+              }
+              // 在聊天框中显示申请消息，标记为申请画画消息
+              const requestMessage = {
+                id: Date.now() + Math.random(),
+                user: message.user,
+                content: `${message.user} 申请画画`,
+                timestamp: message.timestamp,
+                isOwn: message.user === this.username,
+                type: 'system',
+                isDrawingRequest: true // 标记为申请画画消息
+              }
+              this.messages.push(requestMessage)
+              this.$nextTick(() => {
+                this.scrollToBottom()
+              })
+            }
+          } else if (message.type === 8) {
+            // DRAWING_CLEAR 消息 - 清空画布
+            this.clearCanvas()
+          } else if (message.type === 9) {
+            // DRAWING_STATE 消息 - 画画人状态
+            const newDrawer = message.content || null
+            const wasDrawer = this.currentDrawer === this.username
+            const oldDrawer = this.currentDrawer
+            this.currentDrawer = newDrawer
+
+            // 如果画画人变更，清理申请列表
+            if (newDrawer !== oldDrawer) {
+              this.drawingRequests = []
+              // 如果当前用户不再是drawer，隐藏所有申请消息的同意按钮
+              if (newDrawer !== this.username) {
+                this.messages.forEach(m => {
+                  if (m.isDrawingRequest) {
+                    m.isDrawingRequest = false
+                  }
+                })
+              }
+            }
+
+            // 如果当前用户成为画画人，启动倒计时
+            if (newDrawer === this.username && !wasDrawer) {
+              this.drawerStartTime = Date.now()
+              this.drawerTimeRemaining = 600 // 10分钟
+              this.startDrawerTimer()
+            } else if (newDrawer !== this.username) {
+              // 如果当前用户不再是画画人，停止倒计时
+              this.stopDrawerTimer()
+            }
+
+            // 如果有画画人且画图面板未打开，自动打开画图面板
+            if (this.currentDrawer && !this.showDrawingPanel) {
+              this.showDrawingPanel = true
+              this.$nextTick(() => {
+                this.initCanvas()
+                // 监听窗口大小变化，重新初始化画布
+                window.addEventListener('resize', this.handleResize)
+              })
+            }
+            // 如果没有画画人了，清空画布（如果当前用户是退出者）
+            if (!this.currentDrawer && this.showDrawingPanel) {
+              this.clearCanvas()
+            }
           } else {
             // 用户文本消息
             const newMessage = {
@@ -908,6 +1226,428 @@ export default {
     // 停止音乐播放
     stopMusic () {
       this.stopCurrentMusic()
+    },
+
+    // 画图功能相关方法
+    toggleDrawingPanel () {
+      this.showDrawingPanel = !this.showDrawingPanel
+      if (this.showDrawingPanel) {
+        this.$nextTick(() => {
+          this.initCanvas()
+          // 监听窗口大小变化，重新初始化画布
+          window.addEventListener('resize', this.handleResize)
+        })
+      } else {
+        window.removeEventListener('resize', this.handleResize)
+      }
+    },
+
+    handleResize () {
+      if (this.showDrawingPanel) {
+        this.$nextTick(() => {
+          this.initCanvas()
+        })
+      }
+    },
+
+    initCanvas () {
+      // 根据设备类型选择canvas引用
+      if (this.isMobile) {
+        this.canvas = this.$refs.drawingCanvasMobile
+      } else {
+        this.canvas = this.$refs.drawingCanvas
+      }
+      if (!this.canvas) return
+      this.ctx = this.canvas.getContext('2d')
+      if (!this.ctx) return
+
+      // 使用固定的画布逻辑尺寸，确保所有设备使用相同的逻辑尺寸
+      // 标准尺寸：800x600 (4:3 比例)
+      const CANVAS_WIDTH = 800
+      const CANVAS_HEIGHT = 600
+      const dpr = window.devicePixelRatio || 1
+
+      // 设置canvas的实际像素尺寸（考虑设备像素比，用于高DPI屏幕）
+      this.canvas.width = CANVAS_WIDTH * dpr
+      this.canvas.height = CANVAS_HEIGHT * dpr
+
+      // 获取drawing-container的尺寸，计算合适的显示尺寸
+      // PC端：drawing-container -> canvas-wrapper -> canvas
+      // 移动端：drawing-container -> canvas
+      let container = this.canvas.parentElement
+
+      // PC端：需要找到drawing-container（canvas-wrapper的父元素）
+      if (container && container.classList.contains('canvas-wrapper')) {
+        container = container.parentElement
+      }
+
+      // 确保找到了drawing-container
+      if (!container || !container.classList.contains('drawing-container')) {
+        // 如果找不到容器，使用默认尺寸
+        this.canvas.style.width = CANVAS_WIDTH + 'px'
+        this.canvas.style.height = CANVAS_HEIGHT + 'px'
+        return
+      }
+
+      // 使用固定的显示尺寸，确保所有设备看到的画布显示尺寸一致
+      // 这样可以保证所有设备看到的画布区域完全一致，不会出现边缘被裁剪的情况
+      // 固定显示宽度：800px（与逻辑尺寸一致），高度根据4:3比例自动计算
+      const FIXED_DISPLAY_WIDTH = 800
+      const FIXED_DISPLAY_HEIGHT = 600
+
+      // 检查容器尺寸，如果容器太小，则按比例缩小，但保持固定的宽高比
+      this.$nextTick(() => {
+        const containerRect = container.getBoundingClientRect()
+        let containerWidth = containerRect.width
+        let containerHeight = containerRect.height
+
+        // PC端：canvas-wrapper有5px的padding，需要减去
+        if (!this.isMobile) {
+          containerWidth = containerWidth - 10 // 减去左右padding
+          containerHeight = containerHeight - 10 // 减去上下padding
+        }
+
+        // 如果容器尺寸有效，检查是否需要缩放
+        if (containerWidth > 0 && containerHeight > 0) {
+          // 计算缩放比例，确保画布完整显示在容器内（使用contain策略）
+          const scaleX = containerWidth / FIXED_DISPLAY_WIDTH
+          const scaleY = containerHeight / FIXED_DISPLAY_HEIGHT
+          // 选择较小的缩放比例，确保画布完整显示在容器内
+          // 但不放大（最大为1），这样所有设备看到的画布显示尺寸一致（800x600或更小）
+          const scale = Math.min(scaleX, scaleY, 1)
+
+          // 设置canvas的CSS显示尺寸（固定比例，但适应小屏幕）
+          const displayWidth = FIXED_DISPLAY_WIDTH * scale
+          const displayHeight = FIXED_DISPLAY_HEIGHT * scale
+
+          this.canvas.style.width = displayWidth + 'px'
+          this.canvas.style.height = displayHeight + 'px'
+        } else {
+          // 如果容器尺寸无效，使用固定尺寸
+          this.canvas.style.width = FIXED_DISPLAY_WIDTH + 'px'
+          this.canvas.style.height = FIXED_DISPLAY_HEIGHT + 'px'
+        }
+      })
+
+      // 重置变换矩阵，然后缩放上下文以匹配设备像素比
+      this.ctx.setTransform(1, 0, 0, 1, 0, 0) // 重置变换
+      this.ctx.scale(dpr, dpr)
+
+      // 设置画布样式
+      this.updateDrawingStyle()
+    },
+
+    startDrawing (e) {
+      if (this.currentDrawer !== this.username || !this.ctx || !this.canvas) return
+      // 更新绘制样式（确保使用正确的工具）
+      this.updateDrawingStyle()
+      // 获取canvas的实际位置（考虑canvas-wrapper的偏移）
+      const canvasRect = this.canvas.getBoundingClientRect()
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY
+
+      // 画布逻辑尺寸（ctx已经scale了dpr，所以使用逻辑尺寸）
+      const CANVAS_WIDTH = 800
+      const CANVAS_HEIGHT = 600
+
+      // 将显示坐标转换为画布逻辑坐标
+      const scaleX = CANVAS_WIDTH / canvasRect.width
+      const scaleY = CANVAS_HEIGHT / canvasRect.height
+      this.lastX = (clientX - canvasRect.left) * scaleX
+      this.lastY = (clientY - canvasRect.top) * scaleY
+      this.isDrawingActive = true
+    },
+
+    draw (e) {
+      if (!this.isDrawingActive || !this.ctx || !this.canvas) return
+      e.preventDefault() // 防止默认行为
+
+      // 更新绘制样式（可能在绘制过程中切换了橡皮擦）
+      this.updateDrawingStyle()
+
+      // 获取canvas的实际位置（考虑canvas-wrapper的偏移）
+      const canvasRect = this.canvas.getBoundingClientRect()
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY
+
+      // 画布逻辑尺寸（ctx已经scale了dpr，所以使用逻辑尺寸）
+      const CANVAS_WIDTH = 800
+      const CANVAS_HEIGHT = 600
+
+      // 将显示坐标转换为画布逻辑坐标
+      const scaleX = CANVAS_WIDTH / canvasRect.width
+      const scaleY = CANVAS_HEIGHT / canvasRect.height
+      const currentX = (clientX - canvasRect.left) * scaleX
+      const currentY = (clientY - canvasRect.top) * scaleY
+
+      // 保存当前的合成模式
+      const savedCompositeOperation = this.ctx.globalCompositeOperation
+
+      // 根据是否使用橡皮擦设置合成模式
+      if (this.isEraser) {
+        this.ctx.globalCompositeOperation = 'destination-out'
+      } else {
+        this.ctx.globalCompositeOperation = 'source-over'
+        this.ctx.strokeStyle = this.drawingColor
+      }
+
+      this.ctx.beginPath()
+      this.ctx.moveTo(this.lastX, this.lastY)
+      this.ctx.lineTo(currentX, currentY)
+      this.ctx.stroke()
+
+      // 恢复合成模式（虽然通常不需要，但为了安全）
+      this.ctx.globalCompositeOperation = savedCompositeOperation
+
+      this.lastX = currentX
+      this.lastY = currentY
+
+      // 节流发送画图数据（每50ms发送一次）
+      if (this.drawingThrottleTimer) {
+        clearTimeout(this.drawingThrottleTimer)
+      }
+      this.drawingThrottleTimer = setTimeout(() => {
+        this.sendDrawingData()
+      }, 50)
+    },
+
+    stopDrawing () {
+      if (!this.isDrawingActive) return
+      this.isDrawingActive = false
+      // 发送最后一次画图数据
+      if (this.drawingThrottleTimer) {
+        clearTimeout(this.drawingThrottleTimer)
+      }
+      this.sendDrawingData()
+    },
+
+    sendDrawingData () {
+      if (!this.canvas || !this.isConnected || !this.ChatMessage || this.currentDrawer !== this.username) return
+      const imageData = this.canvas.toDataURL('image/png')
+      try {
+        const message = this.ChatMessage.create({
+          user: this.username,
+          room_id: this.roomId,
+          content: imageData,
+          timestamp: Date.now(),
+          type: 6 // DRAWING
+        })
+        const buffer = this.ChatMessage.encode(message).finish()
+        this.ws.send(buffer)
+      } catch (err) {
+        console.error('Failed to send drawing data:', err)
+      }
+    },
+
+    handleDrawingData (imageData) {
+      // 如果画布未初始化，先初始化
+      if (!this.canvas || !this.ctx) {
+        if (this.showDrawingPanel) {
+          this.$nextTick(() => {
+            this.initCanvas()
+            // 延迟一下再加载图片，确保画布已初始化
+            setTimeout(() => {
+              this.loadImageToCanvas(imageData)
+            }, 100)
+          })
+        }
+        return
+      }
+      this.loadImageToCanvas(imageData)
+    },
+
+    loadImageToCanvas (imageData) {
+      if (!this.canvas || !this.ctx || !imageData) return
+      const img = new Image()
+      img.onload = () => {
+        // 确保画布已初始化
+        if (!this.ctx) return
+        // 使用固定的画布尺寸（800x600）
+        const CANVAS_WIDTH = 800
+        const CANVAS_HEIGHT = 600
+
+        // 确保合成模式为正常模式，避免橡皮擦模式影响图片加载
+        this.ctx.globalCompositeOperation = 'source-over'
+
+        // 清空画布（使用固定尺寸，因为ctx已经scale了）
+        this.ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
+
+        // 绘制图片（使用固定尺寸，因为ctx已经scale了）
+        this.ctx.drawImage(img, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
+      }
+      img.onerror = () => {
+        console.error('Failed to load drawing image')
+      }
+      img.src = imageData
+    },
+
+    clearCanvas () {
+      if (!this.ctx || !this.canvas) return
+      // 使用固定的画布尺寸（800x600）
+      const CANVAS_WIDTH = 800
+      const CANVAS_HEIGHT = 600
+      // 确保合成模式为正常模式
+      this.ctx.globalCompositeOperation = 'source-over'
+      // 使用固定尺寸清空画布，因为ctx已经scale了
+      this.ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
+    },
+
+    requestDrawing () {
+      if (!this.isConnected || !this.ChatMessage) return
+      try {
+        const message = this.ChatMessage.create({
+          user: this.username,
+          room_id: this.roomId,
+          content: '',
+          timestamp: Date.now(),
+          type: 7 // DRAWING_REQUEST
+        })
+        const buffer = this.ChatMessage.encode(message).finish()
+        this.ws.send(buffer)
+      } catch (err) {
+        console.error('Failed to send drawing request:', err)
+      }
+    },
+
+    clearDrawing () {
+      if (!this.isConnected || !this.ChatMessage || this.currentDrawer !== this.username) return
+      try {
+        const message = this.ChatMessage.create({
+          user: this.username,
+          room_id: this.roomId,
+          content: '',
+          timestamp: Date.now(),
+          type: 8 // DRAWING_CLEAR
+        })
+        const buffer = this.ChatMessage.encode(message).finish()
+        this.ws.send(buffer)
+        this.clearCanvas()
+      } catch (err) {
+        console.error('Failed to send clear drawing:', err)
+      }
+    },
+
+    exitDrawing () {
+      if (!this.isConnected || !this.ChatMessage || this.currentDrawer !== this.username) {
+        console.log('exitDrawing: 条件检查失败', {
+          isConnected: this.isConnected,
+          hasChatMessage: !!this.ChatMessage,
+          currentDrawer: this.currentDrawer,
+          username: this.username
+        })
+        return
+      }
+      try {
+        const message = this.ChatMessage.create({
+          user: this.username,
+          room_id: this.roomId,
+          content: '',
+          timestamp: Date.now(),
+          type: 10 // DRAWING_STOP
+        })
+        const buffer = this.ChatMessage.encode(message).finish()
+        this.ws.send(buffer)
+        console.log('exitDrawing: 已发送退出画画消息')
+      } catch (err) {
+        console.error('Failed to send exit drawing:', err)
+      }
+    },
+
+    updateDrawingStyle () {
+      if (!this.ctx) return
+      // 设置基本绘制样式
+      this.ctx.lineWidth = this.drawingLineWidth
+      this.ctx.lineCap = 'round'
+      this.ctx.lineJoin = 'round'
+      // 注意：不在这里设置 globalCompositeOperation，而是在绘制时临时设置
+      // 这样可以避免影响其他操作（如加载图片）
+    },
+
+    changeDrawingColor (color) {
+      this.drawingColor = color
+      this.isEraser = false // 选择颜色时关闭橡皮擦
+      this.updateDrawingStyle()
+    },
+
+    changeDrawingLineWidth (width) {
+      this.drawingLineWidth = width
+      if (this.ctx) {
+        this.ctx.lineWidth = width
+      }
+    },
+
+    toggleEraser () {
+      this.isEraser = !this.isEraser
+      this.updateDrawingStyle()
+    },
+
+    approveDrawingRequest (requester) {
+      if (!this.isConnected || !this.ChatMessage || this.currentDrawer !== this.username) return
+      try {
+        const message = this.ChatMessage.create({
+          user: this.username,
+          room_id: this.roomId,
+          content: requester, // content包含被同意的用户名
+          timestamp: Date.now(),
+          type: 11 // DRAWING_REQUEST_APPROVE
+        })
+        const buffer = this.ChatMessage.encode(message).finish()
+        this.ws.send(buffer)
+        // 从申请列表中移除
+        this.drawingRequests = this.drawingRequests.filter(u => u !== requester)
+        // 隐藏聊天消息中的同意按钮（通过移除isDrawingRequest标记）
+        const requestMessages = this.messages.filter(m => m.isDrawingRequest && m.user === requester)
+        requestMessages.forEach(m => {
+          m.isDrawingRequest = false
+        })
+      } catch (err) {
+        console.error('Failed to send approve drawing request:', err)
+      }
+    },
+
+    startDrawerTimer () {
+      this.stopDrawerTimer() // 先停止之前的定时器
+      this.drawerTimer = setInterval(() => {
+        if (this.drawerTimeRemaining > 0) {
+          this.drawerTimeRemaining--
+        } else {
+          this.stopDrawerTimer()
+        }
+      }, 1000)
+    },
+
+    stopDrawerTimer () {
+      if (this.drawerTimer) {
+        clearInterval(this.drawerTimer)
+        this.drawerTimer = null
+      }
+    },
+
+    formatDrawerTime (seconds) {
+      const minutes = Math.floor(seconds / 60)
+      const secs = seconds % 60
+      return `${minutes}:${secs.toString().padStart(2, '0')}`
+    }
+  },
+  beforeUnmount () {
+    this.stopDrawerTimer()
+    if (this.ws) {
+      this.ws.close()
+    }
+    // 清理音频资源
+    this.cleanupAudio()
+    // 清理窗口大小变化监听器
+    window.removeEventListener('resize', this.checkMobileDevice)
+    window.removeEventListener('resize', this.handleResize)
+    // 清理键盘检测监听器
+    window.removeEventListener('resize', this.handleKeyboardToggle)
+    // 清理视口变化监听器
+    if (window.visualViewport) {
+      window.visualViewport.removeEventListener('resize', this.handleKeyboardToggle)
+    }
+    // 清理画图节流定时器
+    if (this.drawingThrottleTimer) {
+      clearTimeout(this.drawingThrottleTimer)
     }
   }
 }
@@ -993,14 +1733,20 @@ html, body {
 }
 
 .logo-section {
-  padding: 1rem 0;
+  padding: 0.5rem 0; /* 减小padding，让logo更大 */
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  /* 与chat-header高度保持一致：统一设置为65px */
+  height: 65px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
 }
 
 .logo-image {
   width: 100%;
   height: auto;
-  max-height: 60px;
+  max-height: 49px; /* 65px (logo-section高度) - 16px (上下padding 0.5rem * 2) = 49px */
   object-fit: contain;
   display: block;
 }
@@ -1190,6 +1936,19 @@ html, body {
   transform: translateY(-1px);
 }
 
+/* 中间画布区域 */
+.drawing-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0; /* 允许收缩 */
+  overflow: hidden;
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+  /* 确保画布区域始终在可见区域内 */
+  max-height: 100vh;
+}
+
 /* 右侧聊天区域 */
 .right-chat {
   flex: 1;
@@ -1200,6 +1959,15 @@ html, body {
   overflow: hidden; /* 防止内容溢出 */
   position: relative;
   z-index: 1;
+}
+
+/* 当有画图面板时，右侧聊天区域固定宽度（仅桌面端） */
+@media (min-width: 769px) {
+  .right-chat.with-drawing {
+    flex: 0 0 400px; /* 固定宽度400px */
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.02);
+  }
 }
 
 /* 系统消息提示条 */
@@ -1228,6 +1996,9 @@ html, body {
   position: relative;
   z-index: 100;
   overflow: visible;
+  box-sizing: border-box;
+  /* 统一高度为65px */
+  height: 65px;
 }
 
 .header-left {
@@ -1263,6 +2034,7 @@ html, body {
   margin: 0;
   color: #e6e6f0;
   font-size: 1.5rem;
+  line-height: 1.2; /* 明确设置line-height，确保高度计算准确 */
 }
 
 .connection-status {
@@ -1315,6 +2087,17 @@ html, body {
   min-height: 0; /* 确保flex子元素可以正确收缩 */
 }
 
+/* 画图面板样式 */
+.drawing-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+  min-width: 0;
+  min-height: 0;
+}
+
 .messages-container {
   flex: 1;
   padding: 1rem 1.5rem;
@@ -1322,6 +2105,8 @@ html, body {
   background: transparent;
   display: flex;
   flex-direction: column;
+  min-width: 0; /* 允许收缩 */
+  min-height: 0;
 }
 
 .message {
@@ -1687,6 +2472,12 @@ html, body {
     -webkit-overflow-scrolling: touch; /* iOS平滑滚动 */
   }
 
+  /* 移动端：当有画图面板时，消息容器需要固定高度 */
+  .room-content.with-drawing .messages-container {
+    flex: none;
+    height: 40%;
+  }
+
   .connection-status {
     font-size: 0.8rem;
   }
@@ -1741,6 +2532,455 @@ html, body {
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
+}
+
+/* 画图按钮样式 */
+.drawing-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 30%, #c026d3 60%, #dc2626 100%);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+  margin-right: 0.5rem;
+}
+
+.drawing-icon-btn:hover:not(:disabled) {
+  filter: brightness(1.1);
+  transform: scale(1.05);
+}
+
+.drawing-icon-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.drawing-icon-btn.active {
+  background: linear-gradient(135deg, #22c55e 0%, #10b981 100%);
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.5);
+}
+
+/* 画图面板样式已在上面定义 */
+
+.drawing-header {
+  padding: 1rem 1.5rem; /* 与chat-header的padding保持一致 */
+  background: rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  box-sizing: border-box;
+  /* 与chat-header和logo-section高度保持一致：统一设置为65px */
+  height: 65px;
+}
+
+.drawing-status {
+  flex: 1;
+}
+
+.drawer-info {
+  color: #e6e6f0;
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.drawing-controls {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.drawing-btn {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.25s ease;
+}
+
+.request-btn {
+  background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%);
+  color: white;
+}
+
+.request-btn:hover:not(:disabled) {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+.clear-btn {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: white;
+}
+
+.clear-btn:hover:not(:disabled) {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+.stop-btn {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+}
+
+.stop-btn:hover:not(:disabled) {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+.approve-btn {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+}
+
+.approve-btn:hover:not(:disabled) {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+.drawing-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.drawer-timer {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.7);
+  margin-left: 0.5rem;
+}
+
+/* 申请画画消息的内联同意按钮 */
+.drawing-request-action {
+  margin-top: 0.5rem;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.approve-btn-inline {
+  padding: 0.4rem 1rem;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.approve-btn-inline:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
+}
+
+.approve-btn-inline:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.approve-btn-inline:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.drawing-tools {
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.color-picker,
+.line-width-picker {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.color-picker span,
+.line-width-picker span {
+  color: #cdd0e5;
+  font-size: 0.9rem;
+}
+
+.color-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 50%; /* 圆形，更像调色盘 */
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); /* 添加阴影，增加立体感 */
+  position: relative;
+}
+
+.color-btn::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  pointer-events: none;
+}
+
+.color-btn:hover {
+  transform: scale(1.15);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
+}
+
+.color-btn.active {
+  transform: scale(1.2);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.6), 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.color-btn.active::after {
+  border-color: rgba(255, 255, 255, 0.8);
+  border-width: 2.5px;
+}
+
+.eraser-btn {
+  background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%) !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  border-radius: 50%; /* 圆形 */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.eraser-btn::after {
+  display: none; /* 橡皮擦不需要内圈 */
+}
+
+.eraser-btn:hover {
+  transform: scale(1.15);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
+}
+
+.eraser-btn.active {
+  background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%) !important;
+  transform: scale(1.2);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.6), 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.width-btn {
+  padding: 0.4rem 0.75rem;
+  background: rgba(255, 255, 255, 0.08);
+  color: #e6e6f0;
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  border-radius: 20px; /* 更圆润的按钮 */
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.width-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.25);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.width-btn.active {
+  background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%);
+  border-color: transparent;
+  color: white;
+  box-shadow: 0 2px 6px rgba(139, 92, 246, 0.4);
+  transform: translateY(-1px);
+}
+
+.drawing-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.3); /* 不可绘制区域背景（PC端） */
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* 确保容器本身也保持4:3比例，但不超过可用空间 */
+  width: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  /* 使用aspect-ratio保持4:3比例，同时确保在可见区域内 */
+  aspect-ratio: 4 / 3;
+  /* 确保容器不会超出父容器 */
+  box-sizing: border-box;
+}
+
+/* 确保canvas-wrapper和drawing-canvas完全在drawing-container内 */
+.drawing-container .canvas-wrapper,
+.drawing-container .drawing-canvas {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+}
+
+/* 移动端画布容器 */
+@media (max-width: 768px) {
+  .drawing-container {
+    background: transparent; /* 移动端无背景 */
+    padding: 0; /* 移动端无padding */
+    width: 100%; /* 占满宽度 */
+    flex: 0 0 auto; /* 不自动伸缩，根据aspect-ratio计算高度 */
+    min-height: 0; /* 允许收缩 */
+    overflow: hidden; /* 防止溢出 */
+    display: flex; /* 使用flex布局 */
+    align-items: center; /* 垂直居中 */
+    justify-content: center; /* 水平居中 */
+    /* 移动端也保持4:3比例，但确保在可见区域内 */
+    aspect-ratio: 4 / 3;
+    max-height: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .drawing-canvas {
+    /* 移动端：width和height由JavaScript动态设置，确保完整显示 */
+    max-width: 100% !important;
+    max-height: 100% !important; /* 限制最大高度，防止超出容器 */
+  }
+}
+
+.canvas-wrapper {
+  position: relative;
+  background: white; /* 可绘制区域背景 */
+  border: 2px solid rgba(255, 255, 255, 0.3); /* 可绘制区域边框 */
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px; /* PC端至少5px的padding */
+  /* 保持4:3比例，考虑padding，但不超过容器 */
+  aspect-ratio: 4 / 3;
+  width: calc(100% - 10px); /* 减去左右padding */
+  max-width: calc(100% - 10px);
+  max-height: calc(100% - 10px);
+  box-sizing: border-box;
+  /* 确保不超出drawing-container */
+  overflow: hidden;
+}
+
+.drawing-canvas {
+  position: relative;
+  display: block;
+  cursor: crosshair;
+  touch-action: none;
+  /* 保持4:3比例，但不超过容器 */
+  aspect-ratio: 4 / 3;
+  /* width和height由JavaScript动态设置，确保在所有设备上都能完整显示 */
+  max-width: 100%;
+  max-height: 100%;
+  background: white; /* 画布白色背景 */
+  box-sizing: border-box;
+  /* 固定逻辑尺寸800x600，JavaScript会根据容器大小计算合适的显示尺寸 */
+  /* 使用contain策略，确保画布内容不被裁剪 */
+}
+
+/* 移动端画图面板样式 */
+@media (max-width: 768px) {
+  /* 移动端：隐藏中间画布区域，画布在右侧聊天区域内 */
+  .drawing-area {
+    display: none;
+  }
+
+  /* 移动端：右侧聊天区域恢复全宽 */
+  .right-chat.with-drawing {
+    flex: 1;
+  }
+
+  /* 移动端：在右侧聊天区域内，画布和消息列表纵向排列 */
+  .right-chat.with-drawing .chat-main {
+    display: flex;
+    flex-direction: column;
+    min-height: 0; /* 允许收缩 */
+    overflow: hidden; /* 防止整体溢出 */
+  }
+
+  .right-chat.with-drawing .mobile-drawing-panel {
+    flex: 0 0 auto; /* 不自动伸缩，根据内容计算高度 */
+    min-height: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    display: flex;
+    flex-direction: column;
+    overflow: visible; /* 允许内容显示 */
+  }
+
+  /* 移动端：确保drawing-container保持4:3比例，但允许在flex布局中正确显示 */
+  .right-chat.with-drawing .mobile-drawing-panel .drawing-container {
+    flex: 0 0 auto; /* 根据aspect-ratio自动计算高度，不伸缩 */
+    width: 100%;
+    /* 确保画布不会超出可见区域 */
+    max-width: 100%;
+    /* 不设置max-height，让aspect-ratio自然计算高度 */
+  }
+
+  /* 移动端：确保header、tools不占用过多空间 */
+  .mobile-drawing-panel .drawing-header,
+  .mobile-drawing-panel .drawing-tools {
+    flex-shrink: 0; /* 不收缩，保持内容高度 */
+  }
+
+  .right-chat.with-drawing .messages-container {
+    flex: 1; /* 自适应高度，占用剩余空间 */
+    min-height: 0; /* 允许收缩 */
+    max-height: none; /* 不限制最大高度，让画布优先 */
+    overflow-y: auto; /* 允许滚动 */
+  }
+
+  .drawing-header {
+    padding: 0.75rem;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+    height: auto; /* 移动端取消固定高度，让内容自然撑开 */
+    min-height: 65px; /* 保持最小高度 */
+  }
+
+  .drawing-status {
+    width: 100%;
+  }
+
+  .drawing-controls {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .drawing-btn {
+    flex: 1;
+    padding: 0.6rem 0.75rem;
+    font-size: 0.85rem;
+  }
+
+  .drawing-tools {
+    padding: 0.5rem 0.75rem;
+    gap: 1rem;
+  }
+
+  .color-picker,
+  .line-width-picker {
+    flex-wrap: wrap;
+  }
 }
 
 </style>
