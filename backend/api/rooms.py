@@ -101,7 +101,11 @@ class RoomManager:
         if not connections:
             return
         
-        # 使用 asyncio.gather() 并发发送给所有连接
+        # 创建后台任务，完全异步执行，不等待
+        asyncio.create_task(self._broadcast_async(room_id, connections, data))
+    
+    async def _broadcast_async(self, room_id: int, connections: list, data: bytes) -> None:
+        """异步广播的内部方法"""
         tasks = [self._send_to_connection(room_id, ws, data) for ws in connections]
         await asyncio.gather(*tasks, return_exceptions=True)
 
