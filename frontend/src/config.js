@@ -20,12 +20,12 @@ config.getWsUrl = function (roomId, token) {
 
   // 如果配置了host和port，使用绝对URL
   if (host && port) {
-    return `${protocol}://${host}:${port}/ws/${roomId}?token=${token}`
+    return `${protocol}://${host}:${port}/room/ws/${roomId}?token=${token}`
   }
 
   // 否则使用相对路径，通过nginx代理
   const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  return `${wsProtocol}//${window.location.host}/ws/${roomId}?token=${token}`
+  return `${wsProtocol}//${window.location.host}/room/ws/${roomId}?token=${token}`
 }
 
 // 获取API基础URL

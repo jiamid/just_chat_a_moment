@@ -11,7 +11,7 @@ from db.db import AsyncSessionLocal
 from models.models import User
 from protos import chat_pb2
 
-router = APIRouter(prefix="/ws", tags=["ws"])
+router = APIRouter(prefix="/room/ws", tags=["ws"])
 
 
 class RoomManager:
