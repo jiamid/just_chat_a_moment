@@ -1,0 +1,209 @@
+syntax = "proto3";
+
+package livewar;
+
+// 顶层游戏消息（客户端/服务端共用）
+message GameMessage {
+  enum Type {
+    UNKNOWN       = 0;
+
+    // 客户端 -> 服务端
+    JOIN_GAME     = 1;
+    SELECT_TEAM   = 2;
+    SELECT_UNIT   = 3;
+    SPAWN_UNIT    = 4;
+    LEAVE_GAME    = 5;
+    START_GAME    = 6;
+
+    // 服务端 -> 客户端
+    CONNECTED     = 10;
+    GAME_STATE    = 11;
+    PLAYER_JOINED = 12;
+    PLAYER_LEFT   = 13;
+    GAME_STARTED  = 14;
+    GAME_OVER     = 15;
+    ERROR         = 16;
+  }
+
+  Type type = 1;
+
+  oneof payload {
+    // C2S
+    JoinGameRequest    join_game     = 2;
+    SelectTeamRequest  select_team   = 3;
+    SelectUnitRequest  select_unit   = 4;
+    SpawnUnitRequest   spawn_unit    = 5;
+    LeaveGameRequest   leave_game    = 6;
+    StartGameRequest   start_game    = 7;
+
+    // S2C
+    ConnectedPayload   connected     = 20;
+    GameStatePayload   game_state    = 21;
+    PlayerEventPayload player_event  = 22;
+    GameOverPayload    game_over     = 23;
+    ErrorPayload       error         = 24;
+  }
+}
+
+// ========== 请求/简单响应 ==========
+
+message JoinGameRequest {
+  string name = 1;  // 玩家昵称（使用聊天室用户名）
+  string team = 2;  // "red" / "blue"
+}
+
+message SelectTeamRequest {
+  string team = 1;
+}
+
+message SelectUnitRequest {
+  string unit_type = 1; // "miner" / "engineer" / "heavy_tank" / "assault_tank"
+}
+
+message SpawnUnitRequest {}
+message LeaveGameRequest {}
+message StartGameRequest {}
+
+message ConnectedPayload {
+  string player_id = 1;
+  string player_name = 2;
+}
+
+message PlayerEventPayload {
+  string player_id = 1;
+  string player_name = 2;
+  string team = 3;
+}
+
+message GameOverPayload {
+  string winner = 1;       // "red" / "blue"
+  string winner_name = 2;  // "红方" / "蓝方"
+}
+
+message ErrorPayload {
+  string message = 1;
+}
+
+// ========== GameState 映射 ==========
+
+message GameStatePayload {
+  int32 tick = 1;
+  double game_time = 2;
+  bool game_started = 3;
+  string winner = 4; // "red" / "blue" / ""
+
+  Player player = 5;                // 当前玩家信息（观战者可为空）
+  Room room = 6;
+  repeated string logs = 7;
+  TeamStatsMap team_stats = 8;
+
+  // 可选：红蓝双方玩家概览（观战模式用）
+  repeated PlayerSummary players = 9;
+}
+
+message Player {
+  string id = 1;
+  string name = 2;
+  string team = 3;              // "red" / "blue" / ""
+  string selected_unit_type = 4;
+  int32 energy = 5;             // 仅对本玩家可见（观战者可填 0）
+}
+
+message PlayerSummary {
+  string id = 1;
+  string name = 2;
+  string team = 3;
+}
+
+message Position {
+  double x = 1;
+  double y = 2;
+}
+
+message Unit {
+  string id = 1;
+  string type = 2;        // "miner" / "engineer" / "heavy_tank" / "assault_tank"
+  string team = 3;        // "red" / "blue"
+  string owner_id = 4;    // 玩家ID（与聊天室 user_id 对齐）
+  double x = 5;
+  double y = 6;
+  int32 hp = 7;
+  int32 hp_max = 8;
+  int32 attack = 9;
+  double speed = 10;
+  bool is_dead = 11;
+  int32 carrying_energy = 12;
+  double target_x = 13;
+  double target_y = 14;
+}
+
+message Base {
+  string id = 1;
+  double x = 2;
+  double y = 3;
+  int32 hp = 4;
+  int32 hp_max = 5;
+}
+
+message MineField {
+  string id = 1;
+  double x = 2;
+  double y = 3;
+  int32 energy = 4;
+  int32 energy_max = 5;
+}
+
+message EnergyDrop {
+  string id = 1;
+  double x = 2;
+  double y = 3;
+  int32 energy = 4;
+}
+
+message HealEffect {
+  string id = 1;
+  double x = 2;
+  double y = 3;
+  double created_time = 4;
+  double lifetime = 5;
+  string team = 6;
+}
+
+message BulletEffect {
+  string id = 1;
+  double from_x = 2;
+  double from_y = 3;
+  double to_x = 4;
+  double to_y = 5;
+  double created_time = 6;
+  double lifetime = 7;
+  string team = 8;
+}
+
+message Room {
+  string name = 1;
+  int32 width = 2;
+  int32 height = 3;
+  repeated Position walls = 4;
+  Base red_base = 5;
+  Base blue_base = 6;
+  repeated MineField mine_fields = 7;
+  repeated Unit units = 8;
+  repeated EnergyDrop energy_drops = 9;
+  repeated HealEffect heal_effects = 10;
+  repeated BulletEffect bullet_effects = 11;
+}
+
+message TeamStats {
+  int32 units = 1;
+  int32 miners = 2;
+  int32 engineers = 3;
+  int32 tanks = 4;
+}
+
+message TeamStatsMap {
+  TeamStats red = 1;
+  TeamStats blue = 2;
+}
+
+

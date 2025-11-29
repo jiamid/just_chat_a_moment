@@ -23,6 +23,10 @@ export default {
   methods: {
     // 画图功能相关方法
     toggleDrawingPanel () {
+      // 如果打开画画面板，先关闭游戏面板（互斥）
+      if (!this.showDrawingPanel && this.showGamePanel) {
+        this.showGamePanel = false
+      }
       this.showDrawingPanel = !this.showDrawingPanel
       if (this.showDrawingPanel) {
         this.$nextTick(() => {
@@ -215,7 +219,7 @@ export default {
     },
 
     sendDrawingData () {
-      if (!this.canvas || !this.isConnected || !this.ChatMessage || this.currentDrawer !== this.username) return
+      if (!this.canvas || !this.isConnected || !this.ChatMessage || !this.WsEnvelope || this.currentDrawer !== this.username) return
       const imageData = this.canvas.toDataURL('image/png')
       try {
         const message = this.ChatMessage.create({
@@ -225,7 +229,8 @@ export default {
           timestamp: Date.now(),
           type: 6 // DRAWING
         })
-        const buffer = this.ChatMessage.encode(message).finish()
+        const envelope = this.WsEnvelope.create({ chat: message })
+        const buffer = this.WsEnvelope.encode(envelope).finish()
         this.ws.send(buffer)
       } catch (err) {
         console.error('Failed to send drawing data:', err)
@@ -286,7 +291,7 @@ export default {
     },
 
     requestDrawing () {
-      if (!this.isConnected || !this.ChatMessage) return
+      if (!this.isConnected || !this.ChatMessage || !this.WsEnvelope) return
       try {
         const message = this.ChatMessage.create({
           user: this.username,
@@ -295,7 +300,8 @@ export default {
           timestamp: Date.now(),
           type: 7 // DRAWING_REQUEST
         })
-        const buffer = this.ChatMessage.encode(message).finish()
+        const envelope = this.WsEnvelope.create({ chat: message })
+        const buffer = this.WsEnvelope.encode(envelope).finish()
         this.ws.send(buffer)
       } catch (err) {
         console.error('Failed to send drawing request:', err)
@@ -303,7 +309,7 @@ export default {
     },
 
     clearDrawing () {
-      if (!this.isConnected || !this.ChatMessage || this.currentDrawer !== this.username) return
+      if (!this.isConnected || !this.ChatMessage || !this.WsEnvelope || this.currentDrawer !== this.username) return
       try {
         const message = this.ChatMessage.create({
           user: this.username,
@@ -312,7 +318,8 @@ export default {
           timestamp: Date.now(),
           type: 8 // DRAWING_CLEAR
         })
-        const buffer = this.ChatMessage.encode(message).finish()
+        const envelope = this.WsEnvelope.create({ chat: message })
+        const buffer = this.WsEnvelope.encode(envelope).finish()
         this.ws.send(buffer)
         this.clearCanvas()
       } catch (err) {
@@ -321,7 +328,7 @@ export default {
     },
 
     exitDrawing () {
-      if (!this.isConnected || !this.ChatMessage || this.currentDrawer !== this.username) {
+      if (!this.isConnected || !this.ChatMessage || !this.WsEnvelope || this.currentDrawer !== this.username) {
         console.log('exitDrawing: 条件检查失败', {
           isConnected: this.isConnected,
           hasChatMessage: !!this.ChatMessage,
@@ -338,7 +345,8 @@ export default {
           timestamp: Date.now(),
           type: 10 // DRAWING_STOP
         })
-        const buffer = this.ChatMessage.encode(message).finish()
+        const envelope = this.WsEnvelope.create({ chat: message })
+        const buffer = this.WsEnvelope.encode(envelope).finish()
         this.ws.send(buffer)
         console.log('exitDrawing: 已发送退出画画消息')
       } catch (err) {
@@ -375,7 +383,7 @@ export default {
     },
 
     approveDrawingRequest (requester) {
-      if (!this.isConnected || !this.ChatMessage || this.currentDrawer !== this.username) return
+      if (!this.isConnected || !this.ChatMessage || !this.WsEnvelope || this.currentDrawer !== this.username) return
       try {
         const message = this.ChatMessage.create({
           user: this.username,
@@ -384,7 +392,8 @@ export default {
           timestamp: Date.now(),
           type: 11 // DRAWING_REQUEST_APPROVE
         })
-        const buffer = this.ChatMessage.encode(message).finish()
+        const envelope = this.WsEnvelope.create({ chat: message })
+        const buffer = this.WsEnvelope.encode(envelope).finish()
         this.ws.send(buffer)
         // 从申请列表中移除
         this.drawingRequests = this.drawingRequests.filter(u => u !== requester)

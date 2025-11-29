@@ -8,60 +8,264 @@
     ></div>
 
     <!-- 左侧导航栏 -->
-    <div class="left-sidebar" :class="{ 'mobile-show': showMobileNavbar && isMobile }">
-      <!-- Logo -->
-      <div class="logo-section">
-        <img src="https://cdn.jiamid.com/just_chat_a_moment.webp" alt="Just Chat A Moment" class="logo-image" />
-      </div>
+    <div class="left-sidebar" :class="{
+      'mobile-show': showMobileNavbar && isMobile,
+      'collapsed': sidebarCollapsed && !isMobile
+    }">
+      <!-- 折叠/展开按钮（仅在桌面端显示） -->
+      <button
+        v-if="!isMobile"
+        class="sidebar-toggle-btn"
+        @click="toggleSidebar"
+        :title="sidebarCollapsed ? '展开菜单' : '折叠菜单'"
+      >
+        <svg v-if="sidebarCollapsed" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="9 18 15 12 9 6"></polyline>
+        </svg>
+        <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+      </button>
 
-      <!-- 房间列表 -->
-      <div class="rooms-section">
-        <h3>最近房间</h3>
-        <div class="room-list">
-          <div
-            v-for="room in recentRooms"
-            :key="room.id"
-            :class="['room-item', { active: room.id === roomId }]"
-            @click="switchRoom(room.id)"
-          >
-            <span class="room-name">房间 {{ room.id }}</span>
+      <!-- 折叠状态下的标签（已移除文字，只显示按钮） -->
+
+      <!-- 完整内容（折叠时隐藏） -->
+      <div v-show="!sidebarCollapsed || isMobile" class="sidebar-content">
+        <!-- Logo -->
+        <div class="logo-section">
+          <img src="https://cdn.jiamid.com/just_chat_a_moment.webp" alt="Just Chat A Moment" class="logo-image" />
+        </div>
+
+        <!-- 房间列表 -->
+        <div class="rooms-section">
+          <h3>最近房间</h3>
+          <div class="room-list">
+            <div
+              v-for="room in recentRooms"
+              :key="room.id"
+              :class="['room-item', { active: room.id === roomId }]"
+              @click="switchRoom(room.id)"
+            >
+              <span class="room-name">房间 {{ room.id }}</span>
+            </div>
+          </div>
+
+          <!-- 房间跳转 -->
+          <div class="room-jump">
+            <h4>跳转房间</h4>
+            <div class="jump-input-group">
+              <input
+                v-model="jumpRoomId"
+                type="text"
+                placeholder="房间号"
+                class="jump-input"
+                @keyup.enter="jumpToRoom"
+                @input="filterNumbers"
+              />
+              <button @click="jumpToRoom" class="jump-btn">GO</button>
+            </div>
           </div>
         </div>
 
-        <!-- 房间跳转 -->
-        <div class="room-jump">
-          <h4>跳转房间</h4>
-          <div class="jump-input-group">
-            <input
-              v-model="jumpRoomId"
-              type="text"
-              placeholder="房间号"
-              class="jump-input"
-              @keyup.enter="jumpToRoom"
-              @input="filterNumbers"
-            />
-            <button @click="jumpToRoom" class="jump-btn">GO</button>
+        <!-- 用户信息和退出 -->
+        <div class="user-section">
+          <div class="user-info">
+            <span class="username">{{ username }}</span>
+            <!-- 连接状态 -->
+            <div class="connection-status-navbar">
+              <span v-if="isConnected" class="status-indicator connected"></span>
+              <span v-if="isConnected" class="status-text">已连接</span>
+              <button v-else-if="roomId" @click="reconnect" class="reconnect-btn">重连</button>
+            </div>
           </div>
+          <button @click="logout" class="logout-btn">退出登录</button>
         </div>
-      </div>
-
-      <!-- 用户信息和退出 -->
-      <div class="user-section">
-        <div class="user-info">
-          <span class="username">{{ username }}</span>
-          <!-- 连接状态 -->
-          <div class="connection-status-navbar">
-            <span v-if="isConnected" class="status-indicator connected"></span>
-            <span v-if="isConnected" class="status-text">已连接</span>
-            <button v-else-if="roomId" @click="reconnect" class="reconnect-btn">重连</button>
-          </div>
-        </div>
-        <button @click="logout" class="logout-btn">退出登录</button>
       </div>
     </div>
 
-    <!-- 中间画布区域（仅在画图面板打开时显示，桌面端） -->
-    <div v-if="showDrawingPanel && roomId && !isMobile" class="drawing-area">
+    <!-- 中间游戏区域（仅在游戏面板打开时显示，桌面端，且不在画画模式） -->
+    <div v-if="showGamePanel && roomId && !isMobile && !showDrawingPanel" class="game-area">
+      <div class="game-panel-new">
+        <!-- 顶部：红蓝方血量（像素风格） -->
+        <div class="game-top-bar pixel-style">
+          <!-- 两行合并：RED VS BLUE占据两行高度，文字一行显示 -->
+          <div class="top-bar-double-row">
+            <div class="top-bar-left-column">
+              <div class="team-hp red-team">
+                <div class="hp-bar-container">
+                  <div class="hp-bar-bg pixel-border">
+                    <div
+                      class="hp-bar-fill red pixel-fill"
+                      :style="{ width: (redBaseHpPercent * 100) + '%' }"
+                    >
+                      <span class="hp-value-inside pixel-text">{{ redBaseHp }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="team-units red-team">
+                <div class="units-value pixel-text">{{ redTeamUnitCount }}</div>
+              </div>
+            </div>
+            <div class="vs-divider-double pixel-text">RED VS BLUE</div>
+            <div class="top-bar-right-column">
+              <div class="team-hp blue-team">
+                <div class="hp-bar-container">
+                  <div class="hp-bar-bg pixel-border">
+                    <div
+                      class="hp-bar-fill blue pixel-fill"
+                      :style="{ width: (blueBaseHpPercent * 100) + '%' }"
+                    >
+                      <span class="hp-value-inside pixel-text">{{ blueBaseHp }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="team-units blue-team">
+                <div class="units-value pixel-text">{{ blueTeamUnitCount }}</div>
+              </div>
+            </div>
+          </div>
+          <!-- 第三行：玩家列表下拉按钮 -->
+          <div class="top-bar-row">
+            <button
+              class="player-list-toggle pixel-text"
+              @click="showPlayerList = !showPlayerList"
+            >
+              {{ showPlayerList ? '▼' : '▶' }} Players
+            </button>
+          </div>
+          <!-- 玩家列表展开区域 -->
+          <div v-if="showPlayerList" class="player-list-container pixel-style">
+            <div class="player-list-columns">
+              <div class="player-list-column red-team">
+                <div class="player-list-header pixel-text">Red Team</div>
+                <div
+                  v-for="player in redTeamPlayers"
+                  :key="player.userId || player.id"
+                  class="player-list-item pixel-text"
+                >
+                  {{ player.name || player.username }}
+                </div>
+                <div v-if="redTeamPlayers.length === 0" class="player-list-empty pixel-text">
+                  No players
+                </div>
+              </div>
+              <div class="player-list-column blue-team">
+                <div class="player-list-header pixel-text">Blue Team</div>
+                <div
+                  v-for="player in blueTeamPlayers"
+                  :key="player.userId || player.id"
+                  class="player-list-item pixel-text"
+                >
+                  {{ player.name || player.username }}
+                </div>
+                <div v-if="blueTeamPlayers.length === 0" class="player-list-empty pixel-text">
+                  No players
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 中间：游戏画布 -->
+        <div class="game-canvas-container">
+          <LiveWarCanvas v-if="gameState" :gameState="gameState" />
+
+          <!-- 游戏结束展示（覆盖在画布上方） -->
+          <div v-if="gameOverInfo" class="game-over-overlay pixel-style">
+            <div class="game-over-content">
+              <div class="game-over-title pixel-text" :class="gameOverInfo.winner">{{ gameOverInfo.winnerName }} WIN</div>
+              <div class="game-over-players">
+                <div
+                  v-for="(player, index) in gameOverInfo.winnerPlayers"
+                  :key="index"
+                  class="game-over-player pixel-text"
+                >
+                  - {{ player }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 底部：我的能量和兵种数量（仅玩家可见） -->
+        <div v-if="inGame && !isGameSpectator && currentPlayer" class="game-bottom-panel">
+          <div class="player-stats-row">
+            <div class="energy-display">
+              <span class="energy-icon">⚡</span>
+              <span class="energy-value">{{ currentPlayer.energy || 0 }}</span>
+            </div>
+            <div class="unit-counts">
+              <div class="unit-count-item" v-for="(cfg, key) in unitTypesConfig" :key="key">
+                <UnitIcon
+                  :unitType="key"
+                  :team="currentPlayer.team"
+                  :size="20"
+                  class="unit-count-icon"
+                />
+                <span class="unit-count-value">{{ getUnitCount(key) }}</span>
+              </div>
+            </div>
+          </div>
+          <!-- 四个兵种按钮 -->
+          <div class="unit-spawn-buttons">
+            <button
+              v-for="(cfg, key) in unitTypesConfig"
+              :key="key"
+              class="unit-spawn-btn"
+              :class="{
+                disabled: (currentPlayer.energy || 0) < cfg.cost
+              }"
+              @click="selectAndSpawnUnit(key)"
+              :disabled="(currentPlayer.energy || 0) < cfg.cost"
+            >
+              <UnitIcon
+                :unitType="key"
+                :team="currentPlayer.team"
+                :size="32"
+                class="unit-spawn-icon"
+              />
+              <div class="unit-spawn-info">
+                <div class="unit-spawn-name">{{ cfg.name }}</div>
+                <div class="unit-spawn-cost">{{ cfg.cost }}⚡</div>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <!-- 观战者/未加入游戏时的控制按钮 -->
+        <div v-else class="game-controls">
+          <div v-if="!inGame" class="join-buttons-container">
+            <button
+              class="join-team-btn pixel-text join-red-btn"
+              :disabled="!isConnected"
+              @click="joinGame('red')"
+            >
+              加入红方
+            </button>
+            <button
+              class="join-team-btn pixel-text join-blue-btn"
+              :disabled="!isConnected"
+              @click="joinGame('blue')"
+            >
+              加入蓝方
+            </button>
+          </div>
+          <button
+            v-if="inGame"
+            class="drawing-btn stop-btn pixel-text"
+            :disabled="!isConnected"
+            @click="leaveGame"
+          >
+            退出游戏
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 中间画布区域（仅在画图面板打开时显示，桌面端，且不在游戏模式） -->
+    <div v-if="showDrawingPanel && roomId && !isMobile && !showGamePanel" class="drawing-area">
       <div class="drawing-panel">
         <div class="drawing-header">
           <div class="drawing-status">
@@ -165,7 +369,10 @@
     </div>
 
     <!-- 右侧聊天区域 -->
-    <div class="right-chat" :class="{ 'with-drawing': showDrawingPanel && roomId }">
+    <div class="right-chat" :class="{
+      'with-drawing': showDrawingPanel && roomId && !showGamePanel,
+      'with-game': showGamePanel && roomId
+    }">
       <!-- 顶部：房间信息 -->
       <div class="chat-header">
         <div class="header-left">
@@ -192,6 +399,22 @@
             <svg width="24" height="24" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
               <path d="M512 1024C229.888 1024 0 794.112 0 512S229.888 0 512 0s512 229.888 512 512c0 30.72-2.56 60.928-8.192 90.624-11.776 66.56-95.232 67.584-175.616 68.608-49.664 0.512-111.616 1.536-127.488 20.992-24.576 29.696-22.528 85.504-20.48 139.776 3.072 77.312 6.144 164.352-77.312 181.76-33.28 6.656-68.096 10.24-102.912 10.24z m0-970.24c-252.416 0-458.24 205.312-458.24 458.24s205.312 458.24 458.24 458.24c31.232 0 61.952-3.072 92.16-9.216 34.816-7.168 37.376-46.08 34.304-126.976-2.048-61.44-4.608-130.56 32.768-176.128 32.256-38.912 98.304-39.424 168.448-40.448 50.176-0.512 118.784-1.536 122.88-24.576 4.608-26.624 7.168-53.76 7.168-80.896 0.512-252.416-205.312-458.24-457.728-458.24z" fill="currentColor"></path>
               <path d="M462.336 319.488c-61.44 0-111.616-50.176-111.616-111.616s50.176-111.616 111.616-111.616 111.616 50.176 111.616 111.616-49.664 111.616-111.616 111.616z m0-169.472c-31.744 0-57.856 26.112-57.856 57.856s26.112 57.856 57.856 57.856c31.744 0 57.856-26.112 57.856-57.856s-25.6-57.856-57.856-57.856zM246.784 475.136c-54.784 0-99.84-44.544-99.84-99.84 0-54.784 44.544-99.84 99.84-99.84 54.784 0 99.84 44.544 99.84 99.84-0.512 54.784-45.056 99.84-99.84 99.84z m0-145.92c-25.088 0-45.568 20.48-45.568 45.568s20.48 45.568 45.568 45.568 45.568-20.48 45.568-45.568-20.48-45.568-45.568-45.568zM738.816 484.352c-68.608 0-123.904-55.808-123.904-123.904s55.808-123.904 123.904-123.904c68.096 0 123.904 55.808 123.904 123.904s-55.808 123.904-123.904 123.904z m0-194.048c-38.4 0-70.144 31.232-70.144 70.144 0 38.4 31.232 70.144 70.144 70.144S808.96 399.36 808.96 360.448c0-38.4-31.744-70.144-70.144-70.144zM270.848 693.248c-41.472 0-75.264-33.792-75.264-75.264S229.376 542.72 270.848 542.72s75.264 33.792 75.264 75.264-33.792 75.264-75.264 75.264z m0-97.28c-11.776 0-21.504 9.728-21.504 21.504s9.728 21.504 21.504 21.504c11.776 0 21.504-9.728 21.504-21.504s-9.728-21.504-21.504-21.504zM464.896 826.368c-34.816 0-63.488-28.672-63.488-63.488 0-34.816 28.16-63.488 63.488-63.488s63.488 28.16 63.488 63.488-28.672 63.488-63.488 63.488z m0-72.704c-5.12 0-9.216 4.096-9.216 9.216s4.096 9.216 9.216 9.216 9.216-4.096 9.216-9.216c0-4.608-4.096-9.216-9.216-9.216z" fill="currentColor"></path>
+            </svg>
+          </button>
+          <!-- LiveWar 按钮 -->
+          <button
+            @click="toggleGamePanel"
+            :disabled="!isConnected"
+            class="drawing-icon-btn"
+            :class="{ 'active': showGamePanel }"
+            title="LiveWar 对战"
+            style="margin-right: 0.5rem;"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="7" height="7"></rect>
+              <rect x="14" y="3" width="7" height="7"></rect>
+              <rect x="3" y="14" width="7" height="7"></rect>
+              <rect x="14" y="14" width="7" height="7"></rect>
             </svg>
           </button>
           <!-- 音乐选择按钮 -->
@@ -250,6 +473,169 @@
 
         <!-- 已选择房间时的内容 -->
         <template v-else>
+          <!-- 移动端游戏面板（桌面端游戏面板在中间区域） -->
+          <div v-if="showGamePanel && isMobile" class="game-panel-mobile">
+            <!-- 顶部：红蓝方血量（像素风格） -->
+            <div class="game-top-bar pixel-style">
+              <!-- 两行合并：RED VS BLUE占据两行高度，文字一行显示 -->
+              <div class="top-bar-double-row">
+                <div class="top-bar-left-column">
+                  <div class="team-hp red-team">
+                    <div class="hp-bar-container">
+                      <div class="hp-bar-bg pixel-border">
+                        <div
+                          class="hp-bar-fill red pixel-fill"
+                          :style="{ width: (redBaseHpPercent * 100) + '%' }"
+                        >
+                          <span class="hp-value-inside pixel-text">{{ redBaseHp }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="team-units red-team">
+                    <div class="units-value pixel-text">{{ redTeamUnitCount }}</div>
+                  </div>
+                </div>
+                <div class="vs-divider-double pixel-text">RED VS BLUE</div>
+                <div class="top-bar-right-column">
+                  <div class="team-hp blue-team">
+                    <div class="hp-bar-container">
+                      <div class="hp-bar-bg pixel-border">
+                        <div
+                          class="hp-bar-fill blue pixel-fill"
+                          :style="{ width: (blueBaseHpPercent * 100) + '%' }"
+                        >
+                          <span class="hp-value-inside pixel-text">{{ blueBaseHp }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="team-units blue-team">
+                    <div class="units-value pixel-text">{{ blueTeamUnitCount }}</div>
+                  </div>
+                </div>
+              </div>
+              <!-- 第三行：玩家列表下拉按钮 -->
+              <div class="top-bar-row">
+                <button
+                  class="player-list-toggle pixel-text"
+                  @click="showPlayerList = !showPlayerList"
+                >
+                  {{ showPlayerList ? '▼' : '▶' }} Players
+                </button>
+              </div>
+              <!-- 玩家列表展开区域 -->
+              <div v-if="showPlayerList" class="player-list-container pixel-style">
+                <div class="player-list-columns">
+                  <div class="player-list-column red-team">
+                    <div class="player-list-header pixel-text">Red Team</div>
+                    <div
+                      v-for="player in redTeamPlayers"
+                      :key="player.userId || player.id"
+                      class="player-list-item pixel-text"
+                    >
+                      {{ player.name || player.username }}
+                    </div>
+                    <div v-if="redTeamPlayers.length === 0" class="player-list-empty pixel-text">
+                      No players
+                    </div>
+                  </div>
+                  <div class="player-list-column blue-team">
+                    <div class="player-list-header pixel-text">Blue Team</div>
+                    <div
+                      v-for="player in blueTeamPlayers"
+                      :key="player.userId || player.id"
+                      class="player-list-item pixel-text"
+                    >
+                      {{ player.name || player.username }}
+                    </div>
+                    <div v-if="blueTeamPlayers.length === 0" class="player-list-empty pixel-text">
+                      No players
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 中间：游戏画布 -->
+            <div class="game-canvas-container">
+              <LiveWarCanvas v-if="gameState" :gameState="gameState" />
+            </div>
+
+            <!-- 底部：我的能量和兵种数量（仅玩家可见） -->
+            <div v-if="inGame && !isGameSpectator && currentPlayer" class="game-bottom-panel">
+              <div class="player-stats-row">
+                <div class="energy-display">
+                  <span class="energy-icon">⚡</span>
+                  <span class="energy-value">{{ currentPlayer.energy || 0 }}</span>
+                </div>
+                <div class="unit-counts">
+                  <div class="unit-count-item" v-for="(cfg, key) in unitTypesConfig" :key="key">
+                    <UnitIcon
+                      :unitType="key"
+                      :team="currentPlayer.team"
+                      :size="20"
+                      class="unit-count-icon"
+                    />
+                    <span class="unit-count-value">{{ getUnitCount(key) }}</span>
+                  </div>
+                </div>
+              </div>
+              <!-- 四个兵种按钮 -->
+              <div class="unit-spawn-buttons">
+                <button
+                  v-for="(cfg, key) in unitTypesConfig"
+                  :key="key"
+                  class="unit-spawn-btn"
+                  :class="{
+                    disabled: (currentPlayer.energy || 0) < cfg.cost
+                  }"
+                  @click="selectAndSpawnUnit(key)"
+                  :disabled="(currentPlayer.energy || 0) < cfg.cost"
+                >
+                  <UnitIcon
+                    :unitType="key"
+                    :team="currentPlayer.team"
+                    :size="32"
+                    class="unit-spawn-icon"
+                  />
+                  <div class="unit-spawn-info">
+                    <div class="unit-spawn-name">{{ cfg.name }}</div>
+                    <div class="unit-spawn-cost">{{ cfg.cost }}⚡</div>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            <!-- 观战者/未加入游戏时的控制按钮 -->
+            <div v-else class="game-controls">
+              <div v-if="!inGame" class="join-buttons-container">
+                <button
+                  class="join-team-btn pixel-text join-red-btn"
+                  :disabled="!isConnected"
+                  @click="joinGame('red')"
+                >
+                  加入红方
+                </button>
+                <button
+                  class="join-team-btn pixel-text join-blue-btn"
+                  :disabled="!isConnected"
+                  @click="joinGame('blue')"
+                >
+                  加入蓝方
+                </button>
+              </div>
+              <button
+                v-if="inGame"
+                class="drawing-btn stop-btn pixel-text"
+                :disabled="!isConnected"
+                @click="leaveGame"
+              >
+                退出游戏
+              </button>
+            </div>
+          </div>
+
           <!-- 移动端：画布在聊天区域内显示（桌面端画布在中间区域） -->
           <div v-if="showDrawingPanel && isMobile" class="drawing-panel mobile-drawing-panel">
             <div class="drawing-header">
@@ -394,6 +780,8 @@ import protobuf from 'protobufjs'
 import config from '@/config'
 import { api } from '@/utils/request.js'
 import drawingMixin from '@/mixins/drawingMixin'
+import LiveWarCanvas from '@/components/LiveWarCanvas.vue'
+import UnitIcon from '@/components/UnitIcon.vue'
 
 export default {
   name: 'Chat',
@@ -422,6 +810,7 @@ export default {
       isMobile: false,
       isKeyboardOpen: false,
       initialViewportHeight: 0,
+      sidebarCollapsed: false, // 左侧菜单折叠状态
       musicConfig: {},
       showMusicMenu: false,
       isPlaying: false,
@@ -430,13 +819,111 @@ export default {
       audioUnlocked: false,
       audioContext: null,
       audioElement: null,
-      musicMenuStyle: {}
+      musicMenuStyle: {},
+      // LiveWar / 游戏相关状态
+      showGamePanel: false,
+      gameState: null,
+      gameLogs: [],
+      gamePlayers: [],
+      gameTeamStats: { red: null, blue: null },
+      inGame: false,
+      selectedUnitType: 'miner',
+      showPlayerList: false,
+      gameOverInfo: null, // { winner: 'red'|'blue', winnerName: 'RED'|'BLUE', winnerPlayers: [] }
+      unitTypesConfig: {
+        miner: {
+          name: '矿工',
+          cost: 20,
+          icon: '⛏️'
+        },
+        engineer: {
+          name: '工程师',
+          cost: 40,
+          icon: '🔧'
+        },
+        heavy_tank: {
+          name: '重装坦克',
+          cost: 80,
+          icon: '🛡️'
+        },
+        assault_tank: {
+          name: '突击坦克',
+          cost: 60,
+          icon: '⚔️'
+        }
+      }
     }
   },
   computed: {
     currentRoomId () {
       return this.$route.params.roomId ? parseInt(this.$route.params.roomId) : null
+    },
+    isGameSpectator () {
+      // 没有 gameState 或没有 player.team 视为观战者
+      if (!this.gameState || !this.gameState.player) return true
+      return !this.gameState.player.team
+    },
+    currentPlayer () {
+      return this.gameState && this.gameState.player ? this.gameState.player : null
+    },
+    currentBase () {
+      if (!this.gameState || !this.gameState.room || !this.currentPlayer || !this.currentPlayer.team) return null
+      return this.currentPlayer.team === 'red' ? this.gameState.room.redBase : this.gameState.room.blueBase
+    },
+    redBaseHp () {
+      return this.gameState && this.gameState.room && this.gameState.room.redBase ? this.gameState.room.redBase.hp : 0
+    },
+    redBaseHpMax () {
+      return this.gameState && this.gameState.room && this.gameState.room.redBase ? this.gameState.room.redBase.hpMax : 1000
+    },
+    redBaseHpPercent () {
+      return this.redBaseHpMax > 0 ? this.redBaseHp / this.redBaseHpMax : 0
+    },
+    blueBaseHp () {
+      return this.gameState && this.gameState.room && this.gameState.room.blueBase ? this.gameState.room.blueBase.hp : 0
+    },
+    blueBaseHpMax () {
+      return this.gameState && this.gameState.room && this.gameState.room.blueBase ? this.gameState.room.blueBase.hpMax : 1000
+    },
+    blueBaseHpPercent () {
+      return this.blueBaseHpMax > 0 ? this.blueBaseHp / this.blueBaseHpMax : 0
+    },
+    redTeamUnitCount () {
+      if (!this.gameState || !this.gameState.room || !this.gameState.room.units) return 0
+      return this.gameState.room.units.filter(u => !u.isDead && u.team === 'red').length
+    },
+    blueTeamUnitCount () {
+      if (!this.gameState || !this.gameState.room || !this.gameState.room.units) return 0
+      return this.gameState.room.units.filter(u => !u.isDead && u.team === 'blue').length
+    },
+    redTeamPlayers () {
+      if (!this.gameState) return []
+      // 尝试从多个可能的位置获取玩家列表
+      const players = this.gameState.players || []
+      const teams = (this.gameState.room && this.gameState.room.teams) || {}
+
+      return players.filter(p => {
+        const playerId = p.userId || p.id
+        const playerTeam = p.team || teams[playerId]
+        return playerTeam === 'red'
+      })
+    },
+    blueTeamPlayers () {
+      if (!this.gameState) return []
+      // 尝试从多个可能的位置获取玩家列表
+      const players = this.gameState.players || []
+      const teams = (this.gameState.room && this.gameState.room.teams) || {}
+
+      return players.filter(p => {
+        const playerId = p.userId || p.id
+        const playerTeam = p.team || teams[playerId]
+        return playerTeam === 'blue'
+      })
     }
+  },
+  components: {
+    UnitIcon,
+    LiveWarCanvas
   },
   async mounted () {
     this.roomId = this.currentRoomId
@@ -452,6 +939,17 @@ export default {
     }
   },
   watch: {
+    // 监听游戏面板和画画面板，自动收起菜单
+    showGamePanel (newVal) {
+      if (newVal && !this.isMobile) {
+        this.sidebarCollapsed = true
+      }
+    },
+    showDrawingPanel (newVal) {
+      if (newVal && !this.isMobile) {
+        this.sidebarCollapsed = true
+      }
+    },
     async '$route.params.roomId' (newRoomId) {
       const roomId = newRoomId ? parseInt(newRoomId) : null
       if (roomId !== this.roomId) {
@@ -586,15 +1084,264 @@ export default {
                     DRAWING_STOP: 10,
                     DRAWING_REQUEST_APPROVE: 11
                   }
+                },
+                WsEnvelope: {
+                  fields: {
+                    chat: { type: 'ChatMessage', id: 1 },
+                    game: { type: 'livewar.GameMessage', id: 2 }
+                  }
+                }
+              }
+            },
+            livewar: {
+              nested: {
+                GameMessage: {
+                  fields: {
+                    type: { type: 'Type', id: 1 },
+                    // oneof payload（protobufjs 用 oneofs 描述）
+                    join_game: { type: 'JoinGameRequest', id: 2 },
+                    select_team: { type: 'SelectTeamRequest', id: 3 },
+                    select_unit: { type: 'SelectUnitRequest', id: 4 },
+                    spawn_unit: { type: 'SpawnUnitRequest', id: 5 },
+                    leave_game: { type: 'LeaveGameRequest', id: 6 },
+                    start_game: { type: 'StartGameRequest', id: 7 },
+                    connected: { type: 'ConnectedPayload', id: 20 },
+                    game_state: { type: 'GameStatePayload', id: 21 },
+                    player_event: { type: 'PlayerEventPayload', id: 22 },
+                    game_over: { type: 'GameOverPayload', id: 23 },
+                    error: { type: 'ErrorPayload', id: 24 }
+                  },
+                  oneofs: {
+                    payload: {
+                      oneof: [
+                        'join_game',
+                        'select_team',
+                        'select_unit',
+                        'spawn_unit',
+                        'leave_game',
+                        'start_game',
+                        'connected',
+                        'game_state',
+                        'player_event',
+                        'game_over',
+                        'error'
+                      ]
+                    }
+                  },
+                  nested: {
+                    Type: {
+                      values: {
+                        UNKNOWN: 0,
+                        JOIN_GAME: 1,
+                        SELECT_TEAM: 2,
+                        SELECT_UNIT: 3,
+                        SPAWN_UNIT: 4,
+                        LEAVE_GAME: 5,
+                        START_GAME: 6,
+                        CONNECTED: 10,
+                        GAME_STATE: 11,
+                        PLAYER_JOINED: 12,
+                        PLAYER_LEFT: 13,
+                        GAME_STARTED: 14,
+                        GAME_OVER: 15,
+                        ERROR: 16
+                      }
+                    }
+                  }
+                },
+                JoinGameRequest: {
+                  fields: {
+                    name: { type: 'string', id: 1 },
+                    team: { type: 'string', id: 2 }
+                  }
+                },
+                SelectTeamRequest: {
+                  fields: {
+                    team: { type: 'string', id: 1 }
+                  }
+                },
+                SelectUnitRequest: {
+                  fields: {
+                    unit_type: { type: 'string', id: 1 }
+                  }
+                },
+                SpawnUnitRequest: { fields: {} },
+                LeaveGameRequest: { fields: {} },
+                StartGameRequest: { fields: {} },
+                ConnectedPayload: {
+                  fields: {
+                    player_id: { type: 'string', id: 1 },
+                    player_name: { type: 'string', id: 2 }
+                  }
+                },
+                PlayerEventPayload: {
+                  fields: {
+                    player_id: { type: 'string', id: 1 },
+                    player_name: { type: 'string', id: 2 },
+                    team: { type: 'string', id: 3 }
+                  }
+                },
+                GameOverPayload: {
+                  fields: {
+                    winner: { type: 'string', id: 1 },
+                    winner_name: { type: 'string', id: 2 }
+                  }
+                },
+                ErrorPayload: {
+                  fields: {
+                    message: { type: 'string', id: 1 }
+                  }
+                },
+                Player: {
+                  fields: {
+                    id: { type: 'string', id: 1 },
+                    name: { type: 'string', id: 2 },
+                    team: { type: 'string', id: 3 },
+                    selected_unit_type: { type: 'string', id: 4 },
+                    energy: { type: 'int32', id: 5 }
+                  }
+                },
+                PlayerSummary: {
+                  fields: {
+                    id: { type: 'string', id: 1 },
+                    name: { type: 'string', id: 2 },
+                    team: { type: 'string', id: 3 }
+                  }
+                },
+                TeamStats: {
+                  fields: {
+                    units: { type: 'int32', id: 1 },
+                    miners: { type: 'int32', id: 2 },
+                    engineers: { type: 'int32', id: 3 },
+                    tanks: { type: 'int32', id: 4 }
+                  }
+                },
+                TeamStatsMap: {
+                  fields: {
+                    red: { type: 'TeamStats', id: 1 },
+                    blue: { type: 'TeamStats', id: 2 }
+                  }
+                },
+                Position: {
+                  fields: {
+                    x: { type: 'double', id: 1 },
+                    y: { type: 'double', id: 2 }
+                  }
+                },
+                Base: {
+                  fields: {
+                    id: { type: 'string', id: 1 },
+                    x: { type: 'double', id: 2 },
+                    y: { type: 'double', id: 3 },
+                    hp: { type: 'int32', id: 4 },
+                    hpMax: { type: 'int32', id: 5 }
+                  }
+                },
+                MineField: {
+                  fields: {
+                    id: { type: 'string', id: 1 },
+                    x: { type: 'double', id: 2 },
+                    y: { type: 'double', id: 3 },
+                    energy: { type: 'int32', id: 4 },
+                    energyMax: { type: 'int32', id: 5 }
+                  }
+                },
+                EnergyDrop: {
+                  fields: {
+                    id: { type: 'string', id: 1 },
+                    x: { type: 'double', id: 2 },
+                    y: { type: 'double', id: 3 },
+                    energy: { type: 'int32', id: 4 }
+                  }
+                },
+                HealEffect: {
+                  fields: {
+                    id: { type: 'string', id: 1 },
+                    x: { type: 'double', id: 2 },
+                    y: { type: 'double', id: 3 },
+                    created_time: { type: 'double', id: 4 },
+                    lifetime: { type: 'double', id: 5 },
+                    team: { type: 'string', id: 6 }
+                  }
+                },
+                BulletEffect: {
+                  fields: {
+                    id: { type: 'string', id: 1 },
+                    from_x: { type: 'double', id: 2 },
+                    from_y: { type: 'double', id: 3 },
+                    to_x: { type: 'double', id: 4 },
+                    to_y: { type: 'double', id: 5 },
+                    created_time: { type: 'double', id: 6 },
+                    lifetime: { type: 'double', id: 7 },
+                    team: { type: 'string', id: 8 }
+                  }
+                },
+                Unit: {
+                  fields: {
+                    id: { type: 'string', id: 1 },
+                    type: { type: 'string', id: 2 },
+                    team: { type: 'string', id: 3 },
+                    owner_id: { type: 'string', id: 4 },
+                    x: { type: 'double', id: 5 },
+                    y: { type: 'double', id: 6 },
+                    hp: { type: 'int32', id: 7 },
+                    hp_max: { type: 'int32', id: 8 },
+                    attack: { type: 'int32', id: 9 },
+                    speed: { type: 'double', id: 10 },
+                    is_dead: { type: 'bool', id: 11 },
+                    carrying_energy: { type: 'int32', id: 12 },
+                    target_x: { type: 'double', id: 13 },
+                    target_y: { type: 'double', id: 14 }
+                  }
+                },
+                Room: {
+                  fields: {
+                    name: { type: 'string', id: 1 },
+                    width: { type: 'int32', id: 2 },
+                    height: { type: 'int32', id: 3 },
+                    walls: { rule: 'repeated', type: 'Position', id: 4 },
+                    redBase: { type: 'Base', id: 5 },
+                    blueBase: { type: 'Base', id: 6 },
+                    mineFields: { rule: 'repeated', type: 'MineField', id: 7 },
+                    units: { rule: 'repeated', type: 'Unit', id: 8 },
+                    energyDrops: { rule: 'repeated', type: 'EnergyDrop', id: 9 },
+                    healEffects: { rule: 'repeated', type: 'HealEffect', id: 10 },
+                    bulletEffects: { rule: 'repeated', type: 'BulletEffect', id: 11 }
+                  }
+                },
+                GameStatePayload: {
+                  fields: {
+                    tick: { type: 'int32', id: 1 },
+                    game_time: { type: 'double', id: 2 },
+                    game_started: { type: 'bool', id: 3 },
+                    winner: { type: 'string', id: 4 },
+                    player: { type: 'Player', id: 5 },
+                    room: { type: 'Room', id: 6 },
+                    logs: { rule: 'repeated', type: 'string', id: 7 },
+                    team_stats: { type: 'TeamStatsMap', id: 8 },
+                    players: { rule: 'repeated', type: 'PlayerSummary', id: 9 }
+                  }
                 }
               }
             }
           }
         })
         this.ChatMessage = root.lookupType('chat.ChatMessage')
-        console.log('Protobuf loaded successfully')
+        this.WsEnvelope = root.lookupType('chat.WsEnvelope')
+        this.GameMessage = root.lookupType('livewar.GameMessage')
+
+        if (!this.ChatMessage || !this.WsEnvelope || !this.GameMessage) {
+          throw new Error('Failed to lookup protobuf types')
+        }
+
+        console.log('Protobuf loaded successfully', {
+          hasChatMessage: !!this.ChatMessage,
+          hasWsEnvelope: !!this.WsEnvelope,
+          hasGameMessage: !!this.GameMessage
+        })
       } catch (err) {
         console.error('Failed to load protobuf:', err)
+        this.showSystemMessage('Protobuf 加载失败，请刷新页面重试')
       }
     },
 
@@ -612,8 +1359,8 @@ export default {
       this.ws.onmessage = async (event) => {
         try {
           // 检查protobuf是否已加载
-          if (!this.ChatMessage) {
-            console.warn('ChatMessage not loaded yet, skipping message')
+          if (!this.WsEnvelope || !this.ChatMessage) {
+            console.warn('Protobuf types not loaded yet, skipping message')
             return
           }
 
@@ -626,7 +1373,19 @@ export default {
             data = new Uint8Array(event.data)
           }
 
-          const message = this.ChatMessage.decode(data)
+          const envelope = this.WsEnvelope.decode(data)
+
+          // 先处理游戏消息（如果有）
+          if (envelope.game && this.GameMessage) {
+            this.handleGameMessage(envelope.game)
+          }
+
+          // 再处理聊天/画图消息
+          if (!envelope.chat) {
+            return
+          }
+
+          const message = envelope.chat
 
           // 根据消息类型决定是否显示
           if (message.type === 4) {
@@ -831,7 +1590,8 @@ export default {
           type: 2 // USER_TEXT
         })
 
-        const buffer = this.ChatMessage.encode(message).finish()
+        const envelope = this.WsEnvelope.create({ chat: message })
+        const buffer = this.WsEnvelope.encode(envelope).finish()
         this.ws.send(buffer)
         this.newMessage = ''
       } catch (err) {
@@ -950,6 +1710,9 @@ export default {
         this.showMobileNavbar = false
       }
     },
+    toggleSidebar () {
+      this.sidebarCollapsed = !this.sidebarCollapsed
+    },
 
     setupKeyboardDetection () {
       // 记录初始视口高度，使用更准确的方法
@@ -997,7 +1760,7 @@ export default {
     },
 
     sendMusic (musicId) {
-      if (!this.isConnected || !this.ChatMessage) {
+      if (!this.isConnected || !this.ChatMessage || !this.WsEnvelope) {
         console.log('Cannot send music:', {
           isConnected: this.isConnected,
           hasChatMessage: !!this.ChatMessage
@@ -1014,7 +1777,8 @@ export default {
           type: 5 // MUSIC
         })
 
-        const buffer = this.ChatMessage.encode(message).finish()
+        const envelope = this.WsEnvelope.create({ chat: message })
+        const buffer = this.WsEnvelope.encode(envelope).finish()
         this.ws.send(buffer)
         this.showMusicMenu = false
         console.log('音乐消息发送成功:', musicId)
@@ -1212,6 +1976,187 @@ export default {
     // 停止音乐播放
     stopMusic () {
       this.stopCurrentMusic()
+    },
+
+    // ====== LiveWar 简化逻辑 ======
+    toggleGamePanel () {
+      // 如果打开游戏面板，先关闭画画面板（互斥）
+      if (!this.showGamePanel && this.showDrawingPanel) {
+        this.showDrawingPanel = false
+      }
+      this.showGamePanel = !this.showGamePanel
+    },
+
+    handleGameMessage (msg) {
+      if (!this.GameMessage) return
+
+      // 根据类型更新本地状态
+      if (msg.type === this.GameMessage.Type.GAME_STATE && msg.game_state) {
+        this.gameState = msg.game_state
+        this.gameLogs = msg.game_state.logs || []
+        this.gamePlayers = msg.game_state.players || []
+        this.gameTeamStats = msg.game_state.team_stats || { red: null, blue: null }
+        this.inGame = !!(msg.game_state.player && msg.game_state.player.team)
+      } else if (msg.type === this.GameMessage.Type.ERROR && msg.error) {
+        // 可以在系统提示条里展示错误
+        this.showSystemMessage(msg.error.message)
+      } else if (msg.type === this.GameMessage.Type.GAME_OVER && msg.game_over) {
+        const info = msg.game_over
+        const winner = info.winner || 'red'
+        const winnerName = info.winner_name || (winner === 'red' ? 'RED' : 'BLUE')
+
+        // 获取胜利方队员列表
+        const winnerPlayers = winner === 'red' ? this.redTeamPlayers : this.blueTeamPlayers
+
+        this.gameOverInfo = {
+          winner,
+          winnerName,
+          winnerPlayers: winnerPlayers.map(p => p.name || p.username || 'Unknown'),
+          gameOverTime: Date.now()
+        }
+
+        this.showSystemMessage(`LiveWar 结束，${winnerName} 获胜`)
+
+        // 10秒后清除游戏结束信息
+        setTimeout(() => {
+          this.gameOverInfo = null
+        }, 10000)
+      }
+
+      // 更新gameState中的winner信息
+      if (msg.type === this.GameMessage.Type.GAME_STATE && msg.game_state) {
+        if (msg.game_state.winner && !this.gameOverInfo) {
+          // 如果游戏已结束但还没有显示结束信息，设置结束信息
+          const winner = msg.game_state.winner
+          const winnerName = winner === 'red' ? 'RED' : 'BLUE'
+          const winnerPlayers = winner === 'red' ? this.redTeamPlayers : this.blueTeamPlayers
+
+          this.gameOverInfo = {
+            winner,
+            winnerName,
+            winnerPlayers: winnerPlayers.map(p => p.name || p.username || 'Unknown'),
+            gameOverTime: Date.now()
+          }
+
+          // 10秒后清除游戏结束信息
+          setTimeout(() => {
+            this.gameOverInfo = null
+          }, 10000)
+        }
+      }
+    },
+
+    joinGame (team) {
+      console.log('joinGame called', { team, isConnected: this.isConnected, hasWsEnvelope: !!this.WsEnvelope, hasGameMessage: !!this.GameMessage, username: this.username })
+
+      if (!this.isConnected) {
+        console.warn('Cannot join game: WebSocket not connected')
+        this.showSystemMessage('WebSocket 未连接，无法加入游戏')
+        return
+      }
+
+      if (!this.WsEnvelope) {
+        console.warn('Cannot join game: WsEnvelope not loaded')
+        this.showSystemMessage('Protobuf 未加载，请刷新页面重试')
+        return
+      }
+
+      if (!this.GameMessage) {
+        console.warn('Cannot join game: GameMessage not loaded')
+        this.showSystemMessage('游戏消息类型未加载，请刷新页面重试')
+        return
+      }
+
+      if (!this.username) {
+        console.warn('Cannot join game: username not set')
+        this.showSystemMessage('用户名未设置，无法加入游戏')
+        return
+      }
+
+      try {
+        const joinReq = { name: this.username, team }
+        console.log('Creating GameMessage with:', joinReq)
+
+        const gameMsg = this.GameMessage.create({
+          type: this.GameMessage.Type.JOIN_GAME,
+          join_game: joinReq
+        })
+        console.log('GameMessage created:', gameMsg)
+
+        const envelope = this.WsEnvelope.create({ game: gameMsg })
+        console.log('WsEnvelope created:', envelope)
+
+        const buf = this.WsEnvelope.encode(envelope).finish()
+        console.log('Sending game message, buffer length:', buf.length)
+
+        this.ws.send(buf)
+        this.showGamePanel = true
+        console.log('Game join message sent successfully')
+      } catch (e) {
+        console.error('joinGame failed', e)
+        this.showSystemMessage(`加入游戏失败: ${e.message || '未知错误'}`)
+      }
+    },
+
+    leaveGame () {
+      if (!this.isConnected || !this.WsEnvelope || !this.GameMessage) return
+      try {
+        const gameMsg = this.GameMessage.create({
+          type: this.GameMessage.Type.LEAVE_GAME,
+          leave_game: {}
+        })
+        const envelope = this.WsEnvelope.create({ game: gameMsg })
+        const buf = this.WsEnvelope.encode(envelope).finish()
+        this.ws.send(buf)
+      } catch (e) {
+        console.error('leaveGame failed', e)
+      }
+    },
+
+    selectUnitType (unitTypeKey) {
+      if (!this.isConnected || !this.WsEnvelope || !this.GameMessage) return
+      this.selectedUnitType = unitTypeKey
+      try {
+        const msg = this.GameMessage.create({
+          type: this.GameMessage.Type.SELECT_UNIT,
+          select_unit: { unit_type: unitTypeKey }
+        })
+        const env = this.WsEnvelope.create({ game: msg })
+        const buf = this.WsEnvelope.encode(env).finish()
+        this.ws.send(buf)
+      } catch (e) {
+        console.error('selectUnitType failed', e)
+      }
+    },
+
+    spawnUnit () {
+      if (!this.isConnected || !this.WsEnvelope || !this.GameMessage) return
+      try {
+        const msg = this.GameMessage.create({
+          type: this.GameMessage.Type.SPAWN_UNIT,
+          spawn_unit: {}
+        })
+        const env = this.WsEnvelope.create({ game: msg })
+        const buf = this.WsEnvelope.encode(env).finish()
+        this.ws.send(buf)
+      } catch (e) {
+        console.error('spawnUnit failed', e)
+      }
+    },
+    selectAndSpawnUnit (unitTypeKey) {
+      // 先选择单位类型
+      this.selectUnitType(unitTypeKey)
+      // 然后立即生成
+      this.spawnUnit()
+    },
+    getUnitCount (unitType) {
+      if (!this.gameState || !this.gameState.room || !this.currentPlayer || !this.currentPlayer.team) return 0
+      const myUnits = this.gameState.room.units.filter(u =>
+        !u.isDead &&
+        u.team === this.currentPlayer.team &&
+        u.type === unitType
+      )
+      return myUnits.length
     }
 
   },
@@ -1278,8 +2223,64 @@ html, body {
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   box-shadow: 8px 0 32px rgba(0,0,0,0.3);
-  transition: transform 0.3s ease;
+  transition: width 0.3s ease, transform 0.3s ease;
   z-index: 1000;
+  position: relative;
+}
+
+/* 折叠状态 */
+.left-sidebar.collapsed {
+  width: 50px;
+}
+
+.left-sidebar.collapsed .sidebar-content {
+  display: none;
+}
+
+.left-sidebar.collapsed .sidebar-collapsed-label {
+  display: flex;
+}
+
+/* 折叠/展开按钮 */
+.sidebar-toggle-btn {
+  position: absolute;
+  top: 1rem;
+  right: 0.5rem;
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  color: #e6e6f0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1001;
+  transition: color 0.2s;
+  padding: 0;
+}
+
+.sidebar-toggle-btn:hover {
+  color: #fff;
+}
+
+/* 折叠状态下，按钮居中显示 */
+.left-sidebar.collapsed .sidebar-toggle-btn {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  right: auto;
+  transform: translate(-50%, -50%);
+  margin: 0;
+}
+
+.sidebar-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  width: 100%;
 }
 
 /* 移动端遮罩层 */
@@ -1529,6 +2530,19 @@ html, body {
   max-height: 100vh;
 }
 
+/* 中间游戏区域（类似 drawing-area） */
+.game-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0; /* 允许收缩 */
+  overflow: hidden;
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+  /* 确保游戏区域始终在可见区域内 */
+  max-height: 100vh;
+}
+
 /* 右侧聊天区域 */
 .right-chat {
   flex: 1;
@@ -1544,6 +2558,13 @@ html, body {
 /* 当有画图面板时，右侧聊天区域固定宽度（仅桌面端） */
 @media (min-width: 769px) {
   .right-chat.with-drawing {
+    flex: 0 0 400px; /* 固定宽度400px */
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  /* 当有游戏面板时，右侧聊天区域固定宽度（仅桌面端） */
+  .right-chat.with-game {
     flex: 0 0 400px; /* 固定宽度400px */
     flex-shrink: 0;
     background: rgba(255, 255, 255, 0.02);
@@ -1667,6 +2688,20 @@ html, body {
   min-height: 0; /* 确保flex子元素可以正确收缩 */
 }
 
+/* 移动端游戏面板样式 */
+.game-panel-mobile {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  margin-bottom: 1rem;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
 /* 画图面板样式 */
 .drawing-panel {
   flex: 1;
@@ -1676,6 +2711,789 @@ html, body {
   overflow: hidden;
   min-width: 0;
   min-height: 0;
+}
+
+/* LiveWar 游戏面板 - 新布局 */
+.game-panel-new {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+/* 顶部：红蓝方血量（像素风格） */
+.game-top-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  background: rgba(0, 0, 0, 0.4);
+  border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.game-top-bar.pixel-style {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.top-bar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.top-bar-double-row {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 80px; /* 确保有两行的高度 */
+}
+
+.top-bar-left-column,
+.top-bar-right-column {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.vs-divider-double {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fbbf24;
+  margin: 0 1rem;
+  text-shadow:
+    2px 2px 0 rgba(0, 0, 0, 0.8),
+    0 0 10px rgba(251, 191, 36, 0.5);
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  writing-mode: horizontal-tb;
+}
+
+.team-hp {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.red-team {
+  align-items: flex-start;
+}
+
+.blue-team {
+  align-items: flex-end;
+}
+
+.team-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.pixel-text {
+  font-family: 'Courier New', 'Monaco', 'Menlo', monospace;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.8);
+}
+
+.red-team .team-label {
+  color: #ef4444;
+}
+
+.blue-team .team-label {
+  color: #3b82f6;
+}
+
+.hp-bar-container {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.hp-bar-bg {
+  flex: 1;
+  height: 28px;
+  background: rgba(0, 0, 0, 0.7);
+  overflow: visible; /* 改为visible，确保文字不被裁剪 */
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  position: relative;
+}
+
+.pixel-border {
+  border-radius: 0;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.2),
+    0 2px 0 rgba(0, 0, 0, 0.5);
+}
+
+.hp-bar-fill {
+  height: 100%;
+  transition: width 0.3s ease;
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 50px; /* 确保有足够空间显示文字 */
+}
+
+.pixel-fill {
+  border-radius: 0;
+}
+
+.hp-bar-fill.red {
+  background: #ef4444;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.3);
+  justify-content: flex-start;
+  padding-left: 4px;
+}
+
+.hp-bar-fill.blue {
+  background: #3b82f6;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.3);
+  justify-content: flex-end;
+  padding-right: 4px;
+}
+
+.hp-value-inside {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.8);
+  white-space: nowrap;
+  z-index: 10;
+  position: relative;
+}
+
+.vs-divider {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fbbf24;
+  margin: 0 1rem;
+  text-shadow:
+    2px 2px 0 rgba(0, 0, 0, 0.8),
+    0 0 10px rgba(251, 191, 36, 0.5);
+  white-space: nowrap;
+}
+
+/* 兵总数显示 */
+.team-units {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.units-value {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.red-team .units-value {
+  color: #ef4444;
+}
+
+.blue-team .units-value {
+  color: #3b82f6;
+}
+
+/* 玩家列表下拉按钮 */
+.player-list-toggle {
+  background: rgba(0, 0, 0, 0.5);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  color: #fff;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+  width: 100%;
+  text-align: left;
+  box-sizing: border-box;
+}
+
+.player-list-toggle:hover {
+  background: rgba(0, 0, 0, 0.7);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+/* 玩家列表展开区域 */
+.player-list-container {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  padding: 1rem;
+  margin-top: 0.5rem;
+  box-sizing: border-box;
+}
+
+.player-list-columns {
+  display: flex;
+  gap: 1rem;
+  align-items: stretch;
+}
+
+.player-list-column {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0; /* 确保flex子元素可以正确收缩 */
+}
+
+.player-list-header {
+  font-size: 0.9rem;
+  font-weight: 700;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+  margin-bottom: 0.5rem;
+  text-align: center;
+  width: 100%;
+}
+
+.red-team .player-list-header {
+  color: #ef4444;
+}
+
+.blue-team .player-list-header {
+  color: #3b82f6;
+}
+
+.player-list-item {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.9);
+  padding: 0.25rem 0.5rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  width: 100%;
+  box-sizing: border-box;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.player-list-empty {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.5);
+  font-style: italic;
+  padding: 0.5rem;
+}
+
+/* 游戏结束展示 */
+.game-over-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(8px);
+}
+
+.game-over-content {
+  text-align: center;
+  padding: 2rem;
+  background: rgba(0, 0, 0, 0.8);
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  border-radius: 0;
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 300px;
+}
+
+.game-over-title {
+  font-size: 3rem;
+  font-weight: 700;
+  margin-bottom: 2rem;
+  text-shadow: 4px 4px 0 rgba(0, 0, 0, 0.8);
+  text-align: center;
+  width: 100%;
+}
+
+.game-over-title.red {
+  color: #ef4444;
+}
+
+.game-over-title.blue {
+  color: #3b82f6;
+}
+
+.game-over-players {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: center;
+  margin-top: 1.5rem;
+  width: 100%;
+}
+
+.game-over-player {
+  font-size: 1.2rem;
+  color: rgba(255, 255, 255, 0.9);
+  text-align: center;
+  padding: 0.5rem 1rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* 中间：游戏画布 */
+.game-canvas-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 1rem;
+  /* 确保画布容器保持宽高比 */
+  position: relative;
+}
+
+.game-canvas-container canvas {
+  /* 确保画布在容器中保持比例，不拉伸 */
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+/* 底部：玩家控制面板 */
+.game-bottom-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  background: rgba(0, 0, 0, 0.3);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.player-stats-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.energy-display {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: rgba(251, 191, 36, 0.2);
+  border: 1px solid rgba(251, 191, 36, 0.4);
+  border-radius: 8px;
+}
+
+.energy-icon {
+  font-size: 1.2rem;
+}
+
+.energy-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #fbbf24;
+}
+
+.unit-counts {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.unit-count-item {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+}
+
+.unit-count-icon {
+  opacity: 0.8;
+}
+
+.unit-count-value {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #e5e7eb;
+}
+
+/* 四个兵种按钮 */
+.unit-spawn-buttons {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+}
+
+.unit-spawn-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.unit-spawn-btn:hover:not(.disabled) {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.unit-spawn-btn.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.unit-spawn-icon {
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.unit-spawn-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.unit-spawn-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #e5e7eb;
+}
+
+.unit-spawn-cost {
+  font-size: 0.75rem;
+  color: #fbbf24;
+  font-weight: 600;
+}
+
+/* 观战者控制按钮 */
+.game-controls {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  background: rgba(0, 0, 0, 0.3);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.join-buttons-container {
+  display: flex;
+  width: 100%;
+  gap: 0.5rem;
+}
+
+.join-team-btn {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  font-weight: 700;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  transition: all 0.2s;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.8);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.2),
+    0 2px 0 rgba(0, 0, 0, 0.5);
+  border-radius: 0;
+  box-sizing: border-box;
+}
+
+.join-team-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.join-team-btn:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.3),
+    0 3px 0 rgba(0, 0, 0, 0.6);
+}
+
+.join-red-btn {
+  background: #ef4444;
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.join-red-btn:not(:disabled):hover {
+  background: #dc2626;
+}
+
+.join-blue-btn {
+  background: #3b82f6;
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.join-blue-btn:not(:disabled):hover {
+  background: #2563eb;
+}
+
+/* LiveWar 游戏面板 - 旧布局（保留兼容） */
+.game-panel {
+  margin: 0 1.5rem 1rem 1.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.game-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.game-status-left {
+  color: #e5e7eb;
+  font-size: 0.9rem;
+}
+
+.game-status-right {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.game-body {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.game-column {
+  flex: 1 1 180px;
+}
+
+.game-column h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.9rem;
+  color: #cbd5f5;
+}
+
+.game-player-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.game-player-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0;
+  font-size: 0.85rem;
+  color: #e5e7eb;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.badge-red {
+  background: rgba(248, 113, 113, 0.2);
+  color: #fecaca;
+}
+
+.badge-blue {
+  background: rgba(96, 165, 250, 0.2);
+  color: #bfdbfe;
+}
+
+.badge-neutral {
+  background: rgba(148, 163, 184, 0.2);
+  color: #e5e7eb;
+}
+
+.player-name {
+  flex: 1;
+}
+
+.team-stats {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.team-stat {
+  flex: 1;
+  padding: 0.5rem 0.6rem;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.6);
+}
+
+.team-stat.red {
+  border: 1px solid rgba(248, 113, 113, 0.5);
+}
+
+.team-stat.blue {
+  border: 1px solid rgba(96, 165, 250, 0.5);
+}
+
+.team-title {
+  font-size: 0.8rem;
+  color: #e5e7eb;
+  margin-bottom: 0.25rem;
+}
+
+.team-value {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #f9fafb;
+}
+
+/* 能量 / 基地 / 生成单位（简化版） */
+.energy-display-mini {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(250, 204, 21, 0.3);
+  margin-bottom: 0.4rem;
+}
+
+.energy-value-mini {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #facc15;
+}
+
+.base-hp-mini {
+  margin-bottom: 0.5rem;
+}
+
+.hp-bar-mini {
+  width: 100%;
+  height: 6px;
+  background: rgba(15, 23, 42, 0.9);
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.5);
+}
+
+.hp-fill-mini {
+  height: 100%;
+  background: linear-gradient(90deg, #22c55e, #16a34a);
+}
+
+.hp-text-mini {
+  margin-top: 2px;
+  font-size: 0.75rem;
+  color: #e5e7eb;
+}
+
+.unit-spawn-panel {
+  margin-top: 0.25rem;
+}
+
+.unit-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-bottom: 0.3rem;
+}
+
+.unit-btn-mini {
+  flex: 1 1 45%;
+  padding: 0.25rem 0.3rem;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  background: rgba(15, 23, 42, 0.9);
+  color: #e5e7eb;
+  font-size: 0.7rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.unit-btn-mini.selected {
+  border-color: rgba(59, 130, 246, 0.9);
+  background: radial-gradient(circle at top left, rgba(59, 130, 246, 0.4), transparent),
+              rgba(15, 23, 42, 0.95);
+}
+
+.unit-icon-mini {
+  display: block;
+  margin: 0 auto;
+  flex-shrink: 0;
+}
+
+.unit-name-mini {
+  font-weight: 500;
+}
+
+.unit-cost-mini {
+  font-size: 0.7rem;
+  color: #facc15;
+}
+
+.spawn-btn-mini {
+  width: 100%;
+  padding: 0.35rem 0.4rem;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: #f9fafb;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.spawn-btn-mini:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.spawn-btn-mini:not(:disabled):hover {
+  filter: brightness(1.05);
 }
 
 .messages-container {

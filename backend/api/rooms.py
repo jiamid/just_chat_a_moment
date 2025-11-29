@@ -1,6 +1,7 @@
-from typing import Dict, Set
+from typing import Dict, Set, Optional
 import time
 import asyncio
+from enum import Enum
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
 from jose import jwt
@@ -9,9 +10,16 @@ from sqlalchemy import select
 from config.settings import settings
 from db.db import AsyncSessionLocal
 from models.models import User
-from protos import chat_pb2
+from protos import chat_pb2, game_pb2
+from service import game_manager as live_war_game_manager
 
 router = APIRouter(prefix="/room/ws", tags=["ws"])
+
+
+class RoomMode(str, Enum):
+    NONE = "none"
+    DRAWING = "drawing"
+    GAME = "game"
 
 
 class RoomManager:
@@ -30,13 +38,18 @@ class RoomManager:
         self.room_id_to_auto_stop_tasks: Dict[int, asyncio.Task] = {}
         # WebSocket -> 用户名映射（用于断开连接时清理）
         self.websocket_to_username: Dict[WebSocket, str] = {}
+        # WebSocket -> 用户ID映射（用于游戏身份）
+        self.websocket_to_user_id: Dict[WebSocket, Optional[int]] = {}
         # 房间ID -> WebSocket -> 用户名映射
         self.room_id_to_websocket_to_username: Dict[int, Dict[WebSocket, str]] = {}
+        # 房间模式：none / drawing / game
+        self.room_id_to_mode: Dict[int, RoomMode] = {}
 
-    async def connect(self, room_id: int, websocket: WebSocket, username: str) -> None:
+    async def connect(self, room_id: int, websocket: WebSocket, username: str, user_id: Optional[int]) -> None:
         await websocket.accept()
         self.room_id_to_connections.setdefault(room_id, set()).add(websocket)
         self.websocket_to_username[websocket] = username
+        self.websocket_to_user_id[websocket] = user_id
         self.room_id_to_websocket_to_username.setdefault(room_id, {})[websocket] = username
         
         # 如果是第一个连接，启动定时广播任务
@@ -50,6 +63,7 @@ class RoomManager:
             
             # 清理用户名映射
             username = self.websocket_to_username.pop(websocket, None)
+            self.websocket_to_user_id.pop(websocket, None)
             if room_id in self.room_id_to_websocket_to_username:
                 self.room_id_to_websocket_to_username[room_id].pop(websocket, None)
             
@@ -125,7 +139,8 @@ class RoomManager:
                         timestamp=int(time.time() * 1000),
                         type=chat_pb2.MessageType.ROOM_COUNT,
                     )
-                    await self.broadcast(room_id, count_msg.SerializeToString())
+                    envelope = chat_pb2.WsEnvelope(chat=count_msg)
+                    await self.broadcast(room_id, envelope.SerializeToString())
             except asyncio.CancelledError:
                 break
             except Exception:
@@ -166,6 +181,9 @@ class RoomManager:
         # 设置画画人
         self.room_id_to_drawer[room_id] = username
         self.room_id_to_drawer_start_time[room_id] = time.time()
+        # 房间模式切换为 DRAWING（如果之前是 NONE 才切，避免覆盖 GAME）
+        if self.room_id_to_mode.get(room_id, RoomMode.NONE) == RoomMode.NONE:
+            self.room_id_to_mode[room_id] = RoomMode.DRAWING
         
         # 启动10分钟自动退出任务
         self.room_id_to_auto_stop_tasks[room_id] = asyncio.create_task(self._auto_stop_drawing(room_id))
@@ -178,7 +196,8 @@ class RoomManager:
             timestamp=int(time.time() * 1000),
             type=chat_pb2.MessageType.DRAWING_STATE,
         )
-        await self.broadcast(room_id, drawer_state_msg.SerializeToString())
+        envelope = chat_pb2.WsEnvelope(chat=drawer_state_msg)
+        await self.broadcast(room_id, envelope.SerializeToString())
 
 
 room_manager = RoomManager()
@@ -191,20 +210,26 @@ async def websocket_endpoint(
     token: str | None = Query(default=None),
 ):
     username = "Anonymous"
+    user_id: Optional[int] = None
 
     if token:
         try:
             payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-            user_id = int(payload.get("sub"))
+            raw_user_id = payload.get("sub")
+            if raw_user_id is not None:
+                user_id = int(raw_user_id)
             async with AsyncSessionLocal() as db:
-                result = await db.execute(select(User).where(User.id == user_id))
+                if user_id is not None:
+                    result = await db.execute(select(User).where(User.id == user_id))
+                else:
+                    result = None
                 user = result.scalar_one_or_none()
                 if user:
                     username = user.username
         except Exception:
             pass
 
-    await room_manager.connect(room_id, websocket, username)
+    await room_manager.connect(room_id, websocket, username, user_id)
 
     try:
         # 系统提示：加入
@@ -215,43 +240,158 @@ async def websocket_endpoint(
             timestamp=int(time.time() * 1000),
             type=chat_pb2.MessageType.SYSTEM,
         )
-        await room_manager.broadcast(room_id, join_msg.SerializeToString())
+        await room_manager.broadcast(room_id, chat_pb2.WsEnvelope(chat=join_msg).SerializeToString())
         
-        # 发送当前画画人状态和画布内容给新加入的用户
-        current_drawer = room_manager.room_id_to_drawer.get(room_id)
-        if current_drawer:
-            # 发送画画人状态
-            drawer_state_msg = chat_pb2.ChatMessage(
-                user="System",
-                room_id=room_id,
-                content=current_drawer,
-                timestamp=int(time.time() * 1000),
-                type=chat_pb2.MessageType.DRAWING_STATE,
-            )
-            await room_manager._send_to_connection(room_id, websocket, drawer_state_msg.SerializeToString())
-            
-            # 如果有画布内容，发送给新用户
-            canvas_data = room_manager.room_id_to_canvas_data.get(room_id)
-            if canvas_data:
-                canvas_msg = chat_pb2.ChatMessage(
-                    user=current_drawer,
+        # 检查房间模式，发送相应的状态信息
+        mode = room_manager.room_id_to_mode.get(room_id, RoomMode.NONE)
+        
+        if mode == RoomMode.DRAWING:
+            # 发送当前画画人状态和画布内容给新加入的用户
+            current_drawer = room_manager.room_id_to_drawer.get(room_id)
+            if current_drawer:
+                # 发送画画人状态
+                drawer_state_msg = chat_pb2.ChatMessage(
+                    user="System",
                     room_id=room_id,
-                    content=canvas_data,
+                    content=current_drawer,
                     timestamp=int(time.time() * 1000),
-                    type=chat_pb2.MessageType.DRAWING,
+                    type=chat_pb2.MessageType.DRAWING_STATE,
                 )
-                await room_manager._send_to_connection(room_id, websocket, canvas_msg.SerializeToString())
+                await room_manager._send_to_connection(
+                    room_id,
+                    websocket,
+                    chat_pb2.WsEnvelope(chat=drawer_state_msg).SerializeToString(),
+                )
+                
+                # 如果有画布内容，发送给新用户
+                canvas_data = room_manager.room_id_to_canvas_data.get(room_id)
+                if canvas_data:
+                    canvas_msg = chat_pb2.ChatMessage(
+                        user=current_drawer,
+                        room_id=room_id,
+                        content=canvas_data,
+                        timestamp=int(time.time() * 1000),
+                        type=chat_pb2.MessageType.DRAWING,
+                    )
+                    await room_manager._send_to_connection(
+                        room_id,
+                        websocket,
+                        chat_pb2.WsEnvelope(chat=canvas_msg).SerializeToString(),
+                    )
+        elif mode == RoomMode.GAME:
+            # 发送当前游戏状态给新加入的用户
+            gm = live_war_game_manager.game_manager
+            uid = room_manager.websocket_to_user_id.get(websocket)
+            state = gm.build_state_for_user(room_id, uid)
+            if state:
+                game_state_msg = game_pb2.GameMessage(
+                    type=game_pb2.GameMessage.GAME_STATE,
+                    game_state=state,
+                )
+                await room_manager._send_to_connection(
+                    room_id,
+                    websocket,
+                    chat_pb2.WsEnvelope(game=game_state_msg).SerializeToString(),
+                )
 
         while True:
             data = await websocket.receive_bytes()
-            
-            # 客户端发来的应为 ChatMessage
+
+            # 顶层封包：WsEnvelope
             try:
-                incoming = chat_pb2.ChatMessage()
-                incoming.ParseFromString(data)
+                envelope = chat_pb2.WsEnvelope()
+                envelope.ParseFromString(data)
             except Exception:
                 # 无法解析则忽略
                 continue
+
+            # 先解析游戏消息（livewar）
+            if envelope.HasField("game"):
+                # 房间处于 DRAWING 模式时不允许启动游戏
+                mode = room_manager.room_id_to_mode.get(room_id, RoomMode.NONE)
+                if mode == RoomMode.DRAWING:
+                    err = game_pb2.GameMessage(
+                        type=game_pb2.GameMessage.ERROR,
+                        error=game_pb2.ErrorPayload(message="当前房间正在画画，不能开始游戏"),
+                    )
+                    await websocket.send_bytes(
+                        chat_pb2.WsEnvelope(game=err).SerializeToString()
+                    )
+                    continue
+
+                # 设置房间模式为 GAME
+                room_manager.room_id_to_mode[room_id] = RoomMode.GAME
+
+                # 分发给简化版 LiveWar 管理器
+                gm = live_war_game_manager.game_manager
+                uid = room_manager.websocket_to_user_id.get(websocket)
+
+                # 设置广播回调（如果还没有设置）
+                if room_id not in gm.broadcast_callbacks:
+                    async def broadcast_callback(msg: game_pb2.GameMessage):
+                        """游戏循环的广播回调"""
+                        connections = list(room_manager.room_id_to_connections.get(room_id, set()))
+                        for ws in connections:
+                            uid_ws = room_manager.websocket_to_user_id.get(ws)
+                            if msg.type == game_pb2.GameMessage.GAME_STATE:
+                                # 使用裁剪后的状态
+                                state = gm.build_state_for_user(room_id, uid_ws)
+                                if state is None:
+                                    continue
+                                msg_to_send = game_pb2.GameMessage(
+                                    type=game_pb2.GameMessage.GAME_STATE,
+                                    game_state=state,
+                                )
+                            else:
+                                msg_to_send = msg
+                            try:
+                                await ws.send_bytes(
+                                    chat_pb2.WsEnvelope(game=msg_to_send).SerializeToString()
+                                )
+                            except Exception:
+                                pass  # 连接已断开，忽略
+
+                    gm.set_broadcast_callback(room_id, broadcast_callback)
+
+                outgoing_msgs = gm.handle_envelope_from_client(
+                    room_id=room_id,
+                    user_id=uid,
+                    username=username,
+                    msg=envelope.game,
+                )
+
+                # 按玩家/观战者裁剪状态并广播
+                connections = list(room_manager.room_id_to_connections.get(room_id, set()))
+                for ws in connections:
+                    uid_ws = room_manager.websocket_to_user_id.get(ws)
+                    for gm_msg in outgoing_msgs:
+                        if gm_msg.type == game_pb2.GameMessage.GAME_STATE:
+                            # 使用裁剪后的状态替换
+                            state = gm.build_state_for_user(room_id, uid_ws)
+                            if state is None:
+                                continue
+                            gm_msg_to_send = game_pb2.GameMessage(
+                                type=game_pb2.GameMessage.GAME_STATE,
+                                game_state=state,
+                            )
+                        else:
+                            gm_msg_to_send = gm_msg
+
+                        await ws.send_bytes(
+                            chat_pb2.WsEnvelope(game=gm_msg_to_send).SerializeToString()
+                        )
+
+                # 如果游戏房间已无玩家，自动回到 NONE 模式
+                if not gm.has_active_players(room_id):
+                    room_manager.room_id_to_mode[room_id] = RoomMode.NONE
+
+                continue
+
+            # 目前仅处理聊天/画图消息
+            if not envelope.HasField("chat"):
+                continue
+
+            incoming = envelope.chat
 
             # 处理用户文本消息和音乐消息
             if incoming.type == chat_pb2.MessageType.USER_TEXT:
@@ -262,7 +402,7 @@ async def websocket_endpoint(
                     timestamp=int(time.time() * 1000),
                     type=chat_pb2.MessageType.USER_TEXT,
                 )
-                await room_manager.broadcast(room_id, outgoing.SerializeToString())
+                await room_manager.broadcast(room_id, chat_pb2.WsEnvelope(chat=outgoing).SerializeToString())
             elif incoming.type == chat_pb2.MessageType.MUSIC:
                 # 设置音乐消息的延迟播放时间戳（0.5秒后）
                 delayed_timestamp = int((time.time() + 0.5) * 1000)
@@ -273,7 +413,7 @@ async def websocket_endpoint(
                     timestamp=delayed_timestamp,
                     type=chat_pb2.MessageType.MUSIC,
                 )
-                await room_manager.broadcast(room_id, outgoing.SerializeToString())
+                await room_manager.broadcast(room_id, chat_pb2.WsEnvelope(chat=outgoing).SerializeToString())
             elif incoming.type == chat_pb2.MessageType.DRAWING_REQUEST:
                 # 申请成为画画人
                 current_drawer = room_manager.room_id_to_drawer.get(room_id)
@@ -296,7 +436,7 @@ async def websocket_endpoint(
                         timestamp=int(time.time() * 1000),
                         type=chat_pb2.MessageType.DRAWING_REQUEST,
                     )
-                    await room_manager.broadcast(room_id, request_msg.SerializeToString())
+                    await room_manager.broadcast(room_id, chat_pb2.WsEnvelope(chat=request_msg).SerializeToString())
             elif incoming.type == chat_pb2.MessageType.DRAWING_REQUEST_APPROVE:
                 # 同意画画申请：只有当前画画人可以同意
                 current_drawer = room_manager.room_id_to_drawer.get(room_id)
@@ -327,7 +467,7 @@ async def websocket_endpoint(
                         timestamp=int(time.time() * 1000),
                         type=chat_pb2.MessageType.DRAWING,
                     )
-                    await room_manager.broadcast(room_id, outgoing.SerializeToString())
+                    await room_manager.broadcast(room_id, chat_pb2.WsEnvelope(chat=outgoing).SerializeToString())
             elif incoming.type == chat_pb2.MessageType.DRAWING_CLEAR:
                 # 清空画布：只有当前画画人可以清空
                 current_drawer = room_manager.room_id_to_drawer.get(room_id)
@@ -342,7 +482,7 @@ async def websocket_endpoint(
                         timestamp=int(time.time() * 1000),
                         type=chat_pb2.MessageType.DRAWING_CLEAR,
                     )
-                    await room_manager.broadcast(room_id, outgoing.SerializeToString())
+                    await room_manager.broadcast(room_id, chat_pb2.WsEnvelope(chat=outgoing).SerializeToString())
             elif incoming.type == chat_pb2.MessageType.DRAWING_STOP:
                 # 退出画画：只有当前画画人可以退出
                 current_drawer = room_manager.room_id_to_drawer.get(room_id)
@@ -355,6 +495,9 @@ async def websocket_endpoint(
                     room_manager.room_id_to_drawer.pop(room_id, None)
                     room_manager.room_id_to_canvas_data.pop(room_id, None)
                     room_manager.room_id_to_drawer_start_time.pop(room_id, None)
+                    # 如果没有画画人且没有画布，恢复房间模式为 NONE（避免与游戏冲突）
+                    if room_manager.room_id_to_mode.get(room_id) == RoomMode.DRAWING:
+                        room_manager.room_id_to_mode[room_id] = RoomMode.NONE
                     # 广播退出画画消息（清空画画人状态）
                     drawer_state_msg = chat_pb2.ChatMessage(
                         user="System",
@@ -363,7 +506,9 @@ async def websocket_endpoint(
                         timestamp=int(time.time() * 1000),
                         type=chat_pb2.MessageType.DRAWING_STATE,
                     )
-                    await room_manager.broadcast(room_id, drawer_state_msg.SerializeToString())
+                    await room_manager.broadcast(
+                        room_id, chat_pb2.WsEnvelope(chat=drawer_state_msg).SerializeToString()
+                    )
 
     except WebSocketDisconnect:
         pass
@@ -376,4 +521,4 @@ async def websocket_endpoint(
             timestamp=int(time.time() * 1000),
             type=chat_pb2.MessageType.SYSTEM,
         )
-        await room_manager.broadcast(room_id, leave_msg.SerializeToString())
+        await room_manager.broadcast(room_id, chat_pb2.WsEnvelope(chat=leave_msg).SerializeToString())

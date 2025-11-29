@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package chat;
 
+import "game.proto";
+
 message ChatMessage {
   string user = 1;        // 发送者用户名
   int32 room_id = 2;      // 房间号
@@ -24,3 +26,12 @@ enum MessageType {
   DRAWING_STOP = 10; // 退出画画
   DRAWING_REQUEST_APPROVE = 11; // 同意画画申请
 }
+
+// WebSocket 顶层封包：统一封装聊天和游戏消息
+message WsEnvelope {
+  oneof payload {
+    ChatMessage chat = 1;
+    livewar.GameMessage game = 2;
+  }
+}
+
