@@ -154,7 +154,7 @@ class RoomGameState:
 
     # 地图 / 基地 / 单位
     width: int = 60
-    height: int = 40
+    height: int = 60
     red_base: BaseState | None = None
     blue_base: BaseState | None = None
     units: List[UnitState] = field(default_factory=list)
@@ -429,9 +429,9 @@ class LiveWarGameManager:
         """确保房间有基础地图和基地"""
         if room_id not in self.room_states:
             state = RoomGameState()
-            # 简单地图：宽60高40，红方在左下角，蓝方在右上角
+            # 简单地图：宽60高60，红方在左下角，蓝方在右上角
             state.width = 60
-            state.height = 40
+            state.height = 60
             state.red_base = BaseState(x=8, y=state.height - 8, hp=1000, hp_max=1000)  # 左下角
             state.blue_base = BaseState(x=state.width - 8, y=8, hp=1000, hp_max=1000)  # 右上角
             # 初始矿场会在 _spawn_initial_mine_fields 中生成，这里不生成

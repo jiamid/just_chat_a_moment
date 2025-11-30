@@ -154,9 +154,8 @@
             >
               {{ showPlayerList ? '▼' : '▶' }} Players
             </button>
-          </div>
-          <!-- 玩家列表展开区域 -->
-          <div v-if="showPlayerList" class="player-list-container pixel-style">
+            <!-- 玩家列表展开区域 -->
+            <div v-if="showPlayerList" class="player-list-container pixel-style">
             <div class="player-list-columns">
               <div class="player-list-column red-team">
                 <div class="player-list-header pixel-text">Red Team</div>
@@ -185,6 +184,7 @@
                 </div>
               </div>
             </div>
+            </div>
           </div>
         </div>
 
@@ -209,25 +209,10 @@
           </div>
         </div>
 
-        <!-- 底部：游戏未开始时显示退出按钮，已开始时显示能量栏和单位生成 -->
-        <div v-if="inGame && !isGameSpectator && currentPlayer" class="game-bottom-panel">
-          <!-- 游戏未开始时：显示巨大的退出按钮 -->
-          <div v-if="!isGameStarted" class="game-exit-container">
-            <button
-              class="game-exit-btn pixel-text"
-              :class="{
-                'red-team': currentPlayer && currentPlayer.team === 'red',
-                'blue-team': currentPlayer && currentPlayer.team === 'blue'
-              }"
-              :disabled="!isConnected"
-              @click="leaveGame"
-            >
-              退出队伍
-            </button>
-          </div>
-
-          <!-- 游戏已开始时：显示能量栏和单位生成 -->
-          <template v-else>
+        <!-- 游戏控制按钮 -->
+        <div class="game-controls">
+          <!-- 已加入队伍且游戏已开始：显示能量栏和单位生成 -->
+          <template v-if="inGame && !isGameSpectator && currentPlayer && isGameStarted">
             <div class="player-stats-row">
               <div class="energy-display">
                 <span class="energy-icon">⚡</span>
@@ -270,11 +255,22 @@
               </button>
             </div>
           </template>
-        </div>
-
-        <!-- 观战者/未加入游戏时的控制按钮 -->
-        <div v-else class="game-controls">
-          <div v-if="!inGame" class="join-buttons-container">
+          <!-- 已加入队伍但游戏未开始：显示退出按钮 -->
+          <div v-else-if="inGame && !isGameSpectator && currentPlayer" class="exit-button-container">
+            <button
+              class="game-exit-btn pixel-text"
+              :class="{
+                'red-team': currentPlayer && currentPlayer.team === 'red',
+                'blue-team': currentPlayer && currentPlayer.team === 'blue'
+              }"
+              :disabled="!isConnected"
+              @click="leaveGame"
+            >
+              退出队伍
+            </button>
+          </div>
+          <!-- 未加入队伍：显示加入按钮 -->
+          <div v-else-if="!inGame" class="join-buttons-container">
             <button
               class="join-team-btn pixel-text join-red-btn"
               :disabled="!isConnected"
@@ -290,8 +286,9 @@
               加入蓝方
             </button>
           </div>
+          <!-- 观战者：显示退出游戏按钮 -->
           <button
-            v-if="inGame"
+            v-else-if="inGame"
             class="drawing-btn stop-btn pixel-text"
             :disabled="!isConnected"
             @click="leaveGame"
@@ -512,11 +509,6 @@
         </div>
       </div>
 
-      <!-- 系统消息提示条 -->
-      <div v-if="systemMessage" ref="systemNotification" class="system-notification" :style="systemNotificationStyle">
-        {{ systemMessage }}
-      </div>
-
       <!-- 中间：消息区域 -->
       <div class="chat-main" @click="hideMobileNavbar(); hideMusicMenu()">
         <!-- 未选择房间时的提示 -->
@@ -599,9 +591,8 @@
                 >
                   {{ showPlayerList ? '▼' : '▶' }} Players
                 </button>
-              </div>
-              <!-- 玩家列表展开区域 -->
-              <div v-if="showPlayerList" class="player-list-container pixel-style">
+                <!-- 玩家列表展开区域 -->
+                <div v-if="showPlayerList" class="player-list-container pixel-style">
                 <div class="player-list-columns">
                   <div class="player-list-column red-team">
                     <div class="player-list-header pixel-text">Red Team</div>
@@ -630,6 +621,7 @@
                     </div>
                   </div>
                 </div>
+                </div>
               </div>
             </div>
 
@@ -638,25 +630,10 @@
               <LiveWarCanvas v-if="gameState" :gameState="gameState" />
             </div>
 
-            <!-- 底部：游戏未开始时显示退出按钮，已开始时显示能量栏和单位生成 -->
-            <div v-if="inGame && !isGameSpectator && currentPlayer" class="game-bottom-panel">
-              <!-- 游戏未开始时：显示巨大的退出按钮 -->
-              <div v-if="!isGameStarted" class="game-exit-container">
-                <button
-                  class="game-exit-btn pixel-text"
-                  :class="{
-                    'red-team': currentPlayer && currentPlayer.team === 'red',
-                    'blue-team': currentPlayer && currentPlayer.team === 'blue'
-                  }"
-                  :disabled="!isConnected"
-                  @click="leaveGame"
-                >
-                  退出队伍
-                </button>
-              </div>
-
-              <!-- 游戏已开始时：显示能量栏和单位生成 -->
-              <template v-else>
+            <!-- 游戏控制按钮 -->
+            <div class="game-controls">
+              <!-- 已加入队伍且游戏已开始：显示能量栏和单位生成 -->
+              <template v-if="inGame && !isGameSpectator && currentPlayer && isGameStarted">
                 <div class="player-stats-row">
                   <div class="energy-display">
                     <span class="energy-icon">⚡</span>
@@ -699,11 +676,22 @@
                   </button>
                 </div>
               </template>
-            </div>
-
-            <!-- 观战者/未加入游戏时的控制按钮 -->
-            <div v-else class="game-controls">
-              <div v-if="!inGame" class="join-buttons-container">
+              <!-- 已加入队伍但游戏未开始：显示退出按钮 -->
+              <div v-else-if="inGame && !isGameSpectator && currentPlayer" class="exit-button-container">
+                <button
+                  class="game-exit-btn pixel-text"
+                  :class="{
+                    'red-team': currentPlayer && currentPlayer.team === 'red',
+                    'blue-team': currentPlayer && currentPlayer.team === 'blue'
+                  }"
+                  :disabled="!isConnected"
+                  @click="leaveGame"
+                >
+                  退出队伍
+                </button>
+              </div>
+              <!-- 未加入队伍：显示加入按钮 -->
+              <div v-else-if="!inGame" class="join-buttons-container">
                 <button
                   class="join-team-btn pixel-text join-red-btn"
                   :disabled="!isConnected"
@@ -719,8 +707,9 @@
                   加入蓝方
                 </button>
               </div>
+              <!-- 观战者：显示退出游戏按钮 -->
               <button
-                v-if="inGame"
+                v-else-if="inGame"
                 class="drawing-btn stop-btn pixel-text"
                 :disabled="!isConnected"
                 @click="leaveGame"
@@ -820,6 +809,10 @@
 
           <!-- 消息列表 -->
           <div class="messages-container" ref="messagesContainer">
+            <!-- 系统消息提示条 -->
+            <div v-if="systemMessage" ref="systemNotification" class="system-notification" :style="systemNotificationStyle">
+              {{ systemMessage }}
+            </div>
             <div
               v-for="message in messages"
               :key="message.id"
@@ -1773,26 +1766,17 @@ export default {
       }, 3000)
     },
     updateSystemNotificationStyle () {
-      // 获取聊天区域的元素
-      const rightChat = this.$el?.querySelector('.right-chat')
-      if (!rightChat) {
-        // 如果找不到聊天区域，使用默认样式
-        this.systemNotificationStyle = {
-          left: '50%',
-          transform: 'translateX(-50%)',
-          width: 'auto',
-          maxWidth: '90%'
-        }
+      // 获取messages-container元素
+      const messagesContainer = this.$refs.messagesContainer
+      if (!messagesContainer) {
+        // 如果找不到消息容器，使用默认样式
+        this.systemNotificationStyle = {}
         return
       }
 
-      const rect = rightChat.getBoundingClientRect()
-      const margin = 5 // 左右和上方的间距
-      this.systemNotificationStyle = {
-        left: `${rect.left + margin}px`, // 左边距5px
-        width: `${rect.width - margin * 2}px`, // 宽度减去左右各5px
-        transform: 'none' // 移除居中变换，使用固定位置
-      }
+      // 由于system-notification现在在messages-container内部，使用absolute定位
+      // 样式已经在CSS中设置，这里只需要确保容器有相对定位
+      this.systemNotificationStyle = {}
     },
 
     reconnect () {
@@ -2400,27 +2384,32 @@ html, body {
   right: 0;
   bottom: 0;
   width: 100%;
+  padding: 5px; /* 为所有区域留出5px间距 */
+  box-sizing: border-box;
+  gap: 5px; /* 区域之间的间距 */
 }
 
 /* 左侧导航栏 */
 .left-sidebar {
   width: 250px;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.03);
   color: #e6e6f0;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  box-shadow: 8px 0 32px rgba(0,0,0,0.3);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
   transition: width 0.3s ease, transform 0.3s ease;
   z-index: 1000;
   position: relative;
+  overflow: hidden;
 }
 
 /* 折叠状态 */
 .left-sidebar.collapsed {
-  width: 50px;
+  width: 40px;
 }
 
 .left-sidebar.collapsed .sidebar-content {
@@ -2766,7 +2755,12 @@ button,
   min-width: 0;
   min-height: 0; /* 允许收缩 */
   overflow: hidden;
-  border-right: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
   /* 确保画布区域始终在可见区域内 */
   max-height: 100vh;
 }
@@ -2779,7 +2773,12 @@ button,
   min-width: 0;
   min-height: 0; /* 允许收缩 */
   overflow: hidden;
-  border-right: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
   /* 确保游戏区域始终在可见区域内 */
   max-height: 100vh;
 }
@@ -2794,6 +2793,7 @@ button,
   overflow: hidden; /* 防止内容溢出 */
   position: relative;
   z-index: 1;
+  gap: 5px; /* 聊天区域内部三个气泡之间的间距 */
 }
 
 /* 当有画图面板时，右侧聊天区域固定宽度（仅桌面端） */
@@ -2841,8 +2841,10 @@ button,
 
 /* 系统消息提示条 */
 .system-notification {
-  position: fixed; /* 固定定位，悬浮在页面上方 */
-  top: 70px; /* 位于标题栏下方（chat-header高度约65px + 5px间距） */
+  position: absolute; /* 绝对定位，相对于messages-container */
+  top: 0.5rem; /* 位于messages-container顶部，与边缘保持间距 */
+  left: 0.5rem; /* 从左侧开始，与边缘保持间距 */
+  right: 0.5rem; /* 延伸到右侧，与边缘保持间距 */
   z-index: 9999; /* 确保在最上层 */
   min-height: 30px;
   padding: 8px 20px; /* 内边距，使内容不贴边 */
@@ -2862,13 +2864,14 @@ button,
 }
 
 .chat-header {
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.03);
   padding: 1rem 1.5rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   position: relative;
@@ -2877,6 +2880,7 @@ button,
   box-sizing: border-box;
   /* 统一高度为65px */
   height: 65px;
+  flex-shrink: 0; /* 防止被压缩 */
 }
 
 .header-left {
@@ -2963,6 +2967,13 @@ button,
   flex-direction: column;
   overflow: hidden;
   min-height: 0; /* 确保flex子元素可以正确收缩 */
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  position: relative;
 }
 
 /* 移动端游戏面板样式 */
@@ -2970,12 +2981,12 @@ button,
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: rgba(15, 23, 42, 0.8);
-  border: 1px solid rgba(148, 163, 184, 0.4);
+  background: transparent; /* 在气泡容器内，使用父容器背景 */
+  border: none; /* 在气泡容器内，不需要边框 */
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   margin-bottom: 1rem;
-  border-radius: 12px;
+  border-radius: 0; /* 在气泡容器内，不需要圆角 */
   overflow: hidden;
 }
 
@@ -2984,10 +2995,14 @@ button,
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   overflow: hidden;
   min-width: 0;
   min-height: 0;
+  border-radius: 0; /* 画图面板在气泡容器内，不需要额外圆角 */
 }
 
 /* LiveWar 游戏面板 - 新布局 */
@@ -2995,10 +3010,12 @@ button,
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: rgba(15, 23, 42, 0.8);
-  border: 1px solid rgba(148, 163, 184, 0.4);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
+  border-radius: 0; /* 游戏面板在气泡容器内，不需要额外圆角 */
+  overflow: hidden;
 }
 
 /* 顶部：红蓝方血量（像素风格） */
@@ -3026,6 +3043,7 @@ button,
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
+  position: relative; /* 为 player-list-container 提供定位上下文 */
 }
 
 .top-bar-double-row {
@@ -3260,9 +3278,9 @@ button,
 /* 玩家列表展开区域（悬浮在上层） */
 .player-list-container {
   position: absolute;
-  top: 100%; /* 在顶部栏下方 */
-  left: 1.5rem; /* 与 game-top-bar 的 padding-left 对齐 */
-  right: 1.5rem; /* 与 game-top-bar 的 padding-right 对齐 */
+  top: 100%; /* 紧贴在 top-bar-row 下方 */
+  left: 0; /* 相对于 top-bar-row 左对齐 */
+  right: 0; /* 相对于 top-bar-row 右对齐 */
   width: auto; /* 使用 left/right 来控制宽度 */
   background: rgba(0, 0, 0, 0.9);
   border: 2px solid rgba(255, 255, 255, 0.3);
@@ -3275,6 +3293,7 @@ button,
   overflow-y: auto; /* 如果内容过多，可以滚动 */
   /* 确保不影响父元素高度计算 */
   pointer-events: auto; /* 确保可以交互 */
+  margin-top: 0; /* 确保没有额外间距 */
 }
 
 .player-list-columns {
@@ -3424,6 +3443,7 @@ button,
   padding: 1rem 1.5rem;
   background: rgba(0, 0, 0, 0.3);
   border-top: 1px solid rgba(255, 255, 255, 0.1);
+  min-height: fit-content;
 }
 
 /* 游戏未开始时的退出按钮容器 */
@@ -3439,14 +3459,20 @@ button,
 .game-exit-btn {
   width: 100%;
   max-width: 400px;
-  height: 80px;
-  border: 4px solid rgba(255, 255, 255, 0.3);
+  height: auto;
+  min-height: 60px;
+  padding: 0.75rem 1rem;
+  border: 3px solid rgba(255, 255, 255, 0.3);
   color: #fff;
-  font-size: 1.5rem;
+  font-size: 1rem;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.2s;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* 红方退出按钮 */
@@ -3593,17 +3619,27 @@ button,
 /* 观战者控制按钮 */
 .game-controls {
   display: flex;
+  flex-direction: column;
   justify-content: center;
   gap: 1rem;
   padding: 1rem 1.5rem;
   background: rgba(0, 0, 0, 0.3);
   border-top: 1px solid rgba(255, 255, 255, 0.1);
+  min-height: fit-content;
 }
 
 .join-buttons-container {
   display: flex;
   width: 100%;
   gap: 0.5rem;
+  align-items: center;
+}
+
+.exit-button-container {
+  display: flex;
+  width: 100%;
+  justify-content: center;
+  align-items: center;
 }
 
 .join-team-btn {
@@ -3622,6 +3658,10 @@ button,
     0 2px 0 rgba(0, 0, 0, 0.5);
   border-radius: 0;
   box-sizing: border-box;
+  min-height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .join-team-btn:disabled {
@@ -3898,6 +3938,8 @@ button,
   flex-direction: column;
   min-width: 0; /* 允许收缩 */
   min-height: 0;
+  position: relative;
+  z-index: 1;
 }
 
 /* 美化滚动条样式 */
@@ -3986,14 +4028,16 @@ button,
 
 .input-container {
   padding: 1rem 1.5rem;
-  background: rgba(255, 255, 255, 0.06);
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
   display: flex;
   gap: 1rem;
-  box-shadow: 0 -4px 20px rgba(0,0,0,0.25);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   transition: transform 0.3s ease;
+  flex-shrink: 0; /* 防止被压缩 */
 }
 
 /* 音乐容器（头部） */
@@ -4189,6 +4233,31 @@ button,
   box-shadow: 0 4px 8px rgba(52, 152, 219, 0.3);
 }
 
+/* 中等宽度屏幕响应式设计 */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .input-container {
+    padding: 0.875rem 1.25rem;
+  }
+
+  .message-input {
+    padding: 0.625rem 0.875rem;
+    font-size: 0.95rem;
+  }
+
+  .send-btn {
+    padding: 0.625rem 1.25rem;
+    font-size: 0.95rem;
+  }
+
+  .chat-header {
+    padding: 0.875rem 1.25rem;
+  }
+
+  .chat-header h2 {
+    font-size: 1.3rem;
+  }
+}
+
 /* 响应式设计 */
 @media (max-width: 768px) {
   .chat-container {
@@ -4196,11 +4265,14 @@ button,
     height: 100vh;
     height: 100dvh; /* 移动端使用动态视口高度 */
     overflow: hidden;
+    padding: 5px; /* 保持5px间距 */
+    gap: 5px;
   }
 
   .right-chat {
     width: 100%;
     min-height: 0;
+    gap: 5px; /* 保持气泡间距 */
   }
 
   /* 移动端 VS 部分自适应 */
@@ -4236,6 +4308,7 @@ button,
 
   .left-sidebar {
     width: 280px; /* 移动端导航栏宽度 */
+    border-radius: 12px; /* 保持圆角 */
   }
 
   /* 确保移动端用户区域正确显示 */
@@ -4259,6 +4332,7 @@ button,
 
   .chat-header {
     padding: 1rem;
+    border-radius: 12px; /* 保持圆角 */
   }
 
   .chat-header h2 {
@@ -4293,18 +4367,25 @@ button,
 
   .input-container {
     padding: 1rem;
+    border-radius: 12px; /* 保持圆角 */
+  }
+
+  .chat-main {
+    border-radius: 12px; /* 保持圆角 */
   }
 
   /* 移动端键盘弹起时调整输入框样式 */
   .input-container.keyboard-open {
     padding: 0.75rem 1rem;
-    border-radius: 0;
+    border-radius: 12px; /* 保持圆角 */
     position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
+    bottom: 5px; /* 保持5px底部间距 */
+    left: 5px; /* 保持5px左侧间距 */
+    right: 5px; /* 保持5px右侧间距 */
+    width: calc(100% - 10px); /* 减去左右间距 */
     z-index: 998; /* 确保不会遮挡导航栏(z-index: 1000) */
     transform: translateY(0);
+    margin: 0;
   }
 
   /* 移动端导航栏展开时隐藏键盘弹起状态的输入框 */
@@ -4766,10 +4847,13 @@ button,
   .right-chat.with-drawing .mobile-drawing-panel {
     flex: 0 0 auto; /* 不自动伸缩，根据内容计算高度 */
     min-height: 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    border: none; /* 在气泡容器内，不需要边框 */
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0; /* 在气泡容器内，不需要圆角 */
     display: flex;
     flex-direction: column;
     overflow: visible; /* 允许内容显示 */
+    background: transparent; /* 使用父容器背景 */
   }
 
   /* 移动端：确保drawing-container保持4:3比例，但允许在flex布局中正确显示 */

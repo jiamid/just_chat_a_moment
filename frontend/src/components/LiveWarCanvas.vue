@@ -47,9 +47,9 @@ export default {
 
       const dpr = window.devicePixelRatio || 1
       const mapWidth = (this.gameState && this.gameState.room && this.gameState.room.width) || 60
-      const mapHeight = (this.gameState && this.gameState.room && this.gameState.room.height) || 40
+      const mapHeight = (this.gameState && this.gameState.room && this.gameState.room.height) || 60
 
-      // 计算画布的逻辑尺寸（保持固定比例 60:40 = 3:2）
+      // 计算画布的逻辑尺寸（保持固定比例 60:60 = 1:1）
       const logicalWidth = mapWidth * this.TILE_SIZE
       const logicalHeight = mapHeight * this.TILE_SIZE
 
@@ -92,7 +92,7 @@ export default {
       const state = this.gameState
 
       const mapWidth = (state && state.room && state.room.width) || 60
-      const mapHeight = (state && state.room && state.room.height) || 40
+      const mapHeight = (state && state.room && state.room.height) || 60
       const width = mapWidth * this.TILE_SIZE
       const height = mapHeight * this.TILE_SIZE
 
@@ -802,8 +802,8 @@ export default {
   border: 1px solid #3e3e42;
   background: #1e1e1e;
   /* 保持固定宽高比，避免形变 */
-  /* 地图比例：60x40 = 3:2 */
-  aspect-ratio: 3 / 2;
+  /* 地图比例：60x60 = 1:1 */
+  aspect-ratio: 1 / 1;
   /* 确保画布在容器中保持比例，不拉伸 */
   width: 100%;
   max-width: 100%;
