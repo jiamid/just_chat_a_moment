@@ -44,6 +44,8 @@ class RoomManager:
         self.room_id_to_websocket_to_username: Dict[int, Dict[WebSocket, str]] = {}
         # 房间模式：none / drawing / game
         self.room_id_to_mode: Dict[int, RoomMode] = {}
+        # 游戏房间销毁倒计时任务：房间ID -> 倒计时任务
+        self.room_id_to_game_destroy_tasks: Dict[int, asyncio.Task] = {}
 
     async def connect(self, room_id: int, websocket: WebSocket, username: str, user_id: Optional[int]) -> None:
         await websocket.accept()
@@ -51,6 +53,13 @@ class RoomManager:
         self.websocket_to_username[websocket] = username
         self.websocket_to_user_id[websocket] = user_id
         self.room_id_to_websocket_to_username.setdefault(room_id, {})[websocket] = username
+        
+        # 如果是游戏模式，取消销毁倒计时（有人重新连接）
+        if room_id in self.room_id_to_mode and self.room_id_to_mode[room_id] == RoomMode.GAME:
+            if room_id in self.room_id_to_game_destroy_tasks:
+                self.room_id_to_game_destroy_tasks[room_id].cancel()
+                del self.room_id_to_game_destroy_tasks[room_id]
+                print(f"[RoomManager] Cancelled game destroy countdown for room {room_id} (user reconnected)", flush=True)
         
         # 如果是第一个连接，启动定时广播任务
         if len(self.room_id_to_connections[room_id]) == 1:
@@ -82,20 +91,58 @@ class RoomManager:
                 self.room_id_to_requests[room_id].discard(username)
             
             if not connections:
-                # 房间为空时，取消定时任务并清理所有状态
-                if room_id in self.room_tasks:
-                    self.room_tasks[room_id].cancel()
-                    del self.room_tasks[room_id]
-                self.room_id_to_connections.pop(room_id, None)
-                self.room_id_to_drawer.pop(room_id, None)
-                self.room_id_to_canvas_data.pop(room_id, None)
-                self.room_id_to_drawer_start_time.pop(room_id, None)
-                self.room_id_to_requests.pop(room_id, None)
-                self.room_id_to_websocket_to_username.pop(room_id, None)
-                # 取消自动退出任务
-                if room_id in self.room_id_to_auto_stop_tasks:
-                    self.room_id_to_auto_stop_tasks[room_id].cancel()
-                    del self.room_id_to_auto_stop_tasks[room_id]
+                # 房间为空时
+                # 如果是游戏模式，启动60秒销毁倒计时
+                if room_id in self.room_id_to_mode and self.room_id_to_mode[room_id] == RoomMode.GAME:
+                    # 取消之前的倒计时（如果存在）
+                    if room_id in self.room_id_to_game_destroy_tasks:
+                        self.room_id_to_game_destroy_tasks[room_id].cancel()
+                    
+                    # 启动60秒倒计时
+                    async def destroy_game_after_delay():
+                        try:
+                            await asyncio.sleep(60)  # 等待60秒
+                            # 检查是否仍然没有连接
+                            if room_id in self.room_id_to_connections:
+                                current_connections = self.room_id_to_connections.get(room_id, set())
+                                if not current_connections:
+                                    # 60秒后仍然没有连接，销毁游戏状态
+                                    print(f"[RoomManager] Destroying game state for room {room_id} (no connections for 60s)", flush=True)
+                                    gm = live_war_game_manager.game_manager
+                                    # 停止游戏循环
+                                    gm._stop_game_loop(room_id)
+                                    # 删除游戏状态
+                                    if room_id in gm.room_states:
+                                        del gm.room_states[room_id]
+                                    # 删除广播回调
+                                    if room_id in gm.broadcast_callbacks:
+                                        del gm.broadcast_callbacks[room_id]
+                                    # 重置房间模式
+                                    self.room_id_to_mode[room_id] = RoomMode.NONE
+                                    # 清理倒计时任务记录
+                                    if room_id in self.room_id_to_game_destroy_tasks:
+                                        del self.room_id_to_game_destroy_tasks[room_id]
+                        except asyncio.CancelledError:
+                            # 倒计时被取消（有人重新连接）
+                            pass
+                    
+                    self.room_id_to_game_destroy_tasks[room_id] = asyncio.create_task(destroy_game_after_delay())
+                    print(f"[RoomManager] Started 60s destroy countdown for room {room_id} game", flush=True)
+                else:
+                    # 非游戏模式，立即清理
+                    if room_id in self.room_tasks:
+                        self.room_tasks[room_id].cancel()
+                        del self.room_tasks[room_id]
+                    self.room_id_to_connections.pop(room_id, None)
+                    self.room_id_to_drawer.pop(room_id, None)
+                    self.room_id_to_canvas_data.pop(room_id, None)
+                    self.room_id_to_drawer_start_time.pop(room_id, None)
+                    self.room_id_to_requests.pop(room_id, None)
+                    self.room_id_to_websocket_to_username.pop(room_id, None)
+                    # 取消自动退出任务
+                    if room_id in self.room_id_to_auto_stop_tasks:
+                        self.room_id_to_auto_stop_tasks[room_id].cancel()
+                        del self.room_id_to_auto_stop_tasks[room_id]
 
     async def _send_to_connection(self, room_id: int, websocket: WebSocket, data: bytes) -> None:
         """向单个连接发送数据，处理错误"""
@@ -293,6 +340,9 @@ async def websocket_endpoint(
                     websocket,
                     chat_pb2.WsEnvelope(game=game_state_msg).SerializeToString(),
                 )
+                print(f"[WebSocket] Sent initial game state to user {uid} in room {room_id}", flush=True)
+            else:
+                print(f"[WebSocket] No game state available for room {room_id}, user {uid}", flush=True)
 
         while True:
             data = await websocket.receive_bytes()
@@ -365,6 +415,11 @@ async def websocket_endpoint(
                 for ws in connections:
                     uid_ws = room_manager.websocket_to_user_id.get(ws)
                     for gm_msg in outgoing_msgs:
+                        # ERROR 消息只发送给触发错误的玩家（uid），不广播给其他人
+                        if gm_msg.type == game_pb2.GameMessage.ERROR:
+                            if uid_ws != uid:
+                                continue  # 跳过，不发送给其他玩家
+                        
                         if gm_msg.type == game_pb2.GameMessage.GAME_STATE:
                             # 使用裁剪后的状态替换
                             state = gm.build_state_for_user(room_id, uid_ws)

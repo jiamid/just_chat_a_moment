@@ -143,13 +143,13 @@ export default {
         })
       }
 
-      // 回血特效
-      if (state.room.healEffects || state.room.heal_effects) {
-        const heals = state.room.healEffects || state.room.heal_effects || []
-        heals.forEach(heal => {
-          this.drawHealEffect(ctx, heal)
-        })
-      }
+      // 回血特效 - 已移除被治疗单位的冒光特效
+      // if (state.room.healEffects || state.room.heal_effects) {
+      //   const heals = state.room.healEffects || state.room.heal_effects || []
+      //   heals.forEach(heal => {
+      //     this.drawHealEffect(ctx, heal)
+      //   })
+      // }
 
       // 能量掉落（小光点）
       if (state.room.energyDrops || state.room.energy_drops) {

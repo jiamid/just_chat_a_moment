@@ -104,7 +104,17 @@
                 </div>
               </div>
               <div class="team-units red-team">
-                <div class="units-value pixel-text">{{ redTeamUnitCount }}</div>
+                <div class="units-by-type">
+                  <div class="unit-type-item" v-for="(cfg, key) in unitTypesConfig" :key="key">
+                    <UnitIcon
+                      :unitType="key"
+                      team="red"
+                      :size="16"
+                      class="unit-type-icon"
+                    />
+                    <span class="unit-type-count pixel-text">{{ getRedTeamUnitCountByType(key) }}</span>
+                  </div>
+                </div>
               </div>
             </div>
             <div class="vs-divider-double pixel-text">RED VS BLUE</div>
@@ -122,7 +132,17 @@
                 </div>
               </div>
               <div class="team-units blue-team">
-                <div class="units-value pixel-text">{{ blueTeamUnitCount }}</div>
+                <div class="units-by-type">
+                  <div class="unit-type-item" v-for="(cfg, key) in unitTypesConfig" :key="key">
+                    <UnitIcon
+                      :unitType="key"
+                      team="blue"
+                      :size="16"
+                      class="unit-type-icon"
+                    />
+                    <span class="unit-type-count pixel-text">{{ getBlueTeamUnitCountByType(key) }}</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -189,49 +209,67 @@
           </div>
         </div>
 
-        <!-- 底部：我的能量和兵种数量（仅玩家可见） -->
+        <!-- 底部：游戏未开始时显示退出按钮，已开始时显示能量栏和单位生成 -->
         <div v-if="inGame && !isGameSpectator && currentPlayer" class="game-bottom-panel">
-          <div class="player-stats-row">
-            <div class="energy-display">
-              <span class="energy-icon">⚡</span>
-              <span class="energy-value">{{ currentPlayer.energy || 0 }}</span>
+          <!-- 游戏未开始时：显示巨大的退出按钮 -->
+          <div v-if="!isGameStarted" class="game-exit-container">
+            <button
+              class="game-exit-btn pixel-text"
+              :class="{
+                'red-team': currentPlayer && currentPlayer.team === 'red',
+                'blue-team': currentPlayer && currentPlayer.team === 'blue'
+              }"
+              :disabled="!isConnected"
+              @click="leaveGame"
+            >
+              退出队伍
+            </button>
+          </div>
+
+          <!-- 游戏已开始时：显示能量栏和单位生成 -->
+          <template v-else>
+            <div class="player-stats-row">
+              <div class="energy-display">
+                <span class="energy-icon">⚡</span>
+                <span class="energy-value">{{ currentPlayer.energy || 0 }}</span>
+              </div>
+              <div class="unit-counts">
+                <div class="unit-count-item" v-for="(cfg, key) in unitTypesConfig" :key="key">
+                  <UnitIcon
+                    :unitType="key"
+                    :team="currentPlayer.team"
+                    :size="20"
+                    class="unit-count-icon"
+                  />
+                  <span class="unit-count-value">{{ getUnitCount(key) }}</span>
+                </div>
+              </div>
             </div>
-            <div class="unit-counts">
-              <div class="unit-count-item" v-for="(cfg, key) in unitTypesConfig" :key="key">
+            <!-- 四个兵种按钮 -->
+            <div class="unit-spawn-buttons">
+              <button
+                v-for="(cfg, key) in unitTypesConfig"
+                :key="key"
+                class="unit-spawn-btn"
+                :class="{
+                  disabled: (currentPlayer.energy || 0) < cfg.cost
+                }"
+                @click="selectAndSpawnUnit(key)"
+                :disabled="(currentPlayer.energy || 0) < cfg.cost"
+              >
                 <UnitIcon
                   :unitType="key"
                   :team="currentPlayer.team"
-                  :size="20"
-                  class="unit-count-icon"
+                  :size="32"
+                  class="unit-spawn-icon"
                 />
-                <span class="unit-count-value">{{ getUnitCount(key) }}</span>
-              </div>
+                <div class="unit-spawn-info">
+                  <div class="unit-spawn-name">{{ cfg.name }}</div>
+                  <div class="unit-spawn-cost">{{ cfg.cost }}⚡</div>
+                </div>
+              </button>
             </div>
-          </div>
-          <!-- 四个兵种按钮 -->
-          <div class="unit-spawn-buttons">
-            <button
-              v-for="(cfg, key) in unitTypesConfig"
-              :key="key"
-              class="unit-spawn-btn"
-              :class="{
-                disabled: (currentPlayer.energy || 0) < cfg.cost
-              }"
-              @click="selectAndSpawnUnit(key)"
-              :disabled="(currentPlayer.energy || 0) < cfg.cost"
-            >
-              <UnitIcon
-                :unitType="key"
-                :team="currentPlayer.team"
-                :size="32"
-                class="unit-spawn-icon"
-              />
-              <div class="unit-spawn-info">
-                <div class="unit-spawn-name">{{ cfg.name }}</div>
-                <div class="unit-spawn-cost">{{ cfg.cost }}⚡</div>
-              </div>
-            </button>
-          </div>
+          </template>
         </div>
 
         <!-- 观战者/未加入游戏时的控制按钮 -->
@@ -410,11 +448,29 @@
             title="LiveWar 对战"
             style="margin-right: 0.5rem;"
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="3" y="3" width="7" height="7"></rect>
-              <rect x="14" y="3" width="7" height="7"></rect>
-              <rect x="3" y="14" width="7" height="7"></rect>
-              <rect x="14" y="14" width="7" height="7"></rect>
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="square" stroke-linejoin="miter">
+              <!-- 履带（底部） -->
+              <rect x="2.5" y="13.5" width="15" height="3" fill="none"/>
+              <!-- 履带纹理 -->
+              <line x1="5" y1="14" x2="5" y2="15.5"/>
+              <line x1="8.5" y1="14" x2="8.5" y2="15.5"/>
+              <line x1="12" y1="14" x2="12" y2="15.5"/>
+              <line x1="15.5" y1="14" x2="15.5" y2="15.5"/>
+
+              <!-- 车身（中间矩形） -->
+              <rect x="3.5" y="8.5" width="13" height="5" fill="none"/>
+
+              <!-- 炮塔（顶部小矩形） -->
+              <rect x="7.5" y="5.5" width="5" height="3.5" fill="none"/>
+
+              <!-- 炮管（从炮塔向右延伸） -->
+              <line x1="12.5" y1="7.25" x2="17.5" y2="7.25" stroke-width="1.8"/>
+              <!-- 炮口 -->
+              <line x1="17.5" y1="6.5" x2="18.5" y2="6.5"/>
+              <line x1="17.5" y1="8" x2="18.5" y2="8"/>
+
+              <!-- 闪电标志（在车身上） -->
+              <path d="M9.5 10 L10.5 10 L10 11 L11.5 11 L9.5 13 L10.5 13 L11 12 L9.5 12 Z" fill="currentColor"/>
             </svg>
           </button>
           <!-- 音乐选择按钮 -->
@@ -457,7 +513,7 @@
       </div>
 
       <!-- 系统消息提示条 -->
-      <div v-if="systemMessage" class="system-notification">
+      <div v-if="systemMessage" ref="systemNotification" class="system-notification" :style="systemNotificationStyle">
         {{ systemMessage }}
       </div>
 
@@ -493,7 +549,17 @@
                     </div>
                   </div>
                   <div class="team-units red-team">
-                    <div class="units-value pixel-text">{{ redTeamUnitCount }}</div>
+                    <div class="units-by-type">
+                      <div class="unit-type-item" v-for="(cfg, key) in unitTypesConfig" :key="key">
+                        <UnitIcon
+                          :unitType="key"
+                          team="red"
+                          :size="16"
+                          class="unit-type-icon"
+                        />
+                        <span class="unit-type-count pixel-text">{{ getRedTeamUnitCountByType(key) }}</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
                 <div class="vs-divider-double pixel-text">RED VS BLUE</div>
@@ -511,7 +577,17 @@
                     </div>
                   </div>
                   <div class="team-units blue-team">
-                    <div class="units-value pixel-text">{{ blueTeamUnitCount }}</div>
+                    <div class="units-by-type">
+                      <div class="unit-type-item" v-for="(cfg, key) in unitTypesConfig" :key="key">
+                        <UnitIcon
+                          :unitType="key"
+                          team="blue"
+                          :size="16"
+                          class="unit-type-icon"
+                        />
+                        <span class="unit-type-count pixel-text">{{ getBlueTeamUnitCountByType(key) }}</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -562,49 +638,67 @@
               <LiveWarCanvas v-if="gameState" :gameState="gameState" />
             </div>
 
-            <!-- 底部：我的能量和兵种数量（仅玩家可见） -->
+            <!-- 底部：游戏未开始时显示退出按钮，已开始时显示能量栏和单位生成 -->
             <div v-if="inGame && !isGameSpectator && currentPlayer" class="game-bottom-panel">
-              <div class="player-stats-row">
-                <div class="energy-display">
-                  <span class="energy-icon">⚡</span>
-                  <span class="energy-value">{{ currentPlayer.energy || 0 }}</span>
+              <!-- 游戏未开始时：显示巨大的退出按钮 -->
+              <div v-if="!isGameStarted" class="game-exit-container">
+                <button
+                  class="game-exit-btn pixel-text"
+                  :class="{
+                    'red-team': currentPlayer && currentPlayer.team === 'red',
+                    'blue-team': currentPlayer && currentPlayer.team === 'blue'
+                  }"
+                  :disabled="!isConnected"
+                  @click="leaveGame"
+                >
+                  退出队伍
+                </button>
+              </div>
+
+              <!-- 游戏已开始时：显示能量栏和单位生成 -->
+              <template v-else>
+                <div class="player-stats-row">
+                  <div class="energy-display">
+                    <span class="energy-icon">⚡</span>
+                    <span class="energy-value">{{ currentPlayer.energy || 0 }}</span>
+                  </div>
+                  <div class="unit-counts">
+                    <div class="unit-count-item" v-for="(cfg, key) in unitTypesConfig" :key="key">
+                      <UnitIcon
+                        :unitType="key"
+                        :team="currentPlayer.team"
+                        :size="20"
+                        class="unit-count-icon"
+                      />
+                      <span class="unit-count-value">{{ getUnitCount(key) }}</span>
+                    </div>
+                  </div>
                 </div>
-                <div class="unit-counts">
-                  <div class="unit-count-item" v-for="(cfg, key) in unitTypesConfig" :key="key">
+                <!-- 四个兵种按钮 -->
+                <div class="unit-spawn-buttons">
+                  <button
+                    v-for="(cfg, key) in unitTypesConfig"
+                    :key="key"
+                    class="unit-spawn-btn"
+                    :class="{
+                      disabled: (currentPlayer.energy || 0) < cfg.cost
+                    }"
+                    @click="selectAndSpawnUnit(key)"
+                    :disabled="(currentPlayer.energy || 0) < cfg.cost"
+                  >
                     <UnitIcon
                       :unitType="key"
                       :team="currentPlayer.team"
-                      :size="20"
-                      class="unit-count-icon"
+                      :size="32"
+                      class="unit-spawn-icon"
                     />
-                    <span class="unit-count-value">{{ getUnitCount(key) }}</span>
-                  </div>
+                    <div class="unit-spawn-info">
+                      <div class="unit-spawn-name">{{ cfg.name }}</div>
+                      <div class="unit-spawn-cost">{{ cfg.cost }}⚡</div>
+                    </div>
+                  </button>
                 </div>
-              </div>
-              <!-- 四个兵种按钮 -->
-              <div class="unit-spawn-buttons">
-                <button
-                  v-for="(cfg, key) in unitTypesConfig"
-                  :key="key"
-                  class="unit-spawn-btn"
-                  :class="{
-                    disabled: (currentPlayer.energy || 0) < cfg.cost
-                  }"
-                  @click="selectAndSpawnUnit(key)"
-                  :disabled="(currentPlayer.energy || 0) < cfg.cost"
-                >
-                  <UnitIcon
-                    :unitType="key"
-                    :team="currentPlayer.team"
-                    :size="32"
-                    class="unit-spawn-icon"
-                  />
-                  <div class="unit-spawn-info">
-                    <div class="unit-spawn-name">{{ cfg.name }}</div>
-                    <div class="unit-spawn-cost">{{ cfg.cost }}⚡</div>
-                  </div>
-                </button>
-              </div>
+              </template>
             </div>
 
             <!-- 观战者/未加入游戏时的控制按钮 -->
@@ -750,8 +844,8 @@
         </template>
       </div>
 
-      <!-- 底部：输入区域 -->
-      <div class="input-container" v-if="roomId" :class="{
+      <!-- 底部：输入区域（移动端游戏时隐藏） -->
+      <div class="input-container" v-if="roomId && !(isMobile && showGamePanel)" :class="{
         'keyboard-open': isKeyboardOpen && isMobile && !showMobileNavbar,
         'navbar-open': showMobileNavbar && isMobile
       }">
@@ -804,6 +898,7 @@ export default {
       ],
       currentRoomCount: 0,
       systemMessage: '',
+      systemNotificationStyle: {},
       jumpRoomId: '',
       recentRooms: [],
       showMobileNavbar: false,
@@ -865,6 +960,10 @@ export default {
     },
     currentPlayer () {
       return this.gameState && this.gameState.player ? this.gameState.player : null
+    },
+    isGameStarted () {
+      // 检查游戏是否已开始
+      return this.gameState && this.gameState.game_started === true
     },
     currentBase () {
       if (!this.gameState || !this.gameState.room || !this.currentPlayer || !this.currentPlayer.team) return null
@@ -956,6 +1055,14 @@ export default {
         this.roomId = roomId
         this.messages = [] // 清空消息
         this.currentRoomCount = 0 // 重置房间人数
+        // 清空游戏相关状态
+        this.gameState = null
+        this.gameLogs = []
+        this.gamePlayers = []
+        this.gameTeamStats = { red: null, blue: null }
+        this.inGame = false
+        this.gameOverInfo = null
+        this.showGamePanel = false
         if (this.ws) {
           this.ws.close()
         }
@@ -968,6 +1075,15 @@ export default {
           this.connectWebSocket()
         }
       }
+    },
+    // 监听消息变化，自动滚动到底部
+    messages: {
+      handler () {
+        this.$nextTick(() => {
+          this.scrollToBottom()
+        })
+      },
+      deep: true
     }
   },
   methods: {
@@ -1377,6 +1493,7 @@ export default {
 
           // 先处理游戏消息（如果有）
           if (envelope.game && this.GameMessage) {
+            console.log('[WebSocket] Received game message:', envelope.game.type, envelope.game)
             this.handleGameMessage(envelope.game)
           }
 
@@ -1594,6 +1711,10 @@ export default {
         const buffer = this.WsEnvelope.encode(envelope).finish()
         this.ws.send(buffer)
         this.newMessage = ''
+        // 发送消息后自动滚动到底部
+        this.$nextTick(() => {
+          this.scrollToBottom()
+        })
       } catch (err) {
         console.error('Failed to send message:', err)
       }
@@ -1602,7 +1723,11 @@ export default {
     scrollToBottom () {
       const container = this.$refs.messagesContainer
       if (container) {
-        container.scrollTop = container.scrollHeight
+        // 使用 smooth 滚动，提供更好的用户体验
+        container.scrollTo({
+          top: container.scrollHeight,
+          behavior: 'smooth'
+        })
       }
     },
 
@@ -1638,10 +1763,36 @@ export default {
 
     showSystemMessage (content) {
       this.systemMessage = content
+      // 更新系统通知的位置和宽度，使其与聊天区域一致
+      this.$nextTick(() => {
+        this.updateSystemNotificationStyle()
+      })
       // 3秒后自动隐藏系统消息
       setTimeout(() => {
         this.systemMessage = ''
       }, 3000)
+    },
+    updateSystemNotificationStyle () {
+      // 获取聊天区域的元素
+      const rightChat = this.$el?.querySelector('.right-chat')
+      if (!rightChat) {
+        // 如果找不到聊天区域，使用默认样式
+        this.systemNotificationStyle = {
+          left: '50%',
+          transform: 'translateX(-50%)',
+          width: 'auto',
+          maxWidth: '90%'
+        }
+        return
+      }
+
+      const rect = rightChat.getBoundingClientRect()
+      const margin = 5 // 左右和上方的间距
+      this.systemNotificationStyle = {
+        left: `${rect.left + margin}px`, // 左边距5px
+        width: `${rect.width - margin * 2}px`, // 宽度减去左右各5px
+        transform: 'none' // 移除居中变换，使用固定位置
+      }
     },
 
     reconnect () {
@@ -1697,6 +1848,10 @@ export default {
         // 如果不是移动端，隐藏移动端导航栏
         if (!this.isMobile) {
           this.showMobileNavbar = false
+        }
+        // 更新系统通知样式
+        if (this.systemMessage) {
+          this.updateSystemNotificationStyle()
         }
       })
     },
@@ -1998,8 +2153,15 @@ export default {
         this.gameTeamStats = msg.game_state.team_stats || { red: null, blue: null }
         this.inGame = !!(msg.game_state.player && msg.game_state.player.team)
       } else if (msg.type === this.GameMessage.Type.ERROR && msg.error) {
-        // 可以在系统提示条里展示错误
-        this.showSystemMessage(msg.error.message)
+        // 只显示自己的错误消息，不显示其他人的能量不足等提醒
+        const errorMessage = msg.error.message || ''
+        // 如果是能量不足的错误，不显示（因为错误消息是广播给所有玩家的，其他人的能量不足不应该显示）
+        if (errorMessage.includes('能量不足')) {
+          // 不显示其他人的能量不足提醒
+          return
+        }
+        // 其他错误消息正常显示
+        this.showSystemMessage(errorMessage)
       } else if (msg.type === this.GameMessage.Type.GAME_OVER && msg.game_over) {
         const info = msg.game_over
         const winner = info.winner || 'red'
@@ -2150,13 +2312,41 @@ export default {
       this.spawnUnit()
     },
     getUnitCount (unitType) {
+      // 只显示自己的单位数量
       if (!this.gameState || !this.gameState.room || !this.currentPlayer || !this.currentPlayer.team) return 0
-      const myUnits = this.gameState.room.units.filter(u =>
-        !u.isDead &&
-        u.team === this.currentPlayer.team &&
-        u.type === unitType
-      )
+      // Player 的 id 字段是字符串形式的 user_id（后端 build_state_for_user 中设置为 str(user_id)）
+      const currentUserId = String(this.currentPlayer.id || '')
+      if (!currentUserId) {
+        return 0
+      }
+
+      const allUnits = this.gameState.room.units || []
+      const myUnits = allUnits.filter(u => {
+        // 检查单位是否死亡、队伍、类型
+        if (u.isDead || u.team !== this.currentPlayer.team || u.type !== unitType) {
+          return false
+        }
+        // protobufjs 会将 snake_case 转换为 camelCase，所以 owner_id 变成 ownerId
+        // 同时兼容两种命名方式
+        const unitOwnerId = String(u.ownerId || u.owner_id || '')
+        return unitOwnerId === currentUserId
+      })
+
       return myUnits.length
+    },
+    // 获取红方各兵种数量
+    getRedTeamUnitCountByType (unitType) {
+      if (!this.gameState || !this.gameState.room || !this.gameState.room.units) return 0
+      return this.gameState.room.units.filter(u =>
+        !u.isDead && u.team === 'red' && u.type === unitType
+      ).length
+    },
+    // 获取蓝方各兵种数量
+    getBlueTeamUnitCountByType (unitType) {
+      if (!this.gameState || !this.gameState.room || !this.gameState.room.units) return 0
+      return this.gameState.room.units.filter(u =>
+        !u.isDead && u.team === 'blue' && u.type === unitType
+      ).length
     }
 
   },
@@ -2573,7 +2763,11 @@ html, body {
 
 /* 系统消息提示条 */
 .system-notification {
-  height: 30px;
+  position: fixed; /* 固定定位，悬浮在页面上方 */
+  top: 70px; /* 位于标题栏下方（chat-header高度约65px + 5px间距） */
+  z-index: 9999; /* 确保在最上层 */
+  min-height: 30px;
+  padding: 8px 20px; /* 内边距，使内容不贴边 */
   background: linear-gradient(135deg, rgba(139, 92, 246, 0.9) 0%, rgba(168, 85, 247, 0.9) 30%, rgba(192, 38, 211, 0.9) 60%, rgba(220, 38, 38, 0.9) 100%);
   color: white;
   display: flex;
@@ -2582,6 +2776,11 @@ html, body {
   font-size: 0.9rem;
   font-weight: 500;
   animation: slideDown 0.3s ease-out;
+  pointer-events: none; /* 不阻挡鼠标事件 */
+  border-radius: 8px; /* 圆角矩形边框 */
+  border: 2px solid rgba(255, 255, 255, 0.3); /* 白色半透明边框 */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); /* 阴影效果 */
+  box-sizing: border-box; /* 确保边框包含在宽度内 */
 }
 
 .chat-header {
@@ -2732,6 +2931,9 @@ html, body {
   padding: 1rem 1.5rem;
   background: rgba(0, 0, 0, 0.4);
   border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+  position: relative; /* 为悬浮的玩家列表提供定位上下文 */
+  flex-shrink: 0; /* 防止被压缩 */
+  min-height: fit-content; /* 确保高度根据内容自适应，但不受绝对定位子元素影响 */
 }
 
 .game-top-bar.pixel-style {
@@ -2764,18 +2966,25 @@ html, body {
 }
 
 .vs-divider-double {
-  font-size: 1rem;
-  font-weight: 700;
-  color: #fbbf24;
+  font-family: 'JetBrains Mono', 'Consolas', 'Monaco', monospace; /* 像素风格字体 */
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #d4d4d4; /* 白色文字，参考 live_war 风格 */
   margin: 0 1rem;
   text-shadow:
-    2px 2px 0 rgba(0, 0, 0, 0.8),
-    0 0 10px rgba(251, 191, 36, 0.5);
+    3px 3px 0 rgba(0, 0, 0, 1), /* 粗偏移阴影，黑色，完全偏移 */
+    4px 4px 0 rgba(0, 0, 0, 0.9), /* 第二层粗阴影，增强立体感 */
+    5px 5px 0 rgba(0, 0, 0, 0.7), /* 第三层粗阴影，柔和过渡 */
+    0 0 12px rgba(244, 135, 113, 0.4), /* 红色发光效果，增强 */
+    0 0 12px rgba(79, 193, 255, 0.4); /* 蓝色发光效果，增强 */
   white-space: nowrap;
   display: flex;
   align-items: center;
   justify-content: center;
   writing-mode: horizontal-tb;
+  letter-spacing: 3px; /* 增加字母间距，参考 live_war title 风格 */
+  text-transform: uppercase; /* 确保大写 */
+  position: relative;
 }
 
 .team-hp {
@@ -2825,9 +3034,11 @@ html, body {
   flex: 1;
   height: 28px;
   background: rgba(0, 0, 0, 0.7);
-  overflow: visible; /* 改为visible，确保文字不被裁剪 */
+  overflow: hidden; /* 隐藏溢出，确保边框不被覆盖 */
   border: 3px solid rgba(255, 255, 255, 0.3);
   position: relative;
+  box-sizing: border-box; /* 确保边框包含在高度内 */
+  padding: 0; /* 确保没有内边距 */
 }
 
 .pixel-border {
@@ -2844,6 +3055,8 @@ html, body {
   display: flex;
   align-items: center;
   min-width: 50px; /* 确保有足够空间显示文字 */
+  box-sizing: border-box; /* 确保padding包含在宽度内 */
+  max-width: 100%; /* 确保不会超出容器 */
 }
 
 .pixel-fill {
@@ -2889,7 +3102,7 @@ html, body {
   white-space: nowrap;
 }
 
-/* 兵总数显示 */
+/* 兵种数量显示 */
 .team-units {
   flex: 1;
   display: flex;
@@ -2899,16 +3112,38 @@ html, body {
   gap: 0.5rem;
 }
 
-.units-value {
-  font-size: 1.2rem;
-  font-weight: 700;
+.units-by-type {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  flex-wrap: nowrap; /* 不换行，保持一行 */
 }
 
-.red-team .units-value {
+.unit-type-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.unit-type-icon {
+  opacity: 0.9;
+}
+
+.unit-type-count {
+  font-size: 0.9rem;
+  font-weight: 700;
+  min-width: 1.2rem;
+  text-align: center;
+}
+
+.red-team .unit-type-count {
   color: #ef4444;
 }
 
-.blue-team .units-value {
+.blue-team .unit-type-count {
   color: #3b82f6;
 }
 
@@ -2922,8 +3157,11 @@ html, body {
   font-size: 0.9rem;
   transition: all 0.2s;
   width: 100%;
+  height: 40px; /* 固定高度 */
   text-align: left;
   box-sizing: border-box;
+  display: flex;
+  align-items: center; /* 垂直居中文字 */
 }
 
 .player-list-toggle:hover {
@@ -2931,14 +3169,24 @@ html, body {
   border-color: rgba(255, 255, 255, 0.5);
 }
 
-/* 玩家列表展开区域 */
+/* 玩家列表展开区域（悬浮在上层） */
 .player-list-container {
-  width: 100%;
-  background: rgba(0, 0, 0, 0.6);
-  border: 2px solid rgba(255, 255, 255, 0.2);
+  position: absolute;
+  top: 100%; /* 在顶部栏下方 */
+  left: 1.5rem; /* 与 game-top-bar 的 padding-left 对齐 */
+  right: 1.5rem; /* 与 game-top-bar 的 padding-right 对齐 */
+  width: auto; /* 使用 left/right 来控制宽度 */
+  background: rgba(0, 0, 0, 0.9);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top: none;
   padding: 1rem;
-  margin-top: 0.5rem;
   box-sizing: border-box;
+  z-index: 1000; /* 确保在上层 */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  max-height: 300px; /* 限制最大高度 */
+  overflow-y: auto; /* 如果内容过多，可以滚动 */
+  /* 确保不影响父元素高度计算 */
+  pointer-events: auto; /* 确保可以交互 */
 }
 
 .player-list-columns {
@@ -3088,6 +3336,63 @@ html, body {
   padding: 1rem 1.5rem;
   background: rgba(0, 0, 0, 0.3);
   border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* 游戏未开始时的退出按钮容器 */
+.game-exit-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  padding: 2rem 0;
+}
+
+/* 巨大的退出按钮 */
+.game-exit-btn {
+  width: 100%;
+  max-width: 400px;
+  height: 80px;
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  color: #fff;
+  font-size: 1.5rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+/* 红方退出按钮 */
+.game-exit-btn.red-team {
+  background: rgba(220, 38, 38, 0.8);
+}
+
+.game-exit-btn.red-team:hover:not(:disabled) {
+  background: rgba(220, 38, 38, 1);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(220, 38, 38, 0.4);
+}
+
+/* 蓝方退出按钮 */
+.game-exit-btn.blue-team {
+  background: rgba(37, 99, 235, 0.8);
+}
+
+.game-exit-btn.blue-team:hover:not(:disabled) {
+  background: rgba(37, 99, 235, 1);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4);
+}
+
+.game-exit-btn:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.game-exit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .player-stats-row {
@@ -3505,6 +3810,32 @@ html, body {
   flex-direction: column;
   min-width: 0; /* 允许收缩 */
   min-height: 0;
+}
+
+/* 美化滚动条样式 */
+.messages-container::-webkit-scrollbar {
+  width: 8px; /* 滚动条宽度 */
+}
+
+.messages-container::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05); /* 滚动条轨道背景 */
+  border-radius: 4px;
+}
+
+.messages-container::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2); /* 滚动条滑块背景 */
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+.messages-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3); /* 悬停时更亮 */
+}
+
+/* Firefox 滚动条样式 */
+.messages-container {
+  scrollbar-width: thin; /* Firefox: thin, auto, none */
+  scrollbar-color: rgba(255, 255, 255, 0.2) rgba(255, 255, 255, 0.05); /* Firefox: thumb track */
 }
 
 .message {

@@ -329,11 +329,30 @@ class LiveWarGameManager:
         elif msg.type == game_pb2.GameMessage.LEAVE_GAME:
             if user_id is None:
                 return outgoing
+            
+            # 如果游戏已经开始，不允许退出
+            if state.game_started:
+                err = game_pb2.GameMessage(
+                    type=game_pb2.GameMessage.ERROR,
+                    error=game_pb2.ErrorPayload(message="游戏已经开始，无法退出队伍"),
+                )
+                outgoing.append(err)
+                return outgoing
+            
+            # 游戏未开始，允许退出
             if user_id in state.players:
                 state.players.pop(user_id, None)
                 state.teams.pop(user_id, None)
                 state.energies.pop(user_id, None)
                 state.selected_unit_type.pop(user_id, None)
+                # 移除玩家的主矿工（如果存在）
+                if user_id in state.player_main_miner_id:
+                    miner_id = state.player_main_miner_id.pop(user_id)
+                    # 从单位列表中移除该矿工
+                    state.units = [u for u in state.units if u.id != miner_id]
+                if user_id in state.player_miner_death_time:
+                    state.player_miner_death_time.pop(user_id)
+                
                 leave_evt = game_pb2.GameMessage(
                     type=game_pb2.GameMessage.PLAYER_LEFT,
                     player_event=game_pb2.PlayerEventPayload(
@@ -343,16 +362,6 @@ class LiveWarGameManager:
                     ),
                 )
                 outgoing.append(leave_evt)
-
-                # 检查红蓝双方是否都有至少一名玩家
-                red_players = [uid for uid, t in state.teams.items() if t == "red"]
-                blue_players = [uid for uid, t in state.teams.items() if t == "blue"]
-                has_red_player = len(red_players) > 0
-                has_blue_player = len(blue_players) > 0
-                
-                # 如果任何一方没有玩家了，停止游戏
-                if not has_red_player or not has_blue_player:
-                    state.game_started = False
 
                 state.tick += 1
                 outgoing.append(
@@ -741,8 +750,7 @@ class LiveWarGameManager:
         state.player_main_miner_id.clear()
         state.player_miner_death_time.clear()
         
-        # 重新初始化矿场（使用优化后的生成规则）
-        self._spawn_initial_mine_fields(room_id)
+        # 注意：不在这里生成矿场，矿场只在游戏真正开始时生成（在 handle_envelope_from_client 中）
         
         # 广播重置后的状态，让前端知道游戏已重置
         self._broadcast_state(room_id)
@@ -771,8 +779,8 @@ class LiveWarGameManager:
     def _process_mine_field_refresh(self, room_id: int, current_time: float) -> None:
         """处理矿场刷新：移除过期矿场，定期生成新矿场，恢复能量"""
         state = self.room_states.get(room_id)
-        if not state:
-            return
+        if not state or not state.game_started:
+            return  # 游戏未开始时不处理矿场
 
         # 移除过期的矿场
         expired = [m for m in state.mine_fields if current_time - m.created_time >= m.lifetime]
@@ -793,6 +801,9 @@ class LiveWarGameManager:
     def _spawn_initial_mine_fields(self, room_id: int) -> None:
         """游戏开始时生成初始矿场（前面几个距离基地更近）"""
         state = self._ensure_room(room_id)
+        # 确保游戏已开始
+        if not state.game_started:
+            return
         if state.mine_fields:
             return  # 已经有矿场了
         
@@ -859,8 +870,8 @@ class LiveWarGameManager:
     def _spawn_mine_field(self, room_id: int, current_time: float) -> None:
         """生成新矿场（避免过于集中在中线）"""
         state = self.room_states.get(room_id)
-        if not state:
-            return
+        if not state or not state.game_started:
+            return  # 游戏未开始时不生成矿场
 
         red_base = state.red_base
         blue_base = state.blue_base
