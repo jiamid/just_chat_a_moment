@@ -2482,6 +2482,25 @@ html, body {
   bottom: 0;
   background: rgba(0, 0, 0, 0.6);
   z-index: 999;
+  touch-action: none; /* 防止移动端触摸手势 */
+}
+
+/* 防止移动端双击缩放 - 针对按钮和可交互元素 */
+button,
+.unit-spawn-btn,
+.join-team-btn,
+.game-exit-btn,
+.player-list-toggle,
+.sidebar-toggle-btn,
+.drawing-btn,
+.menu-btn {
+  touch-action: manipulation; /* 禁用双击缩放，但保留点击 */
+}
+
+/* 对于需要滚动的容器，允许垂直滚动 */
+.messages-container,
+.player-list-container {
+  touch-action: pan-y; /* 允许垂直滚动 */
 }
 
 /* 移动端导航栏显示/隐藏 */
@@ -2527,6 +2546,38 @@ html, body {
   padding: 1rem;
   min-height: 0; /* 确保flex子元素可以正确收缩 */
   overflow-y: auto; /* 如果内容过多，允许滚动 */
+  overflow-x: hidden; /* 隐藏横向滚动条 */
+}
+
+/* 左侧菜单栏滚动条美化 - WebKit浏览器（Chrome, Safari, Edge） */
+.rooms-section::-webkit-scrollbar {
+  width: 6px; /* 滚动条宽度 */
+}
+
+.rooms-section::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.03); /* 滚动条轨道背景，更透明 */
+  border-radius: 3px;
+  margin: 0.5rem 0; /* 上下留出一些空间 */
+}
+
+.rooms-section::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15); /* 滚动条滑块背景 */
+  border-radius: 3px;
+  transition: background 0.2s ease, width 0.2s ease;
+}
+
+.rooms-section::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25); /* 悬停时更亮 */
+}
+
+.rooms-section::-webkit-scrollbar-thumb:active {
+  background: rgba(255, 255, 255, 0.35); /* 点击时更亮 */
+}
+
+/* Firefox 滚动条样式 */
+.rooms-section {
+  scrollbar-width: thin; /* Firefox: thin, auto, none */
+  scrollbar-color: rgba(255, 255, 255, 0.15) rgba(255, 255, 255, 0.03); /* Firefox: thumb track */
 }
 
 .rooms-section h3 {
@@ -2759,6 +2810,33 @@ html, body {
     flex-shrink: 0;
     background: rgba(255, 255, 255, 0.02);
   }
+
+  /* 宽屏自适应：VS对战信息在不同宽度下的响应式调整 */
+  @media (min-width: 1200px) {
+    .top-bar-double-row {
+      gap: clamp(1rem, 2vw, 1.5rem); /* 宽屏时增加间距 */
+    }
+
+    .vs-divider-double {
+      font-size: clamp(1rem, 2.5vw, 1.4rem); /* 宽屏时字体稍大 */
+      margin: 0 clamp(1rem, 2vw, 1.5rem); /* 宽屏时增加间距 */
+    }
+
+    .units-by-type {
+      gap: clamp(0.5rem, 1.5vw, 0.75rem); /* 宽屏时增加间距 */
+    }
+  }
+
+  @media (min-width: 1600px) {
+    .top-bar-double-row {
+      gap: clamp(1.5rem, 3vw, 2rem); /* 超宽屏时进一步增加间距 */
+    }
+
+    .vs-divider-double {
+      font-size: clamp(1.2rem, 3vw, 1.6rem); /* 超宽屏时字体更大 */
+      margin: 0 clamp(1.5rem, 3vw, 2rem); /* 超宽屏时进一步增加间距 */
+    }
+  }
 }
 
 /* 系统消息提示条 */
@@ -2927,13 +3005,15 @@ html, body {
 .game-top-bar {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  padding: 1rem 1.5rem;
+  gap: clamp(0.5rem, 1.5vw, 0.75rem); /* 响应式间距 */
+  padding: clamp(0.75rem, 2vw, 1rem) clamp(1rem, 3vw, 1.5rem); /* 响应式内边距 */
   background: rgba(0, 0, 0, 0.4);
   border-bottom: 2px solid rgba(255, 255, 255, 0.2);
   position: relative; /* 为悬浮的玩家列表提供定位上下文 */
   flex-shrink: 0; /* 防止被压缩 */
   min-height: fit-content; /* 确保高度根据内容自适应，但不受绝对定位子元素影响 */
+  width: 100%; /* 确保占满容器宽度 */
+  box-sizing: border-box; /* 包含padding和border */
 }
 
 .game-top-bar.pixel-style {
@@ -2954,23 +3034,27 @@ html, body {
   justify-content: space-between;
   gap: 1rem;
   min-height: 80px; /* 确保有两行的高度 */
+  width: 100%; /* 确保占满容器宽度 */
+  box-sizing: border-box; /* 包含padding和border */
 }
 
 .top-bar-left-column,
 .top-bar-right-column {
-  flex: 1;
+  flex: 1 1 0; /* 允许收缩，但保持相等宽度 */
+  min-width: 0; /* 允许在flex容器中收缩 */
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   gap: 0.5rem;
+  box-sizing: border-box; /* 包含padding和border */
 }
 
 .vs-divider-double {
   font-family: 'JetBrains Mono', 'Consolas', 'Monaco', monospace; /* 像素风格字体 */
-  font-size: 1.2rem;
+  font-size: clamp(0.8rem, 2vw, 1.2rem); /* 响应式字体大小，最小0.8rem，最大1.2rem */
   font-weight: 600;
   color: #d4d4d4; /* 白色文字，参考 live_war 风格 */
-  margin: 0 1rem;
+  margin: 0 clamp(0.5rem, 1.5vw, 1rem); /* 响应式间距 */
   text-shadow:
     3px 3px 0 rgba(0, 0, 0, 1), /* 粗偏移阴影，黑色，完全偏移 */
     4px 4px 0 rgba(0, 0, 0, 0.9), /* 第二层粗阴影，增强立体感 */
@@ -2982,9 +3066,11 @@ html, body {
   align-items: center;
   justify-content: center;
   writing-mode: horizontal-tb;
-  letter-spacing: 3px; /* 增加字母间距，参考 live_war title 风格 */
+  letter-spacing: clamp(1px, 0.3vw, 3px); /* 响应式字母间距 */
   text-transform: uppercase; /* 确保大写 */
   position: relative;
+  flex-shrink: 0; /* 防止收缩 */
+  min-width: fit-content; /* 确保宽度自适应内容 */
 }
 
 .team-hp {
@@ -3117,8 +3203,10 @@ html, body {
   flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  flex-wrap: nowrap; /* 不换行，保持一行 */
+  gap: clamp(0.3rem, 1vw, 0.5rem); /* 响应式间距 */
+  flex-wrap: nowrap; /* 桌面端不换行，保持一行 */
+  width: 100%; /* 确保占满容器宽度 */
+  box-sizing: border-box; /* 包含padding和border */
 }
 
 .unit-type-item {
@@ -4113,6 +4201,37 @@ html, body {
   .right-chat {
     width: 100%;
     min-height: 0;
+  }
+
+  /* 移动端 VS 部分自适应 */
+  .vs-divider-double {
+    font-size: 0.9rem; /* 移动端字体稍小 */
+    margin: 0 0.5rem; /* 移动端间距减小 */
+    letter-spacing: 2px; /* 移动端字母间距减小 */
+    flex-shrink: 0; /* 防止收缩 */
+    min-width: fit-content; /* 确保宽度自适应内容 */
+  }
+
+  .top-bar-double-row {
+    gap: 0.5rem; /* 移动端间距减小 */
+  }
+
+  .top-bar-left-column,
+  .top-bar-right-column {
+    min-width: 0; /* 允许在移动端收缩 */
+    flex: 1 1 0; /* 允许收缩，但保持相等宽度 */
+  }
+
+  /* 移动端兵种显示换行 */
+  .units-by-type {
+    flex-wrap: wrap; /* 允许换行 */
+    justify-content: center; /* 居中对齐 */
+    gap: 0.3rem; /* 移动端间距减小 */
+  }
+
+  .unit-type-item {
+    flex: 0 0 auto; /* 不自动伸缩，保持内容宽度 */
+    min-width: fit-content; /* 确保宽度自适应内容 */
   }
 
   .left-sidebar {
