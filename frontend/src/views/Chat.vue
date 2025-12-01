@@ -4058,6 +4058,8 @@ button,
   -webkit-backdrop-filter: blur(16px);
   transition: transform 0.3s ease;
   flex-shrink: 0; /* 防止被压缩 */
+  width: 100%; /* 保持与父容器同宽，避免聚焦时宽度变化 */
+  box-sizing: border-box;
 }
 
 /* 音乐容器（头部） */
@@ -4404,7 +4406,6 @@ button,
     bottom: 5px; /* 保持5px底部间距 */
     left: 5px; /* 保持5px左侧间距 */
     right: 5px; /* 保持5px右侧间距 */
-    width: calc(100% - 10px); /* 减去左右间距 */
     z-index: 998; /* 确保不会遮挡导航栏(z-index: 1000) */
     transform: translateY(0);
     margin: 0;
