@@ -793,9 +793,14 @@ class LiveWarGameManager:
             if mine.energy < mine.energy_max:
                 mine.energy = int(min(mine.energy_max, mine.energy + regen_per_tick))
 
-        # 每60秒生成一个新矿场
+        # 每60秒根据玩家数量生成新矿场：
+        # - 基础设计：房间里每有 1 个玩家，每分钟随机多生成 1 个矿场
+        # - 没有玩家时不生成，避免无意义堆积
         if current_time - state.last_mine_spawn_time >= MINE_FIELD_CONFIG["spawn_interval"]:
-            self._spawn_mine_field(room_id, current_time)
+            player_count = len(state.players)
+            if player_count > 0:
+                for _ in range(player_count):
+                    self._spawn_mine_field(room_id, current_time)
             state.last_mine_spawn_time = current_time
 
     def _spawn_initial_mine_fields(self, room_id: int) -> None:
@@ -1011,7 +1016,7 @@ class LiveWarGameManager:
 
         # 如果携带了足够能量，送回基地
         if unit.carrying_energy >= 30:
-            self._move_towards(room_id, unit, base.x, base.y)
+            self._orca_move_to(room_id, unit, base.x, base.y)
             if self._distance(unit.x, unit.y, base.x, base.y) < 4:
                 # 能量给玩家
                 if unit.owner_id in state.energies:
@@ -1030,7 +1035,7 @@ class LiveWarGameManager:
                 mine_dist = self._distance(unit.x, unit.y, nearest_mine.x, nearest_mine.y)
 
             if drop_dist < mine_dist:
-                self._move_towards(room_id, unit, nearest_drop.x, nearest_drop.y)
+                self._orca_move_to(room_id, unit, nearest_drop.x, nearest_drop.y)
                 if drop_dist < 1.5:
                     unit.carrying_energy += nearest_drop.energy
                     heal = int(unit.hp_max * ENERGY_CONFIG["hp_restore_percent"])
@@ -1040,7 +1045,7 @@ class LiveWarGameManager:
 
         # 去最近的矿场采集
         if nearest_mine:
-            self._move_towards(room_id, unit, nearest_mine.x, nearest_mine.y)
+            self._orca_move_to(room_id, unit, nearest_mine.x, nearest_mine.y)
             if self._distance(unit.x, unit.y, nearest_mine.x, nearest_mine.y) < 2:
                 harvest = min(MINE_FIELD_CONFIG["energy_per_harvest"], nearest_mine.energy)
                 nearest_mine.energy -= harvest
@@ -1051,11 +1056,11 @@ class LiveWarGameManager:
         enemy = self._find_nearest_enemy(room_id, unit)
         if enemy:
             unit.target_id = enemy.id
-            self._move_towards(room_id, unit, enemy.x, enemy.y)
+            self._orca_move_to(room_id, unit, enemy.x, enemy.y)
         else:
             # 没有敌人，返回基地附近待命
             if base:
-                self._move_towards(room_id, unit, base.x, base.y)
+                self._orca_move_to(room_id, unit, base.x, base.y)
 
     def _ai_engineer(self, room_id: int, unit: UnitState, current_time: float) -> None:
         """工程师AI：只寻找残血单位，无残血单位回基地"""
@@ -1141,23 +1146,13 @@ class LiveWarGameManager:
             # 优先选择最残血的单位
             needs_heal = injured_allies[0][0]
             dist_to_ally = injured_allies[0][1]
-            
+
             if dist_to_ally > 3:
-                # 移动到距离伤员2格的位置（确保在3格治疗范围内）
-                dx = needs_heal.x - unit.x
-                dy = needs_heal.y - unit.y
-                dist = math.sqrt(dx * dx + dy * dy)
-                if dist > 0:
-                    dx /= dist
-                    dy /= dist
-                    # 目标位置：距离伤员2格
-                    target_x = needs_heal.x - dx * 2.0
-                    target_y = needs_heal.y - dy * 2.0
-                    # 使用工程师专用的移动方法（更好的寻路）
-                    self._move_engineer_towards(room_id, unit, target_x, target_y)
+                # 使用 ORCA 风格寻路靠近伤员
+                self._orca_move_to(room_id, unit, needs_heal.x, needs_heal.y, allow_engineer_sharing=True)
         else:
             # 没有残血单位，返回基地
-            self._move_engineer_towards(room_id, unit, base.x, base.y)
+            self._orca_move_to(room_id, unit, base.x, base.y, allow_engineer_sharing=True)
 
     def _ai_heavy_tank(self, room_id: int, unit: UnitState, current_time: float) -> None:
         """重装坦克AI：远程攻击，智能路径规划，实现包围效果"""
@@ -1182,8 +1177,8 @@ class LiveWarGameManager:
             # 如果在攻击范围内，不移动（战斗系统会处理攻击）
             if min_dist <= unit.attack_range:
                 return
-            # 使用智能路径规划移动到攻击范围（可以绕过障碍）
-            self._move_to_attack_range(room_id, unit, enemy_tank.x, enemy_tank.y, unit.attack_range)
+            # 使用 ORCA 风格寻路靠近敌方坦克
+            self._orca_move_to(room_id, unit, enemy_tank.x, enemy_tank.y)
             return
 
         # 没有坦克，攻击敌方基地
@@ -1194,14 +1189,14 @@ class LiveWarGameManager:
             # 如果在攻击范围内，不移动
             if dist_to_base <= unit.attack_range:
                 return
-            # 使用智能路径规划移动到攻击范围
-            self._move_to_attack_range(room_id, unit, enemy_base.x, enemy_base.y, unit.attack_range)
+            # 使用 ORCA 风格寻路靠近敌方基地
+            self._orca_move_to(room_id, unit, enemy_base.x, enemy_base.y)
         else:
             # 守在前线
             base = state.red_base if unit.team == "red" else state.blue_base
             if base:
                 frontline_x = base.x + (15 if unit.team == "red" else -15)
-                self._move_towards(room_id, unit, frontline_x, base.y)
+                self._orca_move_to(room_id, unit, frontline_x, base.y)
 
     def _ai_assault_tank(self, room_id: int, unit: UnitState, current_time: float) -> None:
         """突击坦克AI：远程攻击，智能路径规划，实现包围效果"""
@@ -1226,8 +1221,8 @@ class LiveWarGameManager:
             # 如果在攻击范围内，不移动
             if min_dist <= unit.attack_range:
                 return
-            # 使用智能路径规划移动到攻击范围（可以绕过障碍）
-            self._move_to_attack_range(room_id, unit, enemy_tank.x, enemy_tank.y, unit.attack_range)
+            # 使用 ORCA 风格寻路靠近敌方坦克
+            self._orca_move_to(room_id, unit, enemy_tank.x, enemy_tank.y)
             return
 
         # 2. 其次寻找敌方工程师
@@ -1238,8 +1233,8 @@ class LiveWarGameManager:
             # 如果在攻击范围内，不移动
             if dist <= unit.attack_range:
                 return
-            # 使用智能路径规划移动到攻击范围
-            self._move_to_attack_range(room_id, unit, enemy_engineer.x, enemy_engineer.y, unit.attack_range)
+            # 使用 ORCA 风格寻路靠近敌方工程师
+            self._orca_move_to(room_id, unit, enemy_engineer.x, enemy_engineer.y)
             return
 
         # 3. 最后寻找敌方矿工
@@ -1250,15 +1245,15 @@ class LiveWarGameManager:
             # 如果在攻击范围内，不移动
             if dist <= unit.attack_range:
                 return
-            # 使用智能路径规划移动到攻击范围
-            self._move_to_attack_range(room_id, unit, enemy_miner.x, enemy_miner.y, unit.attack_range)
+            # 使用 ORCA 风格寻路靠近敌方矿工
+            self._orca_move_to(room_id, unit, enemy_miner.x, enemy_miner.y)
             return
 
         # 没有敌人，守在前线
         base = state.red_base if unit.team == "red" else state.blue_base
         if base:
             frontline_x = base.x + (15 if unit.team == "red" else -15)
-            self._move_towards(room_id, unit, frontline_x, base.y)
+            self._orca_move_to(room_id, unit, frontline_x, base.y)
 
     # ========== 战斗系统 ==========
 
@@ -1480,6 +1475,123 @@ class LiveWarGameManager:
     def _distance(self, x1: float, y1: float, x2: float, y2: float) -> float:
         """计算两点距离"""
         return math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2)
+
+    # ========== ORCA 风格多单位避让移动 ==========
+
+    def _orca_move_to(
+        self,
+        room_id: int,
+        unit: UnitState,
+        target_x: float,
+        target_y: float,
+        allow_engineer_sharing: bool = False,
+    ) -> None:
+        """
+        使用 ORCA 思想的多单位避让移动：
+        - 先计算指向目标的期望速度
+        - 再根据周围单位构造避让速度，将二者叠加得到最终移动向量
+        - 最终位置仍然通过 _is_position_blocked 做网格/障碍物约束
+        """
+        state = self.room_states.get(room_id)
+        if not state:
+            return
+
+        # 到目标距离过近就不移动
+        dist_to_target = self._distance(unit.x, unit.y, target_x, target_y)
+        if dist_to_target < 0.1:
+            return
+
+        # 计算本 tick 可移动距离
+        speed = unit.speed * GAME_RULES["tick_interval"]
+        if unit.is_mining:
+            speed *= GAME_RULES["mining_speed_penalty"]
+        if speed <= 0:
+            return
+
+        # 期望速度：朝向目标
+        dir_x = (target_x - unit.x) / dist_to_target
+        dir_y = (target_y - unit.y) / dist_to_target
+        pref_vx = dir_x * speed
+        pref_vy = dir_y * speed
+
+        # ORCA 风格避让：根据相对位置构造简单的“排斥速度”
+        neighbor_radius = 4.0
+        self_radius = 1.0
+        if unit.type in ("heavy_tank", "assault_tank"):
+            self_radius = 1.2
+
+        avoid_vx = 0.0
+        avoid_vy = 0.0
+
+        for other in state.units:
+            if other.is_dead or other.id == unit.id:
+                continue
+
+            dx = other.x - unit.x
+            dy = other.y - unit.y
+            dist = math.sqrt(dx * dx + dy * dy)
+            if dist <= 0 or dist > neighbor_radius:
+                continue
+
+            other_radius = 1.0
+            if other.type in ("heavy_tank", "assault_tank"):
+                other_radius = 1.2
+
+            combined = self_radius + other_radius
+            # 距离越近，排斥越强
+            penetration = combined - dist
+            if penetration <= 0:
+                continue
+
+            # 单位法向量：从对方指向自己，相当于相互避让
+            nx = -dx / dist
+            ny = -dy / dist
+            # 简单的速度修正量（类似 ORCA 中的 u 向量）
+            strength = penetration / combined
+            avoid_vx += nx * strength * speed
+            avoid_vy += ny * strength * speed
+
+        # 限制避让速度不要过大
+        avoid_len = math.sqrt(avoid_vx * avoid_vx + avoid_vy * avoid_vy)
+        max_avoid = speed
+        if avoid_len > max_avoid > 0:
+            scale = max_avoid / avoid_len
+            avoid_vx *= scale
+            avoid_vy *= scale
+
+        # 合成最终速度
+        final_vx = pref_vx + avoid_vx
+        final_vy = pref_vy + avoid_vy
+        final_len = math.sqrt(final_vx * final_vx + final_vy * final_vy)
+        if final_len > speed and final_len > 0:
+            scale = speed / final_len
+            final_vx *= scale
+            final_vy *= scale
+
+        # 计算候选位置
+        cand_x = unit.x + final_vx
+        cand_y = unit.y + final_vy
+
+        # 地图边界约束
+        cand_x = max(2, min(state.width - 3, cand_x))
+        cand_y = max(2, min(state.height - 3, cand_y))
+
+        # 根据单位类型调用占格检查（工程师允许更多重叠）
+        unit_type_for_block = "engineer" if allow_engineer_sharing else unit.type
+        if not self._is_position_blocked(room_id, cand_x, cand_y, unit.id, unit_type_for_block):
+            unit.x = cand_x
+            unit.y = cand_y
+            return
+
+        # 如果合成速度被阻挡，退化为只用期望速度
+        fallback_x = unit.x + pref_vx
+        fallback_y = unit.y + pref_vy
+        fallback_x = max(2, min(state.width - 3, fallback_x))
+        fallback_y = max(2, min(state.height - 3, fallback_y))
+
+        if not self._is_position_blocked(room_id, fallback_x, fallback_y, unit.id, unit_type_for_block):
+            unit.x = fallback_x
+            unit.y = fallback_y
 
     def _move_to_attack_range(self, room_id: int, unit: UnitState, target_x: float, target_y: float, attack_range: float) -> None:
         """智能移动到攻击范围内，可以绕过障碍，实现包围效果
