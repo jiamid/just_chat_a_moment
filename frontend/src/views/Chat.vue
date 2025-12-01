@@ -625,9 +625,25 @@
               </div>
             </div>
 
-            <!-- 中间：游戏画布 -->
+            <!-- 中间：游戏画布（移动端） -->
             <div class="game-canvas-container">
               <LiveWarCanvas v-if="gameState" :gameState="gameState" />
+
+              <!-- 游戏结束展示（覆盖在画布上方，移动端也显示） -->
+              <div v-if="gameOverInfo" class="game-over-overlay pixel-style">
+                <div class="game-over-content">
+                  <div class="game-over-title pixel-text" :class="gameOverInfo.winner">{{ gameOverInfo.winnerName }} WIN</div>
+                  <div class="game-over-players">
+                    <div
+                      v-for="(player, index) in gameOverInfo.winnerPlayers"
+                      :key="index"
+                      class="game-over-player pixel-text"
+                    >
+                      - {{ player }}
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <!-- 游戏控制按钮 -->
@@ -807,8 +823,12 @@
             </div>
           </div>
 
-          <!-- 消息列表 -->
-          <div class="messages-container" ref="messagesContainer">
+          <!-- 消息列表：移动端显示游戏面板时隐藏 -->
+          <div
+            class="messages-container"
+            ref="messagesContainer"
+            v-if="!(isMobile && showGamePanel)"
+          >
             <!-- 系统消息提示条 -->
             <div v-if="systemMessage" ref="systemNotification" class="system-notification" :style="systemNotificationStyle">
               {{ systemMessage }}
@@ -4137,6 +4157,7 @@ button,
 
 .message-input {
   flex: 1;
+  min-width: 0; /* 允许输入框在小屏幕上收缩，避免挤出发送按钮 */
   padding: 0.75rem 1rem;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 14px;
@@ -4366,8 +4387,9 @@ button,
   }
 
   .input-container {
-    padding: 1rem;
+    padding: 0.75rem 0.75rem;
     border-radius: 12px; /* 保持圆角 */
+    gap: 0.5rem; /* 减小间距，避免按钮被挤出 */
   }
 
   .chat-main {
@@ -4376,7 +4398,7 @@ button,
 
   /* 移动端键盘弹起时调整输入框样式 */
   .input-container.keyboard-open {
-    padding: 0.75rem 1rem;
+    padding: 0.75rem 0.75rem;
     border-radius: 12px; /* 保持圆角 */
     position: fixed;
     bottom: 5px; /* 保持5px底部间距 */
