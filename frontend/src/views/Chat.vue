@@ -147,14 +147,22 @@
               </div>
             </div>
           </div>
-          <!-- 第三行：玩家列表下拉按钮 -->
+          <!-- 第三行：玩家列表和游戏规则按钮 -->
           <div class="top-bar-row">
-            <button
-              class="player-list-toggle pixel-text"
-              @click="showPlayerList = !showPlayerList"
-            >
-              {{ showPlayerList ? '▼' : '▶' }} Players
-            </button>
+            <div class="button-group">
+              <button
+                class="player-list-toggle pixel-text"
+                @click="showPlayerList = !showPlayerList; showGameRules = false"
+              >
+                {{ showPlayerList ? '▼' : '▶' }} Players
+              </button>
+              <button
+                class="game-rules-toggle pixel-text"
+                @click="showGameRules = !showGameRules; showPlayerList = false"
+              >
+                {{ showGameRules ? '▼' : '▶' }} 游戏规则
+              </button>
+            </div>
             <!-- 玩家列表展开区域 -->
             <div v-if="showPlayerList" class="player-list-container pixel-style">
             <div class="player-list-columns">
@@ -185,6 +193,57 @@
                 </div>
               </div>
             </div>
+            </div>
+            <!-- 游戏规则展开区域 -->
+            <div v-if="showGameRules" class="game-rules-container pixel-style">
+              <div class="game-rules-content">
+                <div class="unit-rules-list">
+                  <div class="unit-rule-item">
+                    <div class="unit-rule-header pixel-text">
+                      <span class="unit-icon">{{ unitTypesConfig.miner.icon }}</span>
+                      <span class="unit-name">{{ unitTypesConfig.miner.name }}</span>
+                      <span class="unit-cost">成本: {{ unitTypesConfig.miner.cost }}</span>
+                    </div>
+                    <div class="unit-rule-details pixel-text">
+                      <div>生命值: 60 | 攻击力: 6 | 速度: 1.0 | 攻击范围: 1.5</div>
+                      <div class="unit-description">基础单位，擅长采集资源，适合前期发展</div>
+                    </div>
+                  </div>
+                  <div class="unit-rule-item">
+                    <div class="unit-rule-header pixel-text">
+                      <span class="unit-icon">{{ unitTypesConfig.engineer.icon }}</span>
+                      <span class="unit-name">{{ unitTypesConfig.engineer.name }}</span>
+                      <span class="unit-cost">成本: {{ unitTypesConfig.engineer.cost }}</span>
+                    </div>
+                    <div class="unit-rule-details pixel-text">
+                      <div>生命值: 90 | 攻击力: 12 | 速度: 4.0 | 攻击范围: 1.5</div>
+                      <div class="unit-description">高速移动单位，快速到达战场，机动性强</div>
+                    </div>
+                  </div>
+                  <div class="unit-rule-item">
+                    <div class="unit-rule-header pixel-text">
+                      <span class="unit-icon">{{ unitTypesConfig.heavy_tank.icon }}</span>
+                      <span class="unit-name">{{ unitTypesConfig.heavy_tank.name }}</span>
+                      <span class="unit-cost">成本: {{ unitTypesConfig.heavy_tank.cost }}</span>
+                    </div>
+                    <div class="unit-rule-details pixel-text">
+                      <div>生命值: 220 | 攻击力: 28 | 速度: 0.5 | 攻击范围: 2.5</div>
+                      <div class="unit-description">重型防御单位，高生命值，适合作为前线肉盾</div>
+                    </div>
+                  </div>
+                  <div class="unit-rule-item">
+                    <div class="unit-rule-header pixel-text">
+                      <span class="unit-icon">{{ unitTypesConfig.assault_tank.icon }}</span>
+                      <span class="unit-name">{{ unitTypesConfig.assault_tank.name }}</span>
+                      <span class="unit-cost">成本: {{ unitTypesConfig.assault_tank.cost }}</span>
+                    </div>
+                    <div class="unit-rule-details pixel-text">
+                      <div>生命值: 120 | 攻击力: 32 | 速度: 1.2 | 攻击范围: 2.5</div>
+                      <div class="unit-description">高攻击力单位，优先攻击坦克和工程师，适合快速消灭敌人</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -584,14 +643,22 @@
                   </div>
                 </div>
               </div>
-              <!-- 第三行：玩家列表下拉按钮 -->
+              <!-- 第三行：玩家列表和游戏规则按钮 -->
               <div class="top-bar-row">
-                <button
-                  class="player-list-toggle pixel-text"
-                  @click="showPlayerList = !showPlayerList"
-                >
-                  {{ showPlayerList ? '▼' : '▶' }} Players
-                </button>
+                <div class="button-group">
+                  <button
+                    class="player-list-toggle pixel-text"
+                    @click="showPlayerList = !showPlayerList; showGameRules = false"
+                  >
+                    {{ showPlayerList ? '▼' : '▶' }} Players
+                  </button>
+                  <button
+                    class="game-rules-toggle pixel-text"
+                    @click="showGameRules = !showGameRules; showPlayerList = false"
+                  >
+                    {{ showGameRules ? '▼' : '▶' }} 游戏规则
+                  </button>
+                </div>
                 <!-- 玩家列表展开区域 -->
                 <div v-if="showPlayerList" class="player-list-container pixel-style">
                 <div class="player-list-columns">
@@ -622,6 +689,57 @@
                     </div>
                   </div>
                 </div>
+                </div>
+                <!-- 游戏规则展开区域 -->
+                <div v-if="showGameRules" class="game-rules-container pixel-style">
+                  <div class="game-rules-content">
+                    <div class="unit-rules-list">
+                      <div class="unit-rule-item">
+                        <div class="unit-rule-header pixel-text">
+                          <span class="unit-icon">{{ unitTypesConfig.miner.icon }}</span>
+                          <span class="unit-name">{{ unitTypesConfig.miner.name }}</span>
+                          <span class="unit-cost">成本: {{ unitTypesConfig.miner.cost }}</span>
+                        </div>
+                        <div class="unit-rule-details pixel-text">
+                          <div>生命值: 60 | 攻击力: 6 | 速度: 1.0 | 攻击范围: 1.5</div>
+                          <div class="unit-description">基础单位，擅长采集资源，适合前期发展</div>
+                        </div>
+                      </div>
+                      <div class="unit-rule-item">
+                        <div class="unit-rule-header pixel-text">
+                          <span class="unit-icon">{{ unitTypesConfig.engineer.icon }}</span>
+                          <span class="unit-name">{{ unitTypesConfig.engineer.name }}</span>
+                          <span class="unit-cost">成本: {{ unitTypesConfig.engineer.cost }}</span>
+                        </div>
+                        <div class="unit-rule-details pixel-text">
+                          <div>生命值: 90 | 攻击力: 12 | 速度: 4.0 | 攻击范围: 1.5</div>
+                          <div class="unit-description">高速移动单位，快速到达战场，机动性强</div>
+                        </div>
+                      </div>
+                      <div class="unit-rule-item">
+                        <div class="unit-rule-header pixel-text">
+                          <span class="unit-icon">{{ unitTypesConfig.heavy_tank.icon }}</span>
+                          <span class="unit-name">{{ unitTypesConfig.heavy_tank.name }}</span>
+                          <span class="unit-cost">成本: {{ unitTypesConfig.heavy_tank.cost }}</span>
+                        </div>
+                        <div class="unit-rule-details pixel-text">
+                          <div>生命值: 220 | 攻击力: 28 | 速度: 0.5 | 攻击范围: 2.5</div>
+                          <div class="unit-description">重型防御单位，高生命值，适合作为前线肉盾</div>
+                        </div>
+                      </div>
+                      <div class="unit-rule-item">
+                        <div class="unit-rule-header pixel-text">
+                          <span class="unit-icon">{{ unitTypesConfig.assault_tank.icon }}</span>
+                          <span class="unit-name">{{ unitTypesConfig.assault_tank.name }}</span>
+                          <span class="unit-cost">成本: {{ unitTypesConfig.assault_tank.cost }}</span>
+                        </div>
+                        <div class="unit-rule-details pixel-text">
+                          <div>生命值: 120 | 攻击力: 32 | 速度: 1.2 | 攻击范围: 2.5</div>
+                          <div class="unit-description">高攻击力单位，优先攻击坦克和工程师，适合快速消灭敌人</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -939,6 +1057,7 @@ export default {
       inGame: false,
       selectedUnitType: 'miner',
       showPlayerList: false,
+      showGameRules: false,
       gameOverInfo: null, // { winner: 'red'|'blue', winnerName: 'RED'|'BLUE', winnerPlayers: [] }
       unitTypesConfig: {
         miner: {
@@ -948,17 +1067,17 @@ export default {
         },
         engineer: {
           name: '工程师',
-          cost: 40,
+          cost: 50,
           icon: '🔧'
         },
         heavy_tank: {
           name: '重装坦克',
-          cost: 80,
+          cost: 100,
           icon: '🛡️'
         },
         assault_tank: {
           name: '突击坦克',
-          cost: 60,
+          cost: 80,
           icon: '⚔️'
         }
       }
@@ -3288,6 +3407,13 @@ button,
   color: #3b82f6;
 }
 
+/* 按钮组 */
+.button-group {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+}
+
 /* 玩家列表下拉按钮 */
 .player-list-toggle {
   background: rgba(0, 0, 0, 0.5);
@@ -3297,7 +3423,7 @@ button,
   cursor: pointer;
   font-size: 0.9rem;
   transition: all 0.2s;
-  width: 100%;
+  flex: 1;
   height: 40px; /* 固定高度 */
   text-align: left;
   box-sizing: border-box;
@@ -3306,6 +3432,28 @@ button,
 }
 
 .player-list-toggle:hover {
+  background: rgba(0, 0, 0, 0.7);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+/* 游戏规则按钮 */
+.game-rules-toggle {
+  background: rgba(0, 0, 0, 0.5);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  color: #fff;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+  flex: 1;
+  height: 40px; /* 固定高度 */
+  text-align: left;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center; /* 垂直居中文字 */
+}
+
+.game-rules-toggle:hover {
   background: rgba(0, 0, 0, 0.7);
   border-color: rgba(255, 255, 255, 0.5);
 }
@@ -3329,6 +3477,29 @@ button,
   /* 确保不影响父元素高度计算 */
   pointer-events: auto; /* 确保可以交互 */
   margin-top: 0; /* 确保没有额外间距 */
+  /* 美化滚动条 - Webkit (Chrome, Safari, Edge) */
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: rgba(255, 255, 255, 0.3) transparent; /* Firefox */
+}
+
+/* Webkit 滚动条样式 */
+.player-list-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.player-list-container::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 4px;
+}
+
+.player-list-container::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+.player-list-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
 }
 
 .player-list-columns {
@@ -3380,6 +3551,116 @@ button,
   color: rgba(255, 255, 255, 0.5);
   font-style: italic;
   padding: 0.5rem;
+}
+
+/* 游戏规则展开区域（悬浮在上层） */
+.game-rules-container {
+  position: absolute;
+  top: 100%; /* 紧贴在 top-bar-row 下方 */
+  left: 0; /* 相对于 top-bar-row 左对齐 */
+  right: 0; /* 相对于 top-bar-row 右对齐 */
+  width: auto; /* 使用 left/right 来控制宽度 */
+  background: rgba(0, 0, 0, 0.9);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top: none;
+  padding: 1rem;
+  box-sizing: border-box;
+  z-index: 1000; /* 确保在上层 */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  max-height: 500px; /* 限制最大高度 */
+  overflow-y: auto; /* 如果内容过多，可以滚动 */
+  /* 确保不影响父元素高度计算 */
+  pointer-events: auto; /* 确保可以交互 */
+  margin-top: 0; /* 确保没有额外间距 */
+  /* 美化滚动条 - Webkit (Chrome, Safari, Edge) */
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: rgba(255, 255, 255, 0.3) transparent; /* Firefox */
+}
+
+/* Webkit 滚动条样式 */
+.game-rules-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.game-rules-container::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 4px;
+}
+
+.game-rules-container::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+.game-rules-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.game-rules-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.game-rules-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #fff;
+  text-align: center;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.unit-rules-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.unit-rule-item {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 0.75rem;
+  border-radius: 0;
+}
+
+.unit-rule-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.unit-icon {
+  font-size: 1.2rem;
+}
+
+.unit-name {
+  flex: 1;
+  font-size: 1rem;
+}
+
+.unit-cost {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.unit-rule-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.4;
+}
+
+.unit-description {
+  margin-top: 0.25rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-style: italic;
 }
 
 /* 游戏结束展示 */
