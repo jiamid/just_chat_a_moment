@@ -75,7 +75,8 @@
             <div class="connection-status-navbar">
               <span v-if="isConnected" class="status-indicator connected"></span>
               <span v-if="isConnected" class="status-text">已连接</span>
-              <button v-else-if="roomId" @click="reconnect" class="reconnect-btn">重连</button>
+              <span v-else-if="roomId && !hasEverConnected" class="status-text connecting">连接中...</span>
+              <button v-else-if="roomId && hasEverConnected" @click="reconnect" class="reconnect-btn">重连</button>
             </div>
           </div>
           <button @click="logout" class="logout-btn">退出登录</button>
@@ -446,28 +447,28 @@
             style="margin-right: 0.5rem;"
           >
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="square" stroke-linejoin="miter">
-              <!-- 履带（底部） -->
-              <rect x="2.5" y="13.5" width="15" height="3" fill="none"/>
-              <!-- 履带纹理 -->
-              <line x1="5" y1="14" x2="5" y2="15.5"/>
-              <line x1="8.5" y1="14" x2="8.5" y2="15.5"/>
-              <line x1="12" y1="14" x2="12" y2="15.5"/>
-              <line x1="15.5" y1="14" x2="15.5" y2="15.5"/>
+              <!-- 基地底座（方形） -->
+              <rect x="3" y="12" width="14" height="5" fill="none"/>
 
-              <!-- 车身（中间矩形） -->
-              <rect x="3.5" y="8.5" width="13" height="5" fill="none"/>
+              <!-- 底座装饰线条 -->
+              <line x1="5" y1="13.5" x2="5" y2="16.5"/>
+              <line x1="8" y1="13.5" x2="8" y2="16.5"/>
+              <line x1="12" y1="13.5" x2="12" y2="16.5"/>
+              <line x1="15" y1="13.5" x2="15" y2="16.5"/>
 
-              <!-- 炮塔（顶部小矩形） -->
-              <rect x="7.5" y="5.5" width="5" height="3.5" fill="none"/>
+              <!-- 主建筑（中心塔楼） -->
+              <rect x="7" y="6" width="6" height="6" fill="none"/>
 
-              <!-- 炮管（从炮塔向右延伸） -->
-              <line x1="12.5" y1="7.25" x2="17.5" y2="7.25" stroke-width="1.8"/>
-              <!-- 炮口 -->
-              <line x1="17.5" y1="6.5" x2="18.5" y2="6.5"/>
-              <line x1="17.5" y1="8" x2="18.5" y2="8"/>
+              <!-- 建筑顶部装饰 -->
+              <line x1="7" y1="6" x2="10" y2="3"/>
+              <line x1="13" y1="6" x2="10" y2="3"/>
 
-              <!-- 闪电标志（在车身上） -->
-              <path d="M9.5 10 L10.5 10 L10 11 L11.5 11 L9.5 13 L10.5 13 L11 12 L9.5 12 Z" fill="currentColor"/>
+              <!-- 建筑门 -->
+              <rect x="8.5" y="9.5" width="3" height="2.5" fill="none"/>
+
+              <!-- 建筑窗户 -->
+              <rect x="7.5" y="7" width="1.5" height="1.5" fill="none"/>
+              <rect x="11" y="7" width="1.5" height="1.5" fill="none"/>
             </svg>
           </button>
           <!-- 音乐选择按钮 -->
@@ -858,7 +859,7 @@
       </div>
 
       <!-- 底部：输入区域（移动端游戏时隐藏） -->
-      <div class="input-container" v-if="roomId && !(isMobile && showGamePanel)" :class="{
+      <div class="input-wrapper" v-if="roomId && !(isMobile && showGamePanel)" :class="{
         'keyboard-open': isKeyboardOpen && isMobile && !showMobileNavbar,
         'navbar-open': showMobileNavbar && isMobile
       }">
@@ -901,6 +902,7 @@ export default {
       newMessage: '',
       ws: null,
       isConnected: false,
+      hasEverConnected: false, // 是否曾经连接成功过
       ChatMessage: null,
       availableRooms: [
         { id: 1 },
@@ -1076,6 +1078,9 @@ export default {
         this.inGame = false
         this.gameOverInfo = null
         this.showGamePanel = false
+        // 重置连接状态
+        this.isConnected = false
+        this.hasEverConnected = false
         if (this.ws) {
           this.ws.close()
         }
@@ -1478,10 +1483,15 @@ export default {
       const token = localStorage.getItem('token')
       const wsUrl = config.getWsUrl(this.roomId, token)
 
+      // 重置连接状态
+      this.isConnected = false
+      // 注意：hasEverConnected 只在切换房间时重置，重连时不重置
+
       this.ws = new WebSocket(wsUrl)
 
       this.ws.onopen = () => {
         this.isConnected = true
+        this.hasEverConnected = true
         console.log('WebSocket connected')
       }
 
@@ -2379,11 +2389,13 @@ html, body {
   height: 100%;
   margin: 0;
   padding: 0;
+  background: transparent; /* 去除默认白色背景 */
 }
 
 #app {
   height: 100%;
   overflow: hidden;
+  background: transparent; /* 去除默认背景 */
 }
 </style>
 
@@ -2404,9 +2416,9 @@ html, body {
   right: 0;
   bottom: 0;
   width: 100%;
-  padding: 5px; /* 为所有区域留出5px间距 */
+  padding: 20px; /* 为所有区域留出20px间距 */
   box-sizing: border-box;
-  gap: 5px; /* 区域之间的间距 */
+  gap: 8px; /* 区域之间的间距 */
 }
 
 /* 左侧导航栏 */
@@ -2733,6 +2745,10 @@ button,
   font-weight: 500;
 }
 
+.connection-status-navbar .status-text.connecting {
+  color: #fbbf24;
+}
+
 .connection-status-navbar .reconnect-btn {
   padding: 0.25rem 0.5rem;
   background: linear-gradient(135deg, #f97316 0%, #ef4444 100%);
@@ -2794,7 +2810,7 @@ button,
   min-height: 0; /* 允许收缩 */
   overflow: hidden;
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.06); /* 与其他气泡边框一致 */
   border-radius: 12px;
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
@@ -2813,7 +2829,7 @@ button,
   overflow: hidden; /* 防止内容溢出 */
   position: relative;
   z-index: 1;
-  gap: 5px; /* 聊天区域内部三个气泡之间的间距 */
+  gap: 8px; /* 聊天区域内部三个气泡之间的间距 */
 }
 
 /* 当有画图面板时，右侧聊天区域固定宽度（仅桌面端） */
@@ -3031,7 +3047,6 @@ button,
   flex-direction: column;
   height: 100%;
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border-radius: 0; /* 游戏面板在气泡容器内，不需要额外圆角 */
@@ -4046,20 +4061,15 @@ button,
   line-height: 1.4;
 }
 
-.input-container {
-  padding: 1rem 1.5rem;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 12px;
+/* 输入区域包装器（无背景，只负责布局） */
+.input-wrapper {
   display: flex;
-  gap: 1rem;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  transition: transform 0.3s ease;
+  gap: 8px; /* 与其他气泡间距保持一致 */
   flex-shrink: 0; /* 防止被压缩 */
-  width: 100%; /* 保持与父容器同宽，避免聚焦时宽度变化 */
+  width: 100%;
   box-sizing: border-box;
+  transition: transform 0.3s ease;
+  align-items: stretch; /* 确保输入框和按钮高度一致 */
 }
 
 /* 音乐容器（头部） */
@@ -4119,6 +4129,38 @@ button,
 .music-list {
   max-height: 200px;
   overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* 音乐列表滚动条美化 - WebKit浏览器（Chrome, Safari, Edge） */
+.music-list::-webkit-scrollbar {
+  width: 6px; /* 滚动条宽度 */
+}
+
+.music-list::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05); /* 滚动条轨道背景 */
+  border-radius: 3px;
+  margin: 0.5rem 0; /* 上下留出一些空间 */
+}
+
+.music-list::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2); /* 滚动条滑块背景 */
+  border-radius: 3px;
+  transition: background 0.2s ease;
+}
+
+.music-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3); /* 悬停时更亮 */
+}
+
+.music-list::-webkit-scrollbar-thumb:active {
+  background: rgba(0, 0, 0, 0.4); /* 点击时更亮 */
+}
+
+/* Firefox 滚动条样式 */
+.music-list {
+  scrollbar-width: thin; /* Firefox: thin, auto, none */
+  scrollbar-color: rgba(0, 0, 0, 0.2) rgba(0, 0, 0, 0.05); /* Firefox: thumb track */
 }
 
 .music-item {
@@ -4143,17 +4185,19 @@ button,
 }
 
 /* 移动端键盘弹起时的输入框样式 */
-.input-container.keyboard-open {
+.input-wrapper.keyboard-open {
   position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  bottom: 20px;
+  left: 20px;
+  right: 20px;
+  padding: 0;
   z-index: 998; /* 降低z-index，确保不会遮挡导航栏 */
   transform: translateY(0);
+  background: transparent; /* 确保没有背景色 */
 }
 
 /* 移动端导航栏展开时隐藏键盘弹起状态的输入框 */
-.input-container.navbar-open.keyboard-open {
+.input-wrapper.navbar-open.keyboard-open {
   display: none;
 }
 
@@ -4161,36 +4205,46 @@ button,
   flex: 1;
   min-width: 0; /* 允许输入框在小屏幕上收缩，避免挤出发送按钮 */
   padding: 0.75rem 1rem;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
   font-size: 1rem;
   outline: none;
   transition: all 0.25s ease;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.03);
   color: #e6e6f0;
+  box-sizing: border-box;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
 .message-input:focus {
-  border-color: transparent;
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.45), 0 0 0 6px rgba(236, 72, 153, 0.25);
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 0 0 2px rgba(99, 102, 241, 0.45), inset 0 0 0 6px rgba(236, 72, 153, 0.25), 0 4px 16px rgba(0, 0, 0, 0.2);
 }
 
 .message-input:disabled {
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.02);
   cursor: not-allowed;
 }
 
 .send-btn {
+  flex-shrink: 0;
   padding: 0.75rem 1.5rem;
   background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 30%, #c026d3 60%, #dc2626 100%);
   color: white;
-  border: none;
-  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
   cursor: pointer;
   font-size: 1rem;
   font-weight: 500;
   transition: all 0.25s ease;
-  box-shadow: 0 8px 24px rgba(139, 92, 246, 0.4), 0 4px 12px rgba(220, 38, 127, 0.3);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-sizing: border-box;
+  white-space: nowrap;
+  min-width: fit-content; /* 确保按钮有足够宽度显示文字 */
 }
 
 .send-btn:hover:not(:disabled) {
@@ -4258,18 +4312,25 @@ button,
 
 /* 中等宽度屏幕响应式设计 */
 @media (min-width: 769px) and (max-width: 1024px) {
-  .input-container {
-    padding: 0.875rem 1.25rem;
+  .input-wrapper {
+    gap: 8px;
+    width: 100%;
+    display: flex;
+    align-items: stretch;
   }
 
   .message-input {
+    flex: 1;
+    min-width: 0;
     padding: 0.625rem 0.875rem;
     font-size: 0.95rem;
   }
 
   .send-btn {
+    flex-shrink: 0;
     padding: 0.625rem 1.25rem;
     font-size: 0.95rem;
+    min-width: fit-content;
   }
 
   .chat-header {
@@ -4288,14 +4349,14 @@ button,
     height: 100vh;
     height: 100dvh; /* 移动端使用动态视口高度 */
     overflow: hidden;
-    padding: 5px; /* 保持5px间距 */
-    gap: 5px;
+    padding: 20px; /* 保持20px间距 */
+    gap: 8px;
   }
 
   .right-chat {
     width: 100%;
     min-height: 0;
-    gap: 5px; /* 保持气泡间距 */
+    gap: 8px; /* 保持气泡间距 */
   }
 
   /* 移动端 VS 部分自适应 */
@@ -4388,10 +4449,25 @@ button,
     max-width: 85%;
   }
 
-  .input-container {
-    padding: 0.75rem 0.75rem;
-    border-radius: 12px; /* 保持圆角 */
-    gap: 0.5rem; /* 减小间距，避免按钮被挤出 */
+  .input-wrapper {
+    gap: 8px; /* 与其他气泡间距保持一致 */
+    width: 100%;
+    display: flex;
+    align-items: stretch; /* 确保输入框和按钮高度一致 */
+  }
+
+  .message-input {
+    flex: 1;
+    min-width: 0; /* 允许收缩 */
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+  }
+
+  .send-btn {
+    flex-shrink: 0;
+    padding: 0.75rem 1rem; /* 移动端减小左右padding */
+    font-size: 1rem;
+    min-width: 60px; /* 确保按钮有最小宽度 */
   }
 
   .chat-main {
@@ -4399,20 +4475,19 @@ button,
   }
 
   /* 移动端键盘弹起时调整输入框样式 */
-  .input-container.keyboard-open {
-    padding: 0.75rem 0.75rem;
-    border-radius: 12px; /* 保持圆角 */
+  .input-wrapper.keyboard-open {
+    padding: 0;
     position: fixed;
-    bottom: 5px; /* 保持5px底部间距 */
-    left: 5px; /* 保持5px左侧间距 */
-    right: 5px; /* 保持5px右侧间距 */
+    bottom: 20px; /* 保持20px底部间距 */
+    left: 20px; /* 保持20px左侧间距 */
+    right: 20px; /* 保持20px右侧间距 */
     z-index: 998; /* 确保不会遮挡导航栏(z-index: 1000) */
     transform: translateY(0);
     margin: 0;
   }
 
   /* 移动端导航栏展开时隐藏键盘弹起状态的输入框 */
-  .input-container.navbar-open.keyboard-open {
+  .input-wrapper.navbar-open.keyboard-open {
     display: none;
   }
 
