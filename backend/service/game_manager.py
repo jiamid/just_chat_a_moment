@@ -13,8 +13,9 @@ import time
 import math
 import random
 import uuid
+import heapq
 from dataclasses import dataclass, field
-from typing import Dict, Optional, List, Callable
+from typing import Dict, Optional, List, Callable, Tuple
 
 from protos import game_pb2
 
@@ -85,6 +86,11 @@ class UnitState:
     target_id: Optional[str] = None  # 攻击目标ID
     last_attack_time: float = 0.0
     is_mining: bool = False
+    # 路径规划相关
+    last_position: Tuple[float, float] = field(default_factory=lambda: (0.0, 0.0))  # 上次位置
+    stuck_counter: int = 0  # 卡住计数器
+    failed_target: Optional[Tuple[float, float]] = None  # 上次失败的目标位置
+    last_path_time: float = 0.0  # 上次路径规划时间
 
 
 @dataclass
@@ -163,6 +169,8 @@ class RoomGameState:
     heal_effects: List[HealEffect] = field(default_factory=list)
     bullet_effects: List[BulletEffect] = field(default_factory=list)
     walls: List[tuple[float, float]] = field(default_factory=list)  # (x, y) positions
+    lakes: List[tuple[float, float]] = field(default_factory=list)  # (x, y) positions - 湖泊，单位不能进入
+    terrain: Dict[tuple[int, int], int] = field(default_factory=dict)  # (x, y) -> 0(草地) or 1(泥土)
 
     # 玩家能量 & 选中的单位类型
     energies: Dict[int, int] = field(default_factory=dict)  # user_id -> energy
@@ -434,10 +442,125 @@ class LiveWarGameManager:
             state.height = 60
             state.red_base = BaseState(x=8, y=state.height - 8, hp=1000, hp_max=1000)  # 左下角
             state.blue_base = BaseState(x=state.width - 8, y=8, hp=1000, hp_max=1000)  # 右上角
+            # 生成随机地图（包含湖泊）
+            self._generate_map(room_id)
             # 初始矿场会在 _spawn_initial_mine_fields 中生成，这里不生成
             state.last_mine_spawn_time = time.time()
             self.room_states[room_id] = state
         return self.room_states[room_id]
+
+    def _generate_map(self, room_id: int) -> None:
+        """随机生成地图，包含地形（草地/泥土）和湖泊（单位不能进入）"""
+        state = self.room_states.get(room_id)
+        if not state:
+            return
+        
+        state.lakes.clear()
+        state.terrain.clear()
+        
+        # 1. 生成地形（草地和泥土）
+        # 初始化所有格子为随机值
+        terrain = {}
+        for x in range(state.width):
+            for y in range(state.height):
+                terrain[(x, y)] = 0 if random.random() < 0.5 else 1  # 0=草地, 1=泥土
+        
+        # 使用简单的平滑算法生成大块区域
+        # 多次迭代，让相邻格子更可能相同
+        for iteration in range(3):
+            new_terrain = {}
+            for x in range(state.width):
+                for y in range(state.height):
+                    # 统计周围8个格子的类型
+                    grass_count = 0
+                    dirt_count = 0
+                    
+                    for dx in range(-1, 2):
+                        for dy in range(-1, 2):
+                            nx, ny = x + dx, y + dy
+                            if 0 <= nx < state.width and 0 <= ny < state.height:
+                                if terrain.get((nx, ny), 0) == 0:
+                                    grass_count += 1
+                                else:
+                                    dirt_count += 1
+                    
+                    # 如果周围同类型格子多，则保持或改变为该类型
+                    if grass_count > dirt_count:
+                        new_terrain[(x, y)] = 0
+                    elif dirt_count > grass_count:
+                        new_terrain[(x, y)] = 1
+                    else:
+                        new_terrain[(x, y)] = terrain.get((x, y), 0)
+            
+            terrain = new_terrain
+        
+        state.terrain = terrain
+        
+        # 2. 生成3-5个湖泊，每个湖泊由多个格子组成
+        num_lakes = random.randint(3, 5)
+        
+        for _ in range(num_lakes):
+            # 随机选择湖泊中心位置（避免在基地附近）
+            attempts = 0
+            while attempts < 50:
+                center_x = random.randint(10, state.width - 10)
+                center_y = random.randint(10, state.height - 10)
+                
+                # 确保不在基地附近（至少距离基地8格）
+                too_close_to_base = False
+                if state.red_base:
+                    dist_to_red = self._distance(center_x, center_y, state.red_base.x, state.red_base.y)
+                    if dist_to_red < 8:
+                        too_close_to_base = True
+                if state.blue_base:
+                    dist_to_blue = self._distance(center_x, center_y, state.blue_base.x, state.blue_base.y)
+                    if dist_to_blue < 8:
+                        too_close_to_base = True
+                
+                if too_close_to_base:
+                    attempts += 1
+                    continue
+                
+                # 生成湖泊（不规则形状，3-6格大小）
+                lake_size = random.randint(3, 6)
+                lake_cells = []
+                
+                # 使用简单的洪水填充算法生成不规则湖泊
+                visited = set()
+                queue = [(center_x, center_y)]
+                
+                while queue and len(lake_cells) < lake_size:
+                    x, y = queue.pop(0)
+                    if (x, y) in visited:
+                        continue
+                    if x < 0 or x >= state.width or y < 0 or y >= state.height:
+                        continue
+                    
+                    # 确保不在基地上
+                    if state.red_base and int(state.red_base.x) == x and int(state.red_base.y) == y:
+                        continue
+                    if state.blue_base and int(state.blue_base.x) == x and int(state.blue_base.y) == y:
+                        continue
+                    
+                    visited.add((x, y))
+                    lake_cells.append((x, y))
+                    
+                    # 随机添加相邻格子（70%概率）
+                    neighbors = [
+                        (x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1),
+                        (x + 1, y + 1), (x - 1, y - 1), (x + 1, y - 1), (x - 1, y + 1)
+                    ]
+                    random.shuffle(neighbors)
+                    for nx, ny in neighbors[:random.randint(2, 4)]:
+                        if (nx, ny) not in visited and random.random() < 0.7:
+                            queue.append((nx, ny))
+                
+                # 添加到湖泊列表
+                if lake_cells:  # 确保生成了至少一个格子
+                    state.lakes.extend(lake_cells)
+                    break  # 成功生成湖泊，跳出 while 循环
+            
+            attempts += 1
 
     def _spawn_basic_unit_for_player(self, room_id: int, user_id: int, team: str, unit_type: str = "miner") -> None:
         """为玩家生成一个单位，靠近己方基地"""
@@ -469,6 +592,7 @@ class LiveWarGameManager:
             attack_range=unit_config["attack_range"],
             target_x=spawn_x,
             target_y=spawn_y,
+            last_position=(spawn_x, spawn_y),  # 初始化位置记录
         )
         state.units.append(unit)
         
@@ -611,6 +735,24 @@ class LiveWarGameManager:
             bullet_msg.lifetime = bullet.lifetime
             bullet_msg.team = bullet.team
 
+        # 湖泊
+        for lake in state.lakes:
+            lake_msg = room_msg.lakes.add()
+            lake_x, lake_y = lake
+            lake_msg.x = float(lake_x)
+            lake_msg.y = float(lake_y)
+
+        # 地形数据（草地/泥土）
+        # 如果地形数据为空，先生成地图
+        if len(state.terrain) == 0:
+            self._generate_map(room_id)
+        
+        for (x, y), terrain_type in state.terrain.items():
+            terrain_msg = room_msg.terrain.add()
+            terrain_msg.x = int(x)
+            terrain_msg.y = int(y)
+            terrain_msg.type = int(terrain_type)  # 0=草地, 1=泥土
+
         # 构造日志（取所有玩家的最新日志）
         all_logs = []
         for uid in state.players:
@@ -740,6 +882,9 @@ class LiveWarGameManager:
         state.heal_effects.clear()
         state.bullet_effects.clear()
         
+        # 重新生成地图（包含新的湖泊）
+        self._generate_map(room_id)
+        
         # 重置基地血量
         if state.red_base:
             state.red_base.hp = state.red_base.hp_max
@@ -829,8 +974,9 @@ class LiveWarGameManager:
                 mine_x = max(5, min(state.width - 5, mine_x))
                 mine_y = max(5, min(state.height - 5, mine_y))
                 
-                # 确保不在基地上
-                if self._distance(mine_x, mine_y, red_base.x, red_base.y) > 5:
+                # 确保不在基地上，也不在湖泊上
+                if (self._distance(mine_x, mine_y, red_base.x, red_base.y) > 5 and
+                    not self._is_position_in_lake(room_id, mine_x, mine_y)):
                     state.mine_fields.append(
                         MineFieldState(
                             id=f"mine_{uuid.uuid4().hex[:6]}",
@@ -855,8 +1001,9 @@ class LiveWarGameManager:
                 mine_x = max(5, min(state.width - 5, mine_x))
                 mine_y = max(5, min(state.height - 5, mine_y))
                 
-                # 确保不在基地上
-                if self._distance(mine_x, mine_y, blue_base.x, blue_base.y) > 5:
+                # 确保不在基地上，也不在湖泊上
+                if (self._distance(mine_x, mine_y, blue_base.x, blue_base.y) > 5 and
+                    not self._is_position_in_lake(room_id, mine_x, mine_y)):
                     state.mine_fields.append(
                         MineFieldState(
                             id=f"mine_{uuid.uuid4().hex[:6]}",
@@ -921,6 +1068,11 @@ class LiveWarGameManager:
             dist_to_blue = self._distance(x, y, blue_base.x, blue_base.y)
             
             if dist_to_red > 5 and dist_to_blue > 5:
+                # 检查是否在湖泊上
+                if self._is_position_in_lake(room_id, x, y):
+                    attempts += 1
+                    continue
+                
                 # 检查是否与现有矿场太近（至少3格距离）
                 too_close = False
                 for existing_mine in state.mine_fields:
@@ -1151,8 +1303,8 @@ class LiveWarGameManager:
                 # 使用 ORCA 风格寻路靠近伤员
                 self._orca_move_to(room_id, unit, needs_heal.x, needs_heal.y, allow_engineer_sharing=True)
         else:
-            # 没有残血单位，返回基地
-            self._orca_move_to(room_id, unit, base.x, base.y, allow_engineer_sharing=True)
+            # 没有残血单位，返回基地（速度减半）
+            self._orca_move_to(room_id, unit, base.x, base.y, allow_engineer_sharing=True, speed_multiplier=0.5)
 
     def _ai_heavy_tank(self, room_id: int, unit: UnitState, current_time: float) -> None:
         """重装坦克AI：远程攻击，智能路径规划，实现包围效果"""
@@ -1476,7 +1628,235 @@ class LiveWarGameManager:
         """计算两点距离"""
         return math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2)
 
+    def _is_position_in_lake(self, room_id: int, x: float, y: float) -> bool:
+        """检查位置是否在湖泊上"""
+        state = self.room_states.get(room_id)
+        if not state:
+            return False
+        
+        grid_x = int(math.floor(x))
+        grid_y = int(math.floor(y))
+        
+        for lake in state.lakes:
+            lake_x, lake_y = lake
+            if lake_x == grid_x and lake_y == grid_y:
+                return True
+        
+        return False
+
     # ========== ORCA 风格多单位避让移动 ==========
+
+    def _find_path_around_obstacles(
+        self,
+        room_id: int,
+        start_x: float,
+        start_y: float,
+        target_x: float,
+        target_y: float,
+        unit_id: str,
+        unit_type: str,
+        max_search_radius: int = 15,
+        max_nodes: int = 200,
+    ) -> Tuple[float, float] | None:
+        """
+        使用简化的 A* 算法寻找绕过障碍物的路径
+        
+        Args:
+            max_search_radius: 最大搜索半径（格子数）
+            max_nodes: 最大搜索节点数（性能限制）
+        
+        Returns:
+            下一个移动位置的 (x, y)，如果找不到路径则返回 None
+        """
+        state = self.room_states.get(room_id)
+        if not state:
+            return None
+        
+        # 将坐标转换为网格坐标
+        start_grid = (int(math.floor(start_x)), int(math.floor(start_y)))
+        target_grid = (int(math.floor(target_x)), int(math.floor(target_y)))
+        
+        # 如果起点和终点相同或很近，直接返回目标
+        if start_grid == target_grid:
+            return (target_x, target_y)
+        
+        # 如果距离太远，限制搜索范围
+        dist_to_target = self._distance(start_grid[0], start_grid[1], target_grid[0], target_grid[1])
+        if dist_to_target > max_search_radius * 2:
+            # 距离太远，只搜索到目标方向的一部分
+            max_search_radius = min(max_search_radius, int(dist_to_target * 0.6))
+        
+        # 使用简化的 A* 算法（限制搜索范围以提高性能）
+        open_set = [(0, start_grid)]  # (f_score, (x, y))
+        came_from = {}
+        g_score = {start_grid: 0}
+        f_score = {start_grid: self._distance(start_x, start_y, target_x, target_y)}
+        closed_set = set()
+        nodes_explored = 0
+        
+        # 8方向移动
+        directions = [
+            (1, 0), (1, 1), (0, 1), (-1, 1),
+            (-1, 0), (-1, -1), (0, -1), (1, -1)
+        ]
+        
+        while open_set and nodes_explored < max_nodes:
+            current_f, current = heapq.heappop(open_set)
+            
+            if current in closed_set:
+                continue
+            
+            closed_set.add(current)
+            nodes_explored += 1
+            
+            # 如果到达目标，重建路径
+            if current == target_grid:
+                # 重建路径，返回路径上的第一个点
+                path = []
+                temp_current = current
+                while temp_current in came_from:
+                    path.append(temp_current)
+                    temp_current = came_from[temp_current]
+                path.append(start_grid)
+                path.reverse()
+                
+                if len(path) > 1:
+                    # 返回路径上的第一个移动点
+                    next_grid = path[1]
+                    return (next_grid[0] + 0.5, next_grid[1] + 0.5)  # 返回格子中心
+                return None
+            
+            # 如果搜索范围太大，跳过这个节点
+            dist_from_start = self._distance(current[0], current[1], start_grid[0], start_grid[1])
+            if dist_from_start > max_search_radius:
+                continue
+            
+            # 检查所有相邻格子
+            for dx, dy in directions:
+                neighbor = (current[0] + dx, current[1] + dy)
+                
+                # 边界检查
+                if neighbor[0] < 0 or neighbor[0] >= state.width or \
+                   neighbor[1] < 0 or neighbor[1] >= state.height:
+                    continue
+                
+                if neighbor in closed_set:
+                    continue
+                
+                # 检查是否是障碍物（湖泊、矿场、基地等）
+                if self._is_position_blocked(room_id, neighbor[0] + 0.5, neighbor[1] + 0.5, unit_id, unit_type):
+                    continue
+                
+                # 计算到邻居的代价（对角线移动代价稍高）
+                move_cost = 1.414 if abs(dx) + abs(dy) == 2 else 1.0
+                tentative_g = g_score.get(current, float('inf')) + move_cost
+                
+                if neighbor not in g_score or tentative_g < g_score[neighbor]:
+                    came_from[neighbor] = current
+                    g_score[neighbor] = tentative_g
+                    h = self._distance(neighbor[0], neighbor[1], target_grid[0], target_grid[1])
+                    f = tentative_g + h
+                    f_score[neighbor] = f
+                    heapq.heappush(open_set, (f, neighbor))
+        
+        # 如果找不到完整路径，尝试找到最接近目标的可达点
+        best_pos = None
+        best_dist = float('inf')
+        best_g_score = float('inf')
+        
+        # 优先选择既接近目标又距离起点不太远的点
+        for pos in closed_set:
+            if not self._is_position_blocked(room_id, pos[0] + 0.5, pos[1] + 0.5, unit_id, unit_type):
+                dist_to_target = self._distance(pos[0], pos[1], target_grid[0], target_grid[1])
+                g = g_score.get(pos, float('inf'))
+                # 综合评分：优先选择距离目标近且路径代价低的点
+                score = dist_to_target * 0.7 + g * 0.3
+                if score < best_dist or (score == best_dist and g < best_g_score):
+                    best_dist = score
+                    best_g_score = g
+                    best_pos = (pos[0] + 0.5, pos[1] + 0.5)
+        
+        # 如果还是找不到，至少返回一个从起点可达的点（避免完全卡住）
+        if best_pos is None and start_grid in closed_set:
+            # 尝试从起点周围的8个方向找一个可移动的点
+            for dx, dy in directions:
+                neighbor = (start_grid[0] + dx, start_grid[1] + dy)
+                if neighbor[0] >= 0 and neighbor[0] < state.width and \
+                   neighbor[1] >= 0 and neighbor[1] < state.height:
+                    if not self._is_position_blocked(room_id, neighbor[0] + 0.5, neighbor[1] + 0.5, unit_id, unit_type):
+                        return (neighbor[0] + 0.5, neighbor[1] + 0.5)
+        
+        return best_pos
+
+    def _find_escape_position(
+        self,
+        room_id: int,
+        unit: UnitState,
+        target_x: float,
+        target_y: float,
+        unit_type: str,
+    ) -> Tuple[float, float] | None:
+        """
+        当路径规划失败时，尝试找到任何可移动的位置，避免单位卡位
+        优先选择朝向目标的方向，如果都不可行，则选择任何可移动的方向
+        """
+        state = self.room_states.get(room_id)
+        if not state:
+            return None
+        
+        # 计算朝向目标的方向
+        dx = target_x - unit.x
+        dy = target_y - unit.y
+        dist = math.sqrt(dx * dx + dy * dy)
+        if dist > 0:
+            dx /= dist
+            dy /= dist
+        
+        # 尝试多个方向：优先朝向目标，然后是周围8个方向
+        directions = []
+        if dist > 0.1:
+            # 主方向（朝向目标）
+            directions.append((dx, dy))
+            # 主方向两侧各45度
+            angle = math.atan2(dy, dx)
+            for offset in [-math.pi/4, math.pi/4, -math.pi/2, math.pi/2]:
+                new_angle = angle + offset
+                directions.append((math.cos(new_angle), math.sin(new_angle)))
+        
+        # 8个主要方向
+        main_directions = [
+            (1, 0), (1, 1), (0, 1), (-1, 1),
+            (-1, 0), (-1, -1), (0, -1), (1, -1)
+        ]
+        for dir_x, dir_y in main_directions:
+            if (dir_x, dir_y) not in directions:
+                directions.append((dir_x, dir_y))
+        
+        # 尝试不同距离的移动
+        speed = unit.speed * GAME_RULES["tick_interval"]
+        if unit.is_mining:
+            speed *= GAME_RULES["mining_speed_penalty"]
+        
+        for dir_x, dir_y in directions:
+            for step_mult in [1.0, 0.8, 0.6, 0.4, 0.2]:
+                try_x = unit.x + dir_x * speed * step_mult
+                try_y = unit.y + dir_y * speed * step_mult
+                
+                # 边界检查
+                try_x = max(2, min(state.width - 3, try_x))
+                try_y = max(2, min(state.height - 3, try_y))
+                
+                # 检查是否可移动
+                if not self._is_position_blocked(room_id, try_x, try_y, unit.id, unit_type):
+                    # 检查这个位置是否比当前位置更接近目标（至少不会远离太多）
+                    new_dist = self._distance(try_x, try_y, target_x, target_y)
+                    old_dist = self._distance(unit.x, unit.y, target_x, target_y)
+                    # 允许稍微远离目标，但不要太多（最多允许远离1格）
+                    if new_dist <= old_dist + 1.0:
+                        return (try_x, try_y)
+        
+        # 如果所有方向都不可行，返回 None（单位可能真的被完全包围了）
+        return None
 
     def _orca_move_to(
         self,
@@ -1485,12 +1865,14 @@ class LiveWarGameManager:
         target_x: float,
         target_y: float,
         allow_engineer_sharing: bool = False,
+        speed_multiplier: float = 1.0,
     ) -> None:
         """
-        使用 ORCA 思想的多单位避让移动：
-        - 先计算指向目标的期望速度
-        - 再根据周围单位构造避让速度，将二者叠加得到最终移动向量
-        - 最终位置仍然通过 _is_position_blocked 做网格/障碍物约束
+        使用 ORCA 思想的多单位避让移动，结合路径规划绕过障碍物：
+        - 先使用路径规划找到绕过障碍物的下一个目标点
+        - 再计算指向该点的期望速度
+        - 根据周围单位构造避让速度，将二者叠加得到最终移动向量
+        - 检测卡位并自动寻找新路径
         """
         state = self.room_states.get(room_id)
         if not state:
@@ -1499,22 +1881,116 @@ class LiveWarGameManager:
         # 到目标距离过近就不移动
         dist_to_target = self._distance(unit.x, unit.y, target_x, target_y)
         if dist_to_target < 0.1:
+            # 重置卡住状态
+            unit.stuck_counter = 0
+            unit.failed_target = None
             return
 
+        # 检测单位是否被卡住（位置没有变化或远离目标）
+        current_pos = (unit.x, unit.y)
+        last_pos = unit.last_position
+        
+        # 如果是第一次移动（last_position 未初始化），初始化它
+        if last_pos == (0.0, 0.0):
+            unit.last_position = current_pos
+            last_pos = current_pos
+        
+        moved = self._distance(current_pos[0], current_pos[1], last_pos[0], last_pos[1]) > 0.05
+        
+        # 检查是否远离目标（可能是回退）
+        last_dist_to_target = self._distance(last_pos[0], last_pos[1], target_x, target_y)
+        moving_away = dist_to_target > last_dist_to_target + 0.1
+        
+        # 如果单位没有移动或正在远离目标，增加卡住计数
+        if not moved or moving_away:
+            unit.stuck_counter += 1
+        else:
+            # 如果成功移动，重置卡住计数
+            unit.stuck_counter = max(0, unit.stuck_counter - 1)
+        
+        # 如果卡住超过3个tick，标记当前目标为失败
+        if unit.stuck_counter >= 3:
+            unit.failed_target = (target_x, target_y)
+            unit.stuck_counter = 0  # 重置计数器，准备尝试新路径
+        
+        # 如果目标是上次失败的同一个目标，强制使用路径规划或选择替代路径
+        force_pathfinding = False
+        if unit.failed_target:
+            failed_dist = self._distance(target_x, target_y, unit.failed_target[0], unit.failed_target[1])
+            if failed_dist < 2.0:  # 如果目标很接近上次失败的目标
+                force_pathfinding = True
+                # 尝试稍微偏移目标位置，寻找替代路径
+                angle = math.atan2(target_y - unit.y, target_x - unit.x)
+                # 尝试左右各30度的方向
+                for offset in [-math.pi/6, math.pi/6]:
+                    alt_angle = angle + offset
+                    alt_x = unit.x + math.cos(alt_angle) * dist_to_target * 0.8
+                    alt_y = unit.y + math.sin(alt_angle) * dist_to_target * 0.8
+                    alt_x = max(2, min(state.width - 3, alt_x))
+                    alt_y = max(2, min(state.height - 3, alt_y))
+                    # 检查替代路径是否可行
+                    if not self._is_position_blocked(room_id, alt_x, alt_y, unit.id, "engineer" if allow_engineer_sharing else unit.type):
+                        target_x, target_y = alt_x, alt_y
+                        dist_to_target = self._distance(unit.x, unit.y, target_x, target_y)
+                        force_pathfinding = False
+                        break
+
         # 计算本 tick 可移动距离
-        speed = unit.speed * GAME_RULES["tick_interval"]
+        speed = unit.speed * GAME_RULES["tick_interval"] * speed_multiplier
         if unit.is_mining:
             speed *= GAME_RULES["mining_speed_penalty"]
         if speed <= 0:
             return
 
-        # 期望速度：朝向目标
-        dir_x = (target_x - unit.x) / dist_to_target
-        dir_y = (target_y - unit.y) / dist_to_target
+        # 检查直接路径是否有障碍物
+        unit_type_for_block = "engineer" if allow_engineer_sharing else unit.type
+        
+        # 检查直接路径上是否有障碍物（采样几个点，但不要太多）
+        direct_path_blocked = False
+        # 只在距离较远时检查路径，距离很近时直接移动
+        if dist_to_target > 3.0 or force_pathfinding:
+            steps = min(5, max(3, int(dist_to_target / speed)))
+            for i in range(1, steps + 1):
+                t = i / steps
+                check_x = unit.x + (target_x - unit.x) * t
+                check_y = unit.y + (target_y - unit.y) * t
+                if self._is_position_blocked(room_id, check_x, check_y, unit.id, unit_type_for_block):
+                    direct_path_blocked = True
+                    break
+        
+        # 如果直接路径被阻挡或强制路径规划，使用路径规划
+        path_planned = False
+        if direct_path_blocked or force_pathfinding:
+            next_pos = self._find_path_around_obstacles(
+                room_id, unit.x, unit.y, target_x, target_y,
+                unit.id, unit_type_for_block, max_search_radius=12, max_nodes=150
+            )
+            if next_pos:
+                # 使用路径规划找到的下一个点作为目标
+                target_x, target_y = next_pos
+                # 重新计算距离和方向
+                dist_to_target = self._distance(unit.x, unit.y, target_x, target_y)
+                path_planned = True
+                # 如果路径规划成功，清除失败目标（可能找到了新路径）
+                if unit.failed_target:
+                    new_dist_to_failed = self._distance(target_x, target_y, unit.failed_target[0], unit.failed_target[1])
+                    if new_dist_to_failed > 3.0:  # 如果新路径远离失败目标，清除标记
+                        unit.failed_target = None
+            else:
+                # 路径规划失败，尝试找到任何可移动的方向（避免卡位）
+                escape_pos = self._find_escape_position(room_id, unit, target_x, target_y, unit_type_for_block)
+                if escape_pos:
+                    target_x, target_y = escape_pos
+                    dist_to_target = self._distance(unit.x, unit.y, target_x, target_y)
+                    path_planned = True
+
+        # 期望速度：朝向目标（可能是路径规划后的目标点）
+        dir_x = (target_x - unit.x) / max(dist_to_target, 0.1)
+        dir_y = (target_y - unit.y) / max(dist_to_target, 0.1)
         pref_vx = dir_x * speed
         pref_vy = dir_y * speed
 
-        # ORCA 风格避让：根据相对位置构造简单的“排斥速度”
+        # ORCA 风格避让：根据相对位置构造简单的"排斥速度"
         neighbor_radius = 4.0
         self_radius = 1.0
         if unit.type in ("heavy_tank", "assault_tank"):
@@ -1577,10 +2053,11 @@ class LiveWarGameManager:
         cand_y = max(2, min(state.height - 3, cand_y))
 
         # 根据单位类型调用占格检查（工程师允许更多重叠）
-        unit_type_for_block = "engineer" if allow_engineer_sharing else unit.type
         if not self._is_position_blocked(room_id, cand_x, cand_y, unit.id, unit_type_for_block):
             unit.x = cand_x
             unit.y = cand_y
+            # 更新位置记录
+            unit.last_position = (unit.x, unit.y)
             return
 
         # 如果合成速度被阻挡，退化为只用期望速度
@@ -1592,6 +2069,53 @@ class LiveWarGameManager:
         if not self._is_position_blocked(room_id, fallback_x, fallback_y, unit.id, unit_type_for_block):
             unit.x = fallback_x
             unit.y = fallback_y
+            # 更新位置记录
+            unit.last_position = (unit.x, unit.y)
+            return
+        
+        # 如果所有移动都被阻挡，检查当前单位是否被卡在障碍物上
+        # 如果当前单位位置本身就是障碍物，尝试立即脱离
+        if self._is_position_blocked(room_id, unit.x, unit.y, unit.id, unit_type_for_block):
+            # 单位被卡在障碍物上，尝试找到任何可移动的方向
+            escape_pos = self._find_escape_position(room_id, unit, target_x, target_y, unit_type_for_block)
+            if escape_pos:
+                unit.x, unit.y = escape_pos
+                # 更新位置记录
+                unit.last_position = (unit.x, unit.y)
+                return
+        
+        # 如果仍然无法移动，尝试8方向绕路（最后的回退方案）
+        main_angle = math.atan2(pref_vy, pref_vx)
+        best_pos = None
+        best_score = float('inf')
+        
+        for angle_offset in range(0, 360, 45):
+            angle = main_angle + math.radians(angle_offset)
+            dir_x = math.cos(angle)
+            dir_y = math.sin(angle)
+            
+            for step_mult in [1.0, 0.8, 0.6, 0.4]:
+                try_x = unit.x + dir_x * speed * step_mult
+                try_y = unit.y + dir_y * speed * step_mult
+                try_x = max(2, min(state.width - 3, try_x))
+                try_y = max(2, min(state.height - 3, try_y))
+                
+                if not self._is_position_blocked(room_id, try_x, try_y, unit.id, unit_type_for_block):
+                    new_dist = self._distance(try_x, try_y, target_x, target_y)
+                    old_dist = self._distance(unit.x, unit.y, target_x, target_y)
+                    score = new_dist + abs(angle_offset) * 0.01
+                    
+                    if new_dist <= old_dist + 1.0 and score < best_score:
+                        best_score = score
+                        best_pos = (try_x, try_y)
+        
+        if best_pos:
+            unit.x, unit.y = best_pos
+            # 更新位置记录
+            unit.last_position = (unit.x, unit.y)
+        else:
+            # 即使无法移动，也更新位置记录（用于检测卡位）
+            unit.last_position = (unit.x, unit.y)
 
     def _move_to_attack_range(self, room_id: int, unit: UnitState, target_x: float, target_y: float, attack_range: float) -> None:
         """智能移动到攻击范围内，可以绕过障碍，实现包围效果
@@ -2082,6 +2606,19 @@ class LiveWarGameManager:
         for wall in state.walls:
             wall_x, wall_y = wall
             if int(wall_x) == grid_x and int(wall_y) == grid_y:
+                return True
+
+        # 检查是否在湖泊上（不能进入湖泊）
+        for lake in state.lakes:
+            lake_x, lake_y = lake
+            if lake_x == grid_x and lake_y == grid_y:
+                return True
+
+        # 检查是否在矿场上（矿场有碰撞体积）
+        for mine in state.mine_fields:
+            mine_grid_x = int(math.floor(mine.x))
+            mine_grid_y = int(math.floor(mine.y))
+            if mine_grid_x == grid_x and mine_grid_y == grid_y:
                 return True
 
         # 检查是否在基地上（不能穿过基地）

@@ -33,7 +33,7 @@
       <div v-show="!sidebarCollapsed || isMobile" class="sidebar-content">
         <!-- Logo -->
         <div class="logo-section">
-          <img src="https://cdn.jiamid.com/just_chat_a_moment.webp" alt="Just Chat A Moment" class="logo-image" />
+          <h1 class="logo-text">JustChatAMoment</h1>
         </div>
 
         <!-- 房间列表 -->
@@ -88,7 +88,7 @@
     <div v-if="showGamePanel && roomId && !isMobile && !showDrawingPanel" class="game-area">
       <div class="game-panel-new">
         <!-- 顶部：红蓝方血量（像素风格） -->
-        <div class="game-top-bar pixel-style">
+        <div class="game-top-bar">
           <!-- 两行合并：RED VS BLUE占据两行高度，文字一行显示 -->
           <div class="top-bar-double-row">
             <div class="top-bar-left-column">
@@ -118,7 +118,9 @@
                 </div>
               </div>
             </div>
-            <div class="vs-divider-double pixel-text">RED VS BLUE</div>
+            <div class="vs-divider-double pixel-text">
+              <span class="red-text">RED</span> VS <span class="blue-text">BLUE</span>
+            </div>
             <div class="top-bar-right-column">
               <div class="team-hp blue-team">
                 <div class="hp-bar-container">
@@ -154,7 +156,7 @@
                 class="player-list-toggle pixel-text"
                 @click="showPlayerList = !showPlayerList; showGameRules = false"
               >
-                {{ showPlayerList ? '▼' : '▶' }} Players
+                {{ showPlayerList ? '▼' : '▶' }} 玩家
               </button>
               <button
                 class="game-rules-toggle pixel-text"
@@ -275,7 +277,6 @@
           <template v-if="inGame && !isGameSpectator && currentPlayer && isGameStarted">
             <div class="player-stats-row">
               <div class="energy-display">
-                <span class="energy-icon">⚡</span>
                 <span class="energy-value">{{ currentPlayer.energy || 0 }}</span>
               </div>
               <div class="unit-counts">
@@ -297,7 +298,9 @@
                 :key="key"
                 class="unit-spawn-btn"
                 :class="{
-                  disabled: (currentPlayer.energy || 0) < cfg.cost
+                  disabled: (currentPlayer.energy || 0) < cfg.cost,
+                  'red-team': currentPlayer && currentPlayer.team === 'red',
+                  'blue-team': currentPlayer && currentPlayer.team === 'blue'
                 }"
                 @click="selectAndSpawnUnit(key)"
                 :disabled="(currentPlayer.energy || 0) < cfg.cost"
@@ -505,29 +508,10 @@
             title="LiveWar 对战"
             style="margin-right: 0.5rem;"
           >
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="square" stroke-linejoin="miter">
-              <!-- 基地底座（方形） -->
-              <rect x="3" y="12" width="14" height="5" fill="none"/>
-
-              <!-- 底座装饰线条 -->
-              <line x1="5" y1="13.5" x2="5" y2="16.5"/>
-              <line x1="8" y1="13.5" x2="8" y2="16.5"/>
-              <line x1="12" y1="13.5" x2="12" y2="16.5"/>
-              <line x1="15" y1="13.5" x2="15" y2="16.5"/>
-
-              <!-- 主建筑（中心塔楼） -->
-              <rect x="7" y="6" width="6" height="6" fill="none"/>
-
-              <!-- 建筑顶部装饰 -->
-              <line x1="7" y1="6" x2="10" y2="3"/>
-              <line x1="13" y1="6" x2="10" y2="3"/>
-
-              <!-- 建筑门 -->
-              <rect x="8.5" y="9.5" width="3" height="2.5" fill="none"/>
-
-              <!-- 建筑窗户 -->
-              <rect x="7.5" y="7" width="1.5" height="1.5" fill="none"/>
-              <rect x="11" y="7" width="1.5" height="1.5" fill="none"/>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <!-- 经典钻石形状：上面梯形，下面三角形 -->
+              <path d="M12 2 L18 8 L12 14 L6 8 Z"/>
+              <path d="M6 8 L12 14 L18 8 L12 20 Z"/>
             </svg>
           </button>
           <!-- 音乐选择按钮 -->
@@ -542,9 +526,9 @@
             >
               <div class="music-icon">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M9 18V5l12-2v13"></path>
-                  <circle cx="6" cy="18" r="3"></circle>
-                  <circle cx="18" cy="16" r="3"></circle>
+                  <path d="M9 18V5l12-2v13" transform="translate(-1, 1)"></path>
+                  <circle cx="6" cy="18" r="3" transform="translate(-1, 1)"></circle>
+                  <circle cx="18" cy="16" r="3" transform="translate(-1, 1)"></circle>
                 </svg>
               </div>
             </button>
@@ -584,7 +568,7 @@
           <!-- 移动端游戏面板（桌面端游戏面板在中间区域） -->
           <div v-if="showGamePanel && isMobile" class="game-panel-mobile">
             <!-- 顶部：红蓝方血量（像素风格） -->
-            <div class="game-top-bar pixel-style">
+            <div class="game-top-bar">
               <!-- 两行合并：RED VS BLUE占据两行高度，文字一行显示 -->
               <div class="top-bar-double-row">
                 <div class="top-bar-left-column">
@@ -614,7 +598,9 @@
                     </div>
                   </div>
                 </div>
-                <div class="vs-divider-double pixel-text">RED VS BLUE</div>
+                <div class="vs-divider-double pixel-text">
+                  <span class="red-text">RED</span> VS <span class="blue-text">BLUE</span>
+                </div>
                 <div class="top-bar-right-column">
                   <div class="team-hp blue-team">
                     <div class="hp-bar-container">
@@ -650,7 +636,7 @@
                     class="player-list-toggle pixel-text"
                     @click="showPlayerList = !showPlayerList; showGameRules = false"
                   >
-                    {{ showPlayerList ? '▼' : '▶' }} Players
+                    {{ showPlayerList ? '▼' : '▶' }} 玩家
                   </button>
                   <button
                     class="game-rules-toggle pixel-text"
@@ -771,7 +757,6 @@
               <template v-if="inGame && !isGameSpectator && currentPlayer && isGameStarted">
                 <div class="player-stats-row">
                   <div class="energy-display">
-                    <span class="energy-icon">⚡</span>
                     <span class="energy-value">{{ currentPlayer.energy || 0 }}</span>
                   </div>
                   <div class="unit-counts">
@@ -793,7 +778,9 @@
                     :key="key"
                     class="unit-spawn-btn"
                     :class="{
-                      disabled: (currentPlayer.energy || 0) < cfg.cost
+                      disabled: (currentPlayer.energy || 0) < cfg.cost,
+                      'red-team': currentPlayer && currentPlayer.team === 'red',
+                      'blue-team': currentPlayer && currentPlayer.team === 'blue'
                     }"
                     @click="selectAndSpawnUnit(key)"
                     :disabled="(currentPlayer.energy || 0) < cfg.cost"
@@ -1481,6 +1468,13 @@ export default {
                     y: { type: 'double', id: 2 }
                   }
                 },
+                TerrainCell: {
+                  fields: {
+                    x: { type: 'int32', id: 1 },
+                    y: { type: 'int32', id: 2 },
+                    type: { type: 'int32', id: 3 }
+                  }
+                },
                 Base: {
                   fields: {
                     id: { type: 'string', id: 1 },
@@ -1559,7 +1553,9 @@ export default {
                     units: { rule: 'repeated', type: 'Unit', id: 8 },
                     energyDrops: { rule: 'repeated', type: 'EnergyDrop', id: 9 },
                     healEffects: { rule: 'repeated', type: 'HealEffect', id: 10 },
-                    bulletEffects: { rule: 'repeated', type: 'BulletEffect', id: 11 }
+                    bulletEffects: { rule: 'repeated', type: 'BulletEffect', id: 11 },
+                    lakes: { rule: 'repeated', type: 'Position', id: 12 },
+                    terrain: { rule: 'repeated', type: 'TerrainCell', id: 13 }
                   }
                 },
                 GameStatePayload: {
@@ -1879,7 +1875,7 @@ export default {
 
     logout () {
       localStorage.removeItem('token')
-      this.$router.push('/login')
+      this.$router.push('/')
     },
 
     switchRoom (roomId) {
@@ -2523,11 +2519,7 @@ html, body {
   display: flex;
   height: 100vh;
   height: 100dvh; /* 使用动态视口高度，更好地处理移动端 */
-  background: radial-gradient(1200px 800px at 10% 20%, rgba(139, 92, 246, 0.25), rgba(139, 92, 246, 0) 60%),
-              radial-gradient(1000px 700px at 90% 30%, rgba(236, 72, 153, 0.25), rgba(236, 72, 153, 0) 60%),
-              radial-gradient(1100px 600px at 50% 80%, rgba(59, 130, 246, 0.2), rgba(59, 130, 246, 0) 60%),
-              radial-gradient(900px 500px at 30% 70%, rgba(168, 85, 247, 0.15), rgba(168, 85, 247, 0) 50%),
-              linear-gradient(135deg, #1a1625 0%, #2a1f3e 20%, #1e1b2e 40%, #251f35 60%, #1a1625 80%, #1a1625 100%);
+  background: #ffffff;
   overflow: hidden; /* 防止整体滚动 */
   position: fixed; /* 固定定位，防止页面滚动 */
   top: 0;
@@ -2543,19 +2535,19 @@ html, body {
 /* 左侧导航栏 */
 .left-sidebar {
   width: 250px;
-  background: rgba(255, 255, 255, 0.03);
-  color: #e6e6f0;
+  background: #ffffff;
+  color: #000000;
   display: flex;
   flex-direction: column;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 12px;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  border: var(--px-border, 3px) solid #000000;
+  border-radius: var(--px-border-radius, 15px);
   transition: width 0.3s ease, transform 0.3s ease;
   z-index: 1000;
   position: relative;
   overflow: hidden;
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
 }
 
 /* 折叠状态 */
@@ -2581,7 +2573,7 @@ html, body {
   background: transparent;
   border: none;
   border-radius: 0;
-  color: #e6e6f0;
+  color: #000000;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -2592,7 +2584,7 @@ html, body {
 }
 
 .sidebar-toggle-btn:hover {
-  color: #fff;
+  color: #000000;
 }
 
 /* 折叠状态下，按钮居中显示 */
@@ -2664,7 +2656,7 @@ button,
 
 .logo-section {
   padding: 0.5rem 0; /* 减小padding，让logo更大 */
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  border-bottom: 1px solid #000000;
   /* 与chat-header高度保持一致：统一设置为65px */
   height: 65px;
   display: flex;
@@ -2673,12 +2665,16 @@ button,
   box-sizing: border-box;
 }
 
-.logo-image {
-  width: 100%;
-  height: auto;
-  max-height: 49px; /* 65px (logo-section高度) - 16px (上下padding 0.5rem * 2) = 49px */
-  object-fit: contain;
-  display: block;
+.logo-text {
+  margin: 0;
+  text-align: center;
+  color: #000000;
+  font-size: 1.25rem;
+  font-weight: 600;
+  position: relative;
+  z-index: 1;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 .rooms-section {
@@ -2723,7 +2719,7 @@ button,
 .rooms-section h3 {
   margin: 0 0 1rem 0;
   font-size: 1rem;
-  color: #cdd0e5;
+  color: #000000;
   font-weight: 500;
 }
 
@@ -2735,22 +2731,18 @@ button,
 
 .room-item {
   padding: 0.75rem;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 10px;
+  background: #ffffff;
+  border: var(--px-border, 3px) solid #000000;
+  border-radius: var(--px-border-radius, 15px);
   cursor: pointer;
   transition: all 0.3s ease;
   text-align: center;
-}
-
-.room-item:hover {
-  background: rgba(255, 255, 255, 0.1);
+  color: #000000;
 }
 
 .room-item.active {
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.7) 0%, rgba(168, 85, 247, 0.7) 30%, rgba(192, 38, 211, 0.7) 60%, rgba(220, 38, 38, 0.7) 100%);
-  border-color: transparent;
-  box-shadow: 0 8px 24px rgba(139, 92, 246, 0.4);
+  background: #000000;
+  color: #ffffff;
 }
 
 .room-name {
@@ -2766,7 +2758,7 @@ button,
 .room-jump h4 {
   margin: 0 0 0.75rem 0;
   font-size: 0.9rem;
-  color: #bdc3c7;
+  color: #000000;
   font-weight: 500;
 }
 
@@ -2774,9 +2766,9 @@ button,
   display: flex;
   gap: 0.5rem;
   padding: 0.75rem;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 10px;
+  background: #ffffff;
+  border: var(--px-border, 3px) solid #000000;
+  border-radius: var(--px-border-radius, 15px);
   transition: all 0.3s ease;
 }
 
@@ -2786,7 +2778,7 @@ button,
   background: transparent;
   border: none;
   border-radius: 0;
-  color: #e6e6f0;
+  color: #000000;
   font-size: 1rem;
   font-weight: 500;
   outline: none;
@@ -2796,7 +2788,7 @@ button,
 }
 
 .jump-input::placeholder {
-  color: rgba(230, 230, 240, 0.55);
+  color: rgba(0, 0, 0, 0.5);
   font-weight: 500;
 }
 
@@ -2808,7 +2800,7 @@ button,
   flex: 1;
   padding: 0;
   background: transparent;
-  color: #ffffff;
+  color: #000000;
   border: none;
   border-radius: 0;
   cursor: pointer;
@@ -2827,7 +2819,7 @@ button,
 
 .user-section {
   padding: 1rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  border-top: 1px solid #000000;
   flex-shrink: 0; /* 防止用户区域被压缩 */
 }
 
@@ -2837,7 +2829,7 @@ button,
 
 .user-info .username {
   font-weight: 500;
-  color: #ffffff;
+  color: #000000;
 }
 
 /* 导航栏连接状态 */
@@ -2860,20 +2852,20 @@ button,
 }
 
 .connection-status-navbar .status-text {
-  color: #86efac;
+  color: #000000;
   font-weight: 500;
 }
 
 .connection-status-navbar .status-text.connecting {
-  color: #fbbf24;
+  color: #000000;
 }
 
 .connection-status-navbar .reconnect-btn {
   padding: 0.25rem 0.5rem;
-  background: linear-gradient(135deg, #f97316 0%, #ef4444 100%);
+  background: #000000;
   color: white;
-  border: none;
-  border-radius: 6px;
+  border: var(--px-border, 3px) solid #000000;
+  border-radius: var(--px-border-radius, 15px);
   cursor: pointer;
   font-size: 0.75rem;
   font-weight: 500;
@@ -2881,25 +2873,23 @@ button,
 }
 
 .connection-status-navbar .reconnect-btn:hover {
-  filter: brightness(1.05);
+  background: #000000;
 }
 
 .logout-btn {
   width: 100%;
   padding: 0.75rem;
-  background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 30%, #c026d3 60%, #dc2626 100%);
+  background: #000000;
   color: white;
-  border: none;
-  border-radius: 12px;
+  border: var(--px-border, 3px) solid #000000;
+  border-radius: var(--px-border-radius, 15px);
   cursor: pointer;
   font-size: 1rem;
   transition: all 0.25s ease;
-  box-shadow: 0 8px 24px rgba(139, 92, 246, 0.4), 0 4px 12px rgba(220, 38, 127, 0.3);
 }
 
 .logout-btn:hover {
-  filter: brightness(1.05);
-  transform: translateY(-1px);
+  background: #000000;
 }
 
 /* 中间画布区域 */
@@ -2910,14 +2900,14 @@ button,
   min-width: 0;
   min-height: 0; /* 允许收缩 */
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 12px;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  background: #ffffff;
+  border: var(--px-border, 3px) solid #000000;
+  border-radius: var(--px-border-radius, 15px);
   /* 确保画布区域始终在可见区域内 */
   max-height: 100vh;
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
 }
 
 /* 中间游戏区域（类似 drawing-area） */
@@ -2928,14 +2918,14 @@ button,
   min-width: 0;
   min-height: 0; /* 允许收缩 */
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06); /* 与其他气泡边框一致 */
-  border-radius: 12px;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  background: #ffffff;
+  border: var(--px-border, 3px) solid #000000;
+  border-radius: var(--px-border-radius, 15px);
   /* 确保游戏区域始终在可见区域内 */
   max-height: 100vh;
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
 }
 
 /* 右侧聊天区域 */
@@ -3003,7 +2993,7 @@ button,
   z-index: 9999; /* 确保在最上层 */
   min-height: 30px;
   padding: 8px 20px; /* 内边距，使内容不贴边 */
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.9) 0%, rgba(168, 85, 247, 0.9) 30%, rgba(192, 38, 211, 0.9) 60%, rgba(220, 38, 38, 0.9) 100%);
+  background: #000000;
   color: white;
   display: flex;
   align-items: center;
@@ -3012,23 +3002,19 @@ button,
   font-weight: 500;
   animation: slideDown 0.3s ease-out;
   pointer-events: none; /* 不阻挡鼠标事件 */
-  border-radius: 8px; /* 圆角矩形边框 */
-  border: 2px solid rgba(255, 255, 255, 0.3); /* 白色半透明边框 */
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); /* 阴影效果 */
+  border-radius: var(--px-border-radius, 15px);
+  border: var(--px-border, 3px) solid #000000;
   box-sizing: border-box; /* 确保边框包含在宽度内 */
 }
 
 .chat-header {
-  background: rgba(255, 255, 255, 0.03);
+  background: #ffffff;
   padding: 1rem 1.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 12px;
+  border: var(--px-border, 3px) solid #000000;
+  border-radius: var(--px-border-radius, 15px);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
   position: relative;
   z-index: 100;
   overflow: visible;
@@ -3036,6 +3022,9 @@ button,
   /* 统一高度为65px */
   height: 65px;
   flex-shrink: 0; /* 防止被压缩 */
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
 }
 
 .header-left {
@@ -3050,17 +3039,16 @@ button,
   justify-content: center;
   width: 40px;
   height: 40px;
-  background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 30%, #c026d3 60%, #dc2626 100%);
+  background: #000000;
   color: white;
-  border: none;
-  border-radius: 12px;
+  border: var(--px-border, 3px) solid #000000;
+  border-radius: var(--px-border-radius, 15px);
   cursor: pointer;
   transition: all 0.25s ease;
-  box-shadow: 0 8px 20px rgba(139, 92, 246, 0.4), 0 4px 12px rgba(220, 38, 127, 0.3);
 }
 
 .menu-btn:hover {
-  filter: brightness(1.05);
+  background: #000000;
 }
 
 .menu-btn svg {
@@ -3069,7 +3057,7 @@ button,
 
 .chat-header h2 {
   margin: 0;
-  color: #e6e6f0;
+  color: #000000;
   font-size: 1.5rem;
   line-height: 1.2; /* 明确设置line-height，确保高度计算准确 */
 }
@@ -3079,7 +3067,7 @@ button,
   align-items: center;
   gap: 0.5rem;
   font-size: 0.9rem;
-  color: #cdd0e5;
+  color: #000000;
   position: relative;
   z-index: 101;
 }
@@ -3095,25 +3083,24 @@ button,
 }
 
 .status-text {
-  color: #86efac;
+  color: #000000;
   font-weight: 500;
 }
 
 .reconnect-btn {
   padding: 0.5rem 1rem;
-  background: linear-gradient(135deg, #f97316 0%, #ef4444 100%);
+  background: #000000;
   color: white;
-  border: none;
-  border-radius: 10px;
+  border: var(--px-border, 3px) solid #000000;
+  border-radius: var(--px-border-radius, 15px);
   cursor: pointer;
   font-size: 0.9rem;
   font-weight: 500;
   transition: all 0.25s ease;
-  box-shadow: 0 8px 20px rgba(239, 68, 68, 0.25);
 }
 
 .reconnect-btn:hover {
-  filter: brightness(1.05);
+  background: #000000;
 }
 
 .chat-main {
@@ -3122,13 +3109,13 @@ button,
   flex-direction: column;
   overflow: hidden;
   min-height: 0; /* 确保flex子元素可以正确收缩 */
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 12px;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  background: #ffffff;
+  border: var(--px-border, 3px) solid #000000;
+  border-radius: var(--px-border-radius, 15px);
   position: relative;
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
 }
 
 /* 移动端游戏面板样式 */
@@ -3150,10 +3137,8 @@ button,
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: #ffffff;
+  border: none;
   overflow: hidden;
   min-width: 0;
   min-height: 0;
@@ -3165,9 +3150,7 @@ button,
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: #ffffff;
   border-radius: 0; /* 游戏面板在气泡容器内，不需要额外圆角 */
   overflow: hidden;
 }
@@ -3178,18 +3161,13 @@ button,
   flex-direction: column;
   gap: clamp(0.5rem, 1.5vw, 0.75rem); /* 响应式间距 */
   padding: clamp(0.75rem, 2vw, 1rem) clamp(1rem, 3vw, 1.5rem); /* 响应式内边距 */
-  background: rgba(0, 0, 0, 0.4);
-  border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+  background: transparent;
+  border-bottom: 2px solid #000000;
   position: relative; /* 为悬浮的玩家列表提供定位上下文 */
   flex-shrink: 0; /* 防止被压缩 */
   min-height: fit-content; /* 确保高度根据内容自适应，但不受绝对定位子元素影响 */
   width: 100%; /* 确保占满容器宽度 */
   box-sizing: border-box; /* 包含padding和border */
-}
-
-.game-top-bar.pixel-style {
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
 }
 
 .top-bar-row {
@@ -3222,19 +3200,23 @@ button,
 }
 
 .vs-divider-double {
-  font-family: 'JetBrains Mono', 'Consolas', 'Monaco', monospace; /* 像素风格字体 */
   font-size: clamp(0.8rem, 2vw, 1.2rem); /* 响应式字体大小，最小0.8rem，最大1.2rem */
   font-weight: 600;
-  color: #d4d4d4; /* 白色文字，参考 live_war 风格 */
+  color: #000000; /* 默认文字颜色为黑色 */
   margin: 0 clamp(0.5rem, 1.5vw, 1rem); /* 响应式间距 */
-  text-shadow:
-    3px 3px 0 rgba(0, 0, 0, 1), /* 粗偏移阴影，黑色，完全偏移 */
-    4px 4px 0 rgba(0, 0, 0, 0.9), /* 第二层粗阴影，增强立体感 */
-    5px 5px 0 rgba(0, 0, 0, 0.7), /* 第三层粗阴影，柔和过渡 */
-    0 0 12px rgba(244, 135, 113, 0.4), /* 红色发光效果，增强 */
-    0 0 12px rgba(79, 193, 255, 0.4); /* 蓝色发光效果，增强 */
+  text-shadow: none;
   white-space: nowrap;
   display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.vs-divider-double .red-text {
+  color: #ef4444;
+}
+
+.vs-divider-double .blue-text {
+  color: #3b82f6;
   align-items: center;
   justify-content: center;
   writing-mode: horizontal-tb;
@@ -3267,7 +3249,6 @@ button,
 }
 
 .pixel-text {
-  font-family: 'Courier New', 'Monaco', 'Menlo', monospace;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -3376,7 +3357,7 @@ button,
   align-items: center;
   justify-content: center;
   gap: clamp(0.3rem, 1vw, 0.5rem); /* 响应式间距 */
-  flex-wrap: nowrap; /* 桌面端不换行，保持一行 */
+  flex-wrap: wrap; /* 允许换行，一行2个 */
   width: 100%; /* 确保占满容器宽度 */
   box-sizing: border-box; /* 包含padding和border */
 }
@@ -3386,6 +3367,10 @@ button,
   flex-direction: row;
   align-items: center;
   gap: 0.25rem;
+  flex: 1 1 auto; /* 允许伸缩，空间足够时在一行 */
+  min-width: calc(50% - clamp(0.3rem, 1vw, 0.5rem) / 2); /* 最小宽度为50%减去gap的一半，强制换行时每行2个 */
+  max-width: 100%; /* 最大宽度不超过容器 */
+  box-sizing: border-box;
 }
 
 .unit-type-icon {
@@ -3416,9 +3401,9 @@ button,
 
 /* 玩家列表下拉按钮 */
 .player-list-toggle {
-  background: rgba(0, 0, 0, 0.5);
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  color: #fff;
+  background: #ffffff;
+  border: var(--px-border, 3px) solid #000000;
+  color: #000000;
   padding: 0.5rem 1rem;
   cursor: pointer;
   font-size: 0.9rem;
@@ -3429,18 +3414,20 @@ button,
   box-sizing: border-box;
   display: flex;
   align-items: center; /* 垂直居中文字 */
+  border-radius: var(--px-border-radius, 15px);
+  text-shadow: none;
 }
 
 .player-list-toggle:hover {
-  background: rgba(0, 0, 0, 0.7);
-  border-color: rgba(255, 255, 255, 0.5);
+  background: #ffffff;
+  border-color: #000000;
 }
 
 /* 游戏规则按钮 */
 .game-rules-toggle {
-  background: rgba(0, 0, 0, 0.5);
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  color: #fff;
+  background: #ffffff;
+  border: var(--px-border, 3px) solid #000000;
+  color: #000000;
   padding: 0.5rem 1rem;
   cursor: pointer;
   font-size: 0.9rem;
@@ -3451,23 +3438,25 @@ button,
   box-sizing: border-box;
   display: flex;
   align-items: center; /* 垂直居中文字 */
+  border-radius: var(--px-border-radius, 15px);
+  text-shadow: none;
 }
 
 .game-rules-toggle:hover {
-  background: rgba(0, 0, 0, 0.7);
-  border-color: rgba(255, 255, 255, 0.5);
+  background: #ffffff;
+  border-color: #000000;
 }
 
 /* 玩家列表展开区域（悬浮在上层） */
 .player-list-container {
   position: absolute;
-  top: 100%; /* 紧贴在 top-bar-row 下方 */
+  top: calc(100% + 0.5rem); /* 距离按钮下方0.5rem */
   left: 0; /* 相对于 top-bar-row 左对齐 */
   right: 0; /* 相对于 top-bar-row 右对齐 */
   width: auto; /* 使用 left/right 来控制宽度 */
-  background: rgba(0, 0, 0, 0.9);
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top: none;
+  background: #ffffff;
+  border: var(--px-border, 3px) solid #000000;
+  border-top: var(--px-border, 3px) solid #000000; /* 添加上边框 */
   padding: 1rem;
   box-sizing: border-box;
   z-index: 1000; /* 确保在上层 */
@@ -3476,7 +3465,6 @@ button,
   overflow-y: auto; /* 如果内容过多，可以滚动 */
   /* 确保不影响父元素高度计算 */
   pointer-events: auto; /* 确保可以交互 */
-  margin-top: 0; /* 确保没有额外间距 */
   /* 美化滚动条 - Webkit (Chrome, Safari, Edge) */
   scrollbar-width: thin; /* Firefox */
   scrollbar-color: rgba(255, 255, 255, 0.3) transparent; /* Firefox */
@@ -3520,7 +3508,7 @@ button,
   font-size: 0.9rem;
   font-weight: 700;
   padding-bottom: 0.5rem;
-  border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+  border-bottom: 2px solid #000000;
   margin-bottom: 0.5rem;
   text-align: center;
   width: 100%;
@@ -3609,7 +3597,7 @@ button,
   color: #fff;
   text-align: center;
   padding-bottom: 0.5rem;
-  border-bottom: 2px solid rgba(255, 255, 255, 0.3);
+  border-bottom: 2px solid #000000;
 }
 
 .unit-rules-list {
@@ -3736,7 +3724,6 @@ button,
   justify-content: center;
   min-height: 0;
   overflow: hidden;
-  background: rgba(0, 0, 0, 0.2);
   padding: 1rem;
   /* 确保画布容器保持宽高比 */
   position: relative;
@@ -3778,51 +3765,47 @@ button,
   height: auto;
   min-height: 60px;
   padding: 0.75rem 1rem;
-  border: 3px solid rgba(255, 255, 255, 0.3);
+  border: var(--px-border, 3px) solid #000000;
   color: #fff;
   font-size: 1rem;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.2s;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
   box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: center;
+  border-radius: var(--px-border-radius, 15px);
 }
 
 /* 红方退出按钮 */
 .game-exit-btn.red-team {
-  background: rgba(220, 38, 38, 0.8);
+  background: #ef4444;
 }
 
 .game-exit-btn.red-team:hover:not(:disabled) {
-  background: rgba(220, 38, 38, 1);
-  border-color: rgba(255, 255, 255, 0.5);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(220, 38, 38, 0.4);
+  background: #dc2626;
+  border-color: #000000;
 }
 
 /* 蓝方退出按钮 */
 .game-exit-btn.blue-team {
-  background: rgba(37, 99, 235, 0.8);
+  background: #3b82f6;
 }
 
 .game-exit-btn.blue-team:hover:not(:disabled) {
-  background: rgba(37, 99, 235, 1);
-  border-color: rgba(255, 255, 255, 0.5);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4);
+  background: #2563eb;
+  border-color: #000000;
 }
 
 .game-exit-btn:active:not(:disabled) {
-  transform: translateY(0);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  background: #000000;
 }
 
 .game-exit-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  background: #666666;
 }
 
 .player-stats-row {
@@ -3835,15 +3818,30 @@ button,
 .energy-display {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
+  justify-content: center;
+  padding: 0.25rem 0.5rem;
+  padding-left: 1.5rem; /* 为背景图标留出空间 */
   background: rgba(251, 191, 36, 0.2);
   border: 1px solid rgba(251, 191, 36, 0.4);
   border-radius: 8px;
+  position: relative;
 }
 
-.energy-icon {
+.energy-display::before {
+  content: '⚡';
+  position: absolute;
+  left: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
   font-size: 1.2rem;
+  opacity: 0.3;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.energy-value {
+  position: relative;
+  z-index: 1;
 }
 
 .energy-value {
@@ -3874,7 +3872,7 @@ button,
 .unit-count-value {
   font-size: 0.9rem;
   font-weight: 600;
-  color: #e5e7eb;
+  color: #000000;
 }
 
 /* 四个兵种按钮 */
@@ -3890,18 +3888,24 @@ button,
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem;
-  background: rgba(255, 255, 255, 0.1);
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  border-radius: 10px;
+  background: #ffffff;
+  border: var(--px-border, 3px) solid #000000;
+  border-radius: var(--px-border-radius, 15px);
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .unit-spawn-btn:hover:not(.disabled) {
-  background: rgba(255, 255, 255, 0.15);
-  border-color: rgba(255, 255, 255, 0.3);
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.unit-spawn-btn.red-team:hover:not(.disabled) {
+  border-color: #ef4444;
+}
+
+.unit-spawn-btn.blue-team:hover:not(.disabled) {
+  border-color: #3b82f6;
 }
 
 .unit-spawn-btn.disabled {
@@ -3923,7 +3927,7 @@ button,
 .unit-spawn-name {
   font-size: 0.85rem;
   font-weight: 600;
-  color: #e5e7eb;
+  color: #000000;
 }
 
 .unit-spawn-cost {
@@ -3939,8 +3943,8 @@ button,
   justify-content: center;
   gap: 1rem;
   padding: 1rem 1.5rem;
-  background: rgba(0, 0, 0, 0.3);
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background: #ffffff;
+  border-top: 1px solid #000000;
   min-height: fit-content;
 }
 
@@ -3963,16 +3967,12 @@ button,
   padding: 0.75rem 1rem;
   font-size: 1rem;
   font-weight: 700;
-  border: 3px solid rgba(255, 255, 255, 0.3);
+  border: var(--px-border, 3px) solid #000000;
   cursor: pointer;
   transition: all 0.2s;
   text-transform: uppercase;
   letter-spacing: 1px;
-  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.8);
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.2),
-    0 2px 0 rgba(0, 0, 0, 0.5);
-  border-radius: 0;
+  border-radius: var(--px-border-radius, 15px);
   box-sizing: border-box;
   min-height: 60px;
   display: flex;
@@ -3983,19 +3983,17 @@ button,
 .join-team-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  background: #666666;
 }
 
 .join-team-btn:not(:disabled):hover {
-  transform: translateY(-1px);
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.3),
-    0 3px 0 rgba(0, 0, 0, 0.6);
+  background: #000000;
 }
 
 .join-red-btn {
   background: #ef4444;
   color: #fff;
-  border-color: rgba(255, 255, 255, 0.4);
+  border-color: #000000;
 }
 
 .join-red-btn:not(:disabled):hover {
@@ -4005,7 +4003,7 @@ button,
 .join-blue-btn {
   background: #3b82f6;
   color: #fff;
-  border-color: rgba(255, 255, 255, 0.4);
+  border-color: #000000;
 }
 
 .join-blue-btn:not(:disabled):hover {
@@ -4294,17 +4292,20 @@ button,
 }
 
 .own-message {
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.9) 0%, rgba(168, 85, 247, 0.9) 30%, rgba(192, 38, 211, 0.9) 60%, rgba(220, 38, 38, 0.9) 100%);
+  background: #000000;
   color: white;
   margin-left: auto;
+  border: var(--px-border, 3px) solid #000000;
+  border-radius: var(--px-border-radius, 15px);
   border-bottom-right-radius: 4px;
 }
 
 .other-message {
-  background: rgba(255, 255, 255, 0.06);
-  color: #e6e6f0;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #ffffff;
+  color: #000000;
+  border: var(--px-border, 3px) solid #000000;
   margin-right: auto;
+  border-radius: var(--px-border-radius, 15px);
   border-bottom-left-radius: 4px;
 }
 
@@ -4331,7 +4332,7 @@ button,
 }
 
 .other-message .message-header {
-  color: rgba(230, 230, 240, 0.6);
+  color: rgba(0, 0, 0, 0.6);
 }
 
 .username {
@@ -4363,16 +4364,16 @@ button,
 /* 音乐选择菜单（头部位置） */
 .music-menu-header-position {
   position: fixed;
-  background: rgba(255, 255, 255, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: #ffffff;
+  border: var(--px-border, 3px) solid #000000;
+  border-radius: var(--px-border-radius, 15px);
   z-index: 2000;
   min-width: 200px;
   max-width: 300px;
   animation: slideDown 0.2s ease-out;
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
 }
 
 @keyframes slideDown {
@@ -4402,8 +4403,8 @@ button,
   justify-content: space-between;
   align-items: center;
   padding: 0.75rem 1rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-  color: #1f2937;
+  border-bottom: 1px solid #000000;
+  color: #000000;
   font-weight: 600;
 }
 
@@ -4448,8 +4449,8 @@ button,
   padding: 0.75rem 1rem;
   cursor: pointer;
   transition: all 0.2s ease;
-  color: #374151;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  color: #000000;
+  border-bottom: 1px solid #000000;
 }
 
 .music-item:last-child {
@@ -4457,8 +4458,8 @@ button,
 }
 
 .music-item:hover {
-  background: rgba(99, 102, 241, 0.1);
-  color: #6366f1;
+  background: rgba(0, 0, 0, 0.1);
+  color: #000000;
 }
 
 .music-name {
@@ -4486,56 +4487,55 @@ button,
   flex: 1;
   min-width: 0; /* 允许输入框在小屏幕上收缩，避免挤出发送按钮 */
   padding: 0.75rem 1rem;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 12px;
+  border: var(--px-border, 3px) solid #000000;
+  border-radius: var(--px-border-radius, 15px);
   font-size: 1rem;
   outline: none;
   transition: all 0.25s ease;
-  background: rgba(255, 255, 255, 0.03);
-  color: #e6e6f0;
+  background: #ffffff;
+  color: #000000;
   box-sizing: border-box;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
 }
 
 .message-input:focus {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.1);
-  box-shadow: inset 0 0 0 2px rgba(99, 102, 241, 0.45), inset 0 0 0 6px rgba(236, 72, 153, 0.25), 0 4px 16px rgba(0, 0, 0, 0.2);
+  background: #ffffff;
+  border-color: #000000;
 }
 
 .message-input:disabled {
-  background: rgba(255, 255, 255, 0.02);
+  background: #ffffff;
   cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.message-input::placeholder {
+  color: rgba(0, 0, 0, 0.5);
 }
 
 .send-btn {
   flex-shrink: 0;
   padding: 0.75rem 1.5rem;
-  background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 30%, #c026d3 60%, #dc2626 100%);
+  background: #000000;
   color: white;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 12px;
+  border: var(--px-border, 3px) solid #000000;
+  border-radius: var(--px-border-radius, 15px);
   cursor: pointer;
   font-size: 1rem;
   font-weight: 500;
   transition: all 0.25s ease;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
   box-sizing: border-box;
   white-space: nowrap;
   min-width: fit-content; /* 确保按钮有足够宽度显示文字 */
 }
 
 .send-btn:hover:not(:disabled) {
-  filter: brightness(1.05);
-  transform: translateY(-1px);
+  background: #000000;
 }
 
 .send-btn:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
+  background: #666666;
 }
 
 /* 未选择房间时的提示样式 */
@@ -4554,13 +4554,13 @@ button,
 }
 
 .welcome-content h3 {
-  color: #e6e6f0;
+  color: #000000;
   margin-bottom: 1rem;
   font-size: 1.5rem;
 }
 
 .welcome-content p {
-  color: #cdd0e5;
+  color: #000000;
   margin-bottom: 2rem;
   font-size: 1rem;
   line-height: 1.5;
@@ -4691,8 +4691,8 @@ button,
     padding: 0.6rem 0.75rem;
   }
 
-  .logo-image {
-    max-height: 50px;
+  .logo-text {
+    font-size: 1.5rem;
   }
 
   .chat-header {
@@ -4794,6 +4794,39 @@ button,
     padding: 0.4rem 0.8rem;
     font-size: 0.8rem;
   }
+
+  /* 移动端：调整能量条宽度，确保单位数量能摆下 */
+  .player-stats-row {
+    gap: 0.5rem; /* 减小间距 */
+  }
+
+  .energy-display {
+    flex-shrink: 1; /* 允许收缩 */
+    padding: 0.5rem 0.75rem;
+    padding-left: 1.2rem; /* 为背景图标留出空间 */
+    min-width: 0; /* 允许收缩到最小 */
+  }
+
+  .energy-display::before {
+    content: '⚡';
+    position: absolute;
+    left: 0.4rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1rem; /* 移动端图标稍小 */
+    opacity: 0.3;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .energy-value {
+    font-size: 0.95rem; /* 移动端字体稍小 */
+  }
+
+  .unit-counts {
+    gap: 0.5rem; /* 减小单位数量之间的间距 */
+    flex-shrink: 0; /* 不允许收缩 */
+  }
 }
 
 /* 音乐图标按钮 */
@@ -4803,25 +4836,24 @@ button,
   justify-content: center;
   width: 32px;
   height: 32px;
-  background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 30%, #c026d3 60%, #dc2626 100%);
-  color: white;
-  border: none;
+  background: #ffffff;
+  color: #000000;
+  border: var(--px-border, 3px) solid #000000;
   border-radius: 50%;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
   position: relative;
   overflow: hidden;
 }
 
 .music-icon-btn:hover:not(:disabled) {
-  filter: brightness(1.1);
-  transform: scale(1.05);
+  background: #ffffff;
 }
 
 .music-icon-btn:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
+  background: #ffffff;
 }
 
 .music-icon {
@@ -4849,37 +4881,35 @@ button,
   justify-content: center;
   width: 32px;
   height: 32px;
-  background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 30%, #c026d3 60%, #dc2626 100%);
-  color: white;
-  border: none;
+  background: #ffffff;
+  color: #000000;
+  border: var(--px-border, 3px) solid #000000;
   border-radius: 50%;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
   margin-right: 0.5rem;
 }
 
 .drawing-icon-btn:hover:not(:disabled) {
-  filter: brightness(1.1);
-  transform: scale(1.05);
+  background: #ffffff;
 }
 
 .drawing-icon-btn:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
+  background: #ffffff;
 }
 
 .drawing-icon-btn.active {
-  background: linear-gradient(135deg, #22c55e 0%, #10b981 100%);
-  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.5);
+  background: #ffffff;
 }
 
 /* 画图面板样式已在上面定义 */
 
 .drawing-header {
   padding: 1rem 1.5rem; /* 与chat-header的padding保持一致 */
-  background: rgba(255, 255, 255, 0.08);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  background: #ffffff;
+  border-bottom: 1px solid #000000;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -4895,7 +4925,7 @@ button,
 }
 
 .drawer-info {
-  color: #e6e6f0;
+  color: #000000;
   font-weight: 500;
   font-size: 0.9rem;
 }
@@ -4916,43 +4946,47 @@ button,
 }
 
 .request-btn {
-  background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%);
+  background: #000000;
   color: white;
+  border: var(--px-border, 3px) solid #000000;
+  border-radius: var(--px-border-radius, 15px);
 }
 
 .request-btn:hover:not(:disabled) {
-  filter: brightness(1.1);
-  transform: translateY(-1px);
+  background: #000000;
 }
 
 .clear-btn {
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  background: #000000;
   color: white;
+  border: var(--px-border, 3px) solid #000000;
+  border-radius: var(--px-border-radius, 15px);
 }
 
 .clear-btn:hover:not(:disabled) {
-  filter: brightness(1.1);
-  transform: translateY(-1px);
+  background: #000000;
 }
 
 .stop-btn {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  background: #000000;
   color: white;
+  border: var(--px-border, 3px) solid #000000;
+  border-radius: var(--px-border-radius, 15px);
 }
 
 .stop-btn:hover:not(:disabled) {
-  filter: brightness(1.1);
-  transform: translateY(-1px);
+  background: #000000;
 }
 
 .approve-btn {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  background: #000000;
   color: white;
+  border: var(--px-border, 3px) solid #000000;
+  border-radius: var(--px-border-radius, 15px);
 }
 
 .approve-btn:hover:not(:disabled) {
-  filter: brightness(1.1);
-  transform: translateY(-1px);
+  background: #000000;
 }
 
 .drawing-btn:disabled {
@@ -4975,10 +5009,10 @@ button,
 
 .approve-btn-inline {
   padding: 0.4rem 1rem;
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  background: #000000;
   color: white;
-  border: none;
-  border-radius: 6px;
+  border: var(--px-border, 3px) solid #000000;
+  border-radius: var(--px-border-radius, 15px);
   cursor: pointer;
   font-size: 0.85rem;
   font-weight: 500;
@@ -4986,23 +5020,23 @@ button,
 }
 
 .approve-btn-inline:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
+  background: #000000;
 }
 
 .approve-btn-inline:active:not(:disabled) {
-  transform: translateY(0);
+  background: #000000;
 }
 
 .approve-btn-inline:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  background: #666666;
 }
 
 .drawing-tools {
   padding: 0.75rem 1rem;
-  background: rgba(255, 255, 255, 0.06);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  background: #ffffff;
+  border-bottom: 1px solid #000000;
   display: flex;
   gap: 1.5rem;
   align-items: center;
@@ -5018,7 +5052,7 @@ button,
 
 .color-picker span,
 .line-width-picker span {
-  color: #cdd0e5;
+  color: #000000;
   font-size: 0.9rem;
 }
 
@@ -5088,30 +5122,25 @@ button,
 
 .width-btn {
   padding: 0.4rem 0.75rem;
-  background: rgba(255, 255, 255, 0.08);
-  color: #e6e6f0;
-  border: 1.5px solid rgba(255, 255, 255, 0.15);
-  border-radius: 20px; /* 更圆润的按钮 */
+  background: #ffffff;
+  color: #000000;
+  border: var(--px-border, 3px) solid #000000;
+  border-radius: var(--px-border-radius, 15px);
   cursor: pointer;
   font-size: 0.85rem;
   font-weight: 500;
   transition: all 0.2s ease;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .width-btn:hover {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.25);
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+  background: #ffffff;
+  border-color: #000000;
 }
 
 .width-btn.active {
-  background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%);
-  border-color: transparent;
+  background: #000000;
+  border-color: #000000;
   color: white;
-  box-shadow: 0 2px 6px rgba(139, 92, 246, 0.4);
-  transform: translateY(-1px);
 }
 
 .drawing-container {
@@ -5227,7 +5256,7 @@ button,
     flex: 0 0 auto; /* 不自动伸缩，根据内容计算高度 */
     min-height: 0;
     border: none; /* 在气泡容器内，不需要边框 */
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: 1px solid #000000;
     border-radius: 0; /* 在气泡容器内，不需要圆角 */
     display: flex;
     flex-direction: column;

@@ -55,8 +55,8 @@ request.interceptors.response.use(
     // 处理401未授权
     if (error.response?.status === 401) {
       localStorage.removeItem('token')
-      // 跳转到登录页
-      window.location.href = '/login'
+      // 跳转到首页
+      window.location.href = '/'
       return Promise.reject(new Error('登录已过期，请重新登录'))
     }
 

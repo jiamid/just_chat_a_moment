@@ -20,7 +20,8 @@ export default {
       ctx: null,
       animationId: null,
       animationFrame: 0,
-      TILE_SIZE: 16
+      TILE_SIZE: 16,
+      terrainMap: null // 存储地形数据
     }
   },
   mounted () {
@@ -97,19 +98,33 @@ export default {
       const height = mapHeight * this.TILE_SIZE
 
       // 背景
-      ctx.fillStyle = '#1e1e1e'
+      ctx.fillStyle = '#ffffff'
       ctx.fillRect(0, 0, width, height)
 
       if (!state || !state.room) {
-        ctx.fillStyle = '#4ec9b0'
+        ctx.fillStyle = '#000000'
         ctx.font = '14px system-ui, -apple-system, BlinkMacSystemFont, sans-serif'
         ctx.textAlign = 'center'
         ctx.fillText('LOADING...', width / 2, height / 2)
         return
       }
 
-      // 网格背景（Screeps 风格）
+      // 从后端数据构建地形地图（每次绘制时检查是否需要更新）
+      const terrainData = state.room.terrain || []
+      if (!this.terrainMap ||
+          this.terrainMap.width !== mapWidth ||
+          this.terrainMap.height !== mapHeight) {
+        this.buildTerrainFromServer(mapWidth, mapHeight)
+      } else if (terrainData.length > 0) {
+        // 如果地形数据存在，重新构建以确保数据同步
+        this.buildTerrainFromServer(mapWidth, mapHeight)
+      }
+
+      // 绘制地形背景
       this.drawGrid(ctx, mapWidth, mapHeight)
+
+      // 绘制湖泊（浅蓝色背景）
+      this.drawLakes(ctx, mapWidth, mapHeight)
 
       // 基地
       if (state.room.redBase) {
@@ -123,6 +138,15 @@ export default {
       if (state.room.mineFields) {
         state.room.mineFields.forEach(m => {
           this.drawMine(ctx, m)
+        })
+      }
+
+      // 先绘制所有工程师的治疗光圈（在单位底层）
+      if (state.room.units) {
+        state.room.units.forEach(u => {
+          if (!u.isDead && u.type === 'engineer') {
+            this.drawHealAura(ctx, u)
+          }
         })
       }
 
@@ -160,20 +184,111 @@ export default {
       }
     },
 
-    drawGrid (ctx, mapWidth, mapHeight) {
-      ctx.fillStyle = '#252526'
+    buildTerrainFromServer (mapWidth, mapHeight) {
+      // 从后端数据构建地形地图
+      const state = this.gameState
+      const terrain = []
+
+      // 初始化所有格子为默认值（草地）
       for (let x = 0; x < mapWidth; x++) {
+        terrain[x] = []
         for (let y = 0; y < mapHeight; y++) {
-          if ((x + y) % 2 === 0) {
-            ctx.fillRect(
-              x * this.TILE_SIZE,
-              y * this.TILE_SIZE,
-              this.TILE_SIZE,
-              this.TILE_SIZE
-            )
-          }
+          terrain[x][y] = 0 // 默认为草地
         }
       }
+
+      // 从后端数据填充地形
+      if (state && state.room && state.room.terrain) {
+        const terrainData = state.room.terrain || []
+
+        terrainData.forEach(cell => {
+          // 处理 protobuf 数据格式
+          let x, y, type
+          if (typeof cell === 'object' && cell !== null) {
+            // protobuf 对象格式
+            x = cell.x
+            y = cell.y
+            type = cell.type
+          } else if (Array.isArray(cell)) {
+            // 数组格式
+            x = cell[0]
+            y = cell[1]
+            type = cell[2] !== undefined ? cell[2] : 0
+          } else {
+            return // 跳过无效数据
+          }
+
+          // 确保值是数字类型
+          x = parseInt(x, 10)
+          y = parseInt(y, 10)
+          type = parseInt(type, 10)
+
+          if (!isNaN(x) && !isNaN(y) && !isNaN(type) &&
+              x >= 0 && x < mapWidth && y >= 0 && y < mapHeight) {
+            terrain[x][y] = type
+          }
+        })
+      }
+
+      this.terrainMap = {
+        data: terrain,
+        width: mapWidth,
+        height: mapHeight
+      }
+    },
+
+    drawGrid (ctx, mapWidth, mapHeight) {
+      if (!this.terrainMap || !this.terrainMap.data) {
+        return
+      }
+
+      for (let x = 0; x < mapWidth; x++) {
+        for (let y = 0; y < mapHeight; y++) {
+          const terrainType = this.terrainMap.data[x][y]
+          if (terrainType === 0) {
+            ctx.fillStyle = '#7cb342' // 鲜艳的草地绿色
+          } else {
+            ctx.fillStyle = '#8b6f47' // 泥土棕色
+          }
+          ctx.fillRect(
+            x * this.TILE_SIZE,
+            y * this.TILE_SIZE,
+            this.TILE_SIZE,
+            this.TILE_SIZE
+          )
+        }
+      }
+    },
+
+    drawLakes (ctx, mapWidth, mapHeight) {
+      const state = this.gameState
+      if (!state || !state.room || !state.room.lakes) {
+        return
+      }
+
+      // 绘制湖泊（浅蓝色背景）
+      ctx.fillStyle = '#87ceeb' // 浅蓝色（Sky Blue）
+      const lakes = state.room.lakes || []
+
+      lakes.forEach(lake => {
+        // 支持两种数据格式：数组 [x, y] 或对象 {x, y}
+        let lakeX, lakeY
+        if (Array.isArray(lake)) {
+          lakeX = lake[0]
+          lakeY = lake[1]
+        } else {
+          lakeX = lake.x
+          lakeY = lake.y
+        }
+
+        // 绘制湖泊格子
+        ctx.fillRect(
+          lakeX * this.TILE_SIZE,
+          lakeY * this.TILE_SIZE,
+          this.TILE_SIZE,
+          this.TILE_SIZE
+        )
+      })
     },
 
     drawBase (ctx, base, team) {
@@ -374,84 +489,86 @@ export default {
         ctx.stroke()
         ctx.globalAlpha = 1
       }
+    },
 
-      // 工程师治疗时显示光环特效
-      if (unit.type === 'engineer') {
-        const state = this.gameState
-        let isHealing = false
+    drawHealAura (ctx, unit) {
+      const x = unit.x * this.TILE_SIZE
+      const y = unit.y * this.TILE_SIZE
+      const isRed = unit.team === 'red'
+      const state = this.gameState
+      let isHealing = false
 
-        // 方法1：检查healEffects中是否有工程师位置的特效
-        if (state && state.room) {
-          const heals = state.room.healEffects || state.room.heal_effects || []
-          const unitX = unit.x
-          const unitY = unit.y
-          const threshold = 0.5 // 0.5格内的误差范围
+      // 方法1：检查healEffects中是否有工程师位置的特效
+      if (state && state.room) {
+        const heals = state.room.healEffects || state.room.heal_effects || []
+        const unitX = unit.x
+        const unitY = unit.y
+        const threshold = 0.5 // 0.5格内的误差范围
 
-          for (const heal of heals) {
-            const healX = heal.x
-            const healY = heal.y
-            if (healX === undefined || healY === undefined) continue
-            const dist = Math.sqrt((unitX - healX) ** 2 + (unitY - healY) ** 2)
-            if (dist < threshold && heal.team === unit.team) {
+        for (const heal of heals) {
+          const healX = heal.x
+          const healY = heal.y
+          if (healX === undefined || healY === undefined) continue
+          const dist = Math.sqrt((unitX - healX) ** 2 + (unitY - healY) ** 2)
+          if (dist < threshold && heal.team === unit.team) {
+            isHealing = true
+            break
+          }
+        }
+      }
+
+      // 方法2：如果方法1没找到，检查周围3格内是否有受伤的友方单位
+      if (!isHealing && state && state.room && state.room.units) {
+        const healRange = 3 // 3格
+        const unitX = unit.x
+        const unitY = unit.y
+
+        for (const ally of state.room.units) {
+          if (ally.isDead || ally.team !== unit.team || ally.id === unit.id) {
+            continue
+          }
+          if (ally.hp < ally.hpMax) {
+            const dist = Math.sqrt((unitX - ally.x) ** 2 + (unitY - ally.y) ** 2)
+            if (dist <= healRange) {
               isHealing = true
               break
             }
           }
         }
+      }
 
-        // 方法2：如果方法1没找到，检查周围3格内是否有受伤的友方单位
-        if (!isHealing && state && state.room && state.room.units) {
-          const healRange = 3 // 3格
-          const unitX = unit.x
-          const unitY = unit.y
+      // 如果正在治疗，显示治疗光环
+      if (isHealing) {
+        const healColor = isRed ? '#ef4444' : '#3b82f6'
+        const time = Date.now() / 1000
+        const pulse = Math.sin(time * 3) * 0.3 + 0.7 // 脉冲效果
+        const healRange = 3 * this.TILE_SIZE // 3格转换为像素
 
-          for (const ally of state.room.units) {
-            if (ally.isDead || ally.team !== unit.team || ally.id === unit.id) {
-              continue
-            }
-            if (ally.hp < ally.hpMax) {
-              const dist = Math.sqrt((unitX - ally.x) ** 2 + (unitY - ally.y) ** 2)
-              if (dist <= healRange) {
-                isHealing = true
-                break
-              }
-            }
-          }
-        }
+        ctx.save()
+        ctx.globalAlpha = pulse * 0.6
+        ctx.strokeStyle = healColor
+        ctx.lineWidth = 2
 
-        // 如果正在治疗，显示治疗光环
-        if (isHealing) {
-          const healColor = isRed ? '#2ecc71' : '#3498db'
-          const time = Date.now() / 1000
-          const pulse = Math.sin(time * 3) * 0.3 + 0.7 // 脉冲效果
-          const healRange = 3 * this.TILE_SIZE // 3格转换为像素
+        // 外圈光环（3格范围）
+        ctx.beginPath()
+        ctx.arc(x, y, healRange, 0, Math.PI * 2)
+        ctx.stroke()
 
-          ctx.save()
-          ctx.globalAlpha = pulse * 0.6
-          ctx.strokeStyle = healColor
-          ctx.lineWidth = 2
+        // 内圈光环（更亮）
+        ctx.globalAlpha = pulse * 0.8
+        ctx.lineWidth = 1.5
+        ctx.beginPath()
+        ctx.arc(x, y, healRange * 0.7, 0, Math.PI * 2)
+        ctx.stroke()
 
-          // 外圈光环（3格范围）
-          ctx.beginPath()
-          ctx.arc(x, y, healRange, 0, Math.PI * 2)
-          ctx.stroke()
+        // 中心光点
+        ctx.globalAlpha = pulse
+        ctx.fillStyle = healColor
+        ctx.beginPath()
+        ctx.arc(x, y, 4, 0, Math.PI * 2)
+        ctx.fill()
 
-          // 内圈光环（更亮）
-          ctx.globalAlpha = pulse * 0.8
-          ctx.lineWidth = 1.5
-          ctx.beginPath()
-          ctx.arc(x, y, healRange * 0.7, 0, Math.PI * 2)
-          ctx.stroke()
-
-          // 中心光点
-          ctx.globalAlpha = pulse
-          ctx.fillStyle = healColor
-          ctx.beginPath()
-          ctx.arc(x, y, 4, 0, Math.PI * 2)
-          ctx.fill()
-
-          ctx.restore()
-        }
+        ctx.restore()
       }
     },
 
@@ -799,8 +916,7 @@ export default {
   display: block;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
-  border: 1px solid #3e3e42;
-  background: #1e1e1e;
+  background: #ffffff;
   /* 保持固定宽高比，避免形变 */
   /* 地图比例：60x60 = 1:1 */
   aspect-ratio: 1 / 1;

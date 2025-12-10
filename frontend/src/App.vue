@@ -11,8 +11,21 @@ export default {
 </script>
 
 <style>
+@font-face {
+  font-family: 'Cubic_11';
+  src: url('./assets/Cubic_11.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --px-border-radius: 15px;
+  --px-border: 3px;
+}
+
 #app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
+  font-family: 'Cubic_11', Avenir, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   color: #2c3e50;
@@ -23,5 +36,10 @@ export default {
 body {
   margin: 0;
   padding: 0;
+  font-family: 'Cubic_11', Avenir, Helvetica, Arial, sans-serif;
+}
+
+* {
+  font-family: 'Cubic_11', Avenir, Helvetica, Arial, sans-serif;
 }
 </style>

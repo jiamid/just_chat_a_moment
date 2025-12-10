@@ -120,6 +120,12 @@ message Position {
   double y = 2;
 }
 
+message TerrainCell {
+  int32 x = 1;
+  int32 y = 2;
+  int32 type = 3;  // 0 = 草地, 1 = 泥土
+}
+
 message Unit {
   string id = 1;
   string type = 2;        // "miner" / "engineer" / "heavy_tank" / "assault_tank"
@@ -192,6 +198,8 @@ message Room {
   repeated EnergyDrop energy_drops = 9;
   repeated HealEffect heal_effects = 10;
   repeated BulletEffect bullet_effects = 11;
+  repeated Position lakes = 12;  // 湖泊位置列表
+  repeated TerrainCell terrain = 13;  // 地形数据（草地/泥土）
 }
 
 message TeamStats {

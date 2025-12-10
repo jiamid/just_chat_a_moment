@@ -1,19 +1,12 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import Login from '../views/Login.vue'
+import Home from '../views/Home.vue'
 import Chat from '../views/Chat.vue'
 
 const routes = [
   {
     path: '/',
-    redirect: (to) => {
-      const token = localStorage.getItem('token')
-      return token ? '/chat' : '/login'
-    }
-  },
-  {
-    path: '/login',
-    name: 'Login',
-    component: Login
+    name: 'Home',
+    component: Home
   },
   {
     path: '/chat',
@@ -30,10 +23,7 @@ const routes = [
   {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
-    redirect: (to) => {
-      const token = localStorage.getItem('token')
-      return token ? '/chat' : '/login'
-    }
+    redirect: '/'
   }
 ]
 
@@ -48,12 +38,12 @@ router.beforeEach((to, from, next) => {
 
   // 检查是否需要认证
   if (to.meta.requiresAuth && !token) {
-    next('/login')
+    next('/')
     return
   }
 
-  // 如果已登录但访问登录页，重定向到聊天页
-  if (to.name === 'Login' && token) {
+  // 如果已登录但访问首页，重定向到聊天页
+  if (to.name === 'Home' && token) {
     next('/chat')
     return
   }
