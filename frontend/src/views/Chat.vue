@@ -4476,6 +4476,12 @@ button,
   z-index: 998; /* 降低z-index，确保不会遮挡导航栏 */
   transform: translateY(0);
   background: transparent; /* 确保没有背景色 */
+  /* 确保保留原有的 flex 布局属性 */
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+  width: auto; /* 使用 left/right 控制宽度 */
+  box-sizing: border-box;
 }
 
 /* 移动端导航栏展开时隐藏键盘弹起状态的输入框 */
@@ -4765,6 +4771,12 @@ button,
     z-index: 998; /* 确保不会遮挡导航栏(z-index: 1000) */
     transform: translateY(0);
     margin: 0;
+    /* 确保保留原有的 flex 布局属性 */
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+    width: auto; /* 使用 left/right 控制宽度 */
+    box-sizing: border-box;
   }
 
   /* 移动端导航栏展开时隐藏键盘弹起状态的输入框 */
