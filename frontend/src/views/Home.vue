@@ -52,9 +52,7 @@
     <!-- 底部一个气泡：详细介绍 -->
     <div class="bottom-bubble">
       <div class="bubble content-bubble">
-        <div class="content-section">
-          <div class="jiamid-text">{{ displayUsername }}</div>
-        </div>
+        <ParticleText :text="displayUsername" />
       </div>
     </div>
 
@@ -144,9 +142,13 @@
 
 <script>
 import { api } from '@/utils/request.js'
+import ParticleText from '@/components/ParticleText.vue'
 
 export default {
   name: 'Home',
+  components: {
+    ParticleText
+  },
   data () {
     return {
       showLoginModal: false,
@@ -391,6 +393,7 @@ export default {
         this.loading = false
       }
     }
+
   }
 }
 </script>
@@ -643,23 +646,6 @@ export default {
   display: flex;
   flex-direction: column;
   overflow: auto;
-}
-
-.content-section {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  width: 100%;
-}
-
-.jiamid-text {
-  font-size: 8rem;
-  font-weight: 900;
-  color: #000000;
-  text-align: center;
-  letter-spacing: 0.1em;
-  line-height: 1;
 }
 
 .features {
@@ -1000,10 +986,6 @@ export default {
 
   .content-title {
     font-size: 1.5rem;
-  }
-
-  .jiamid-text {
-    font-size: 4rem;
   }
 
   .logo-text {
