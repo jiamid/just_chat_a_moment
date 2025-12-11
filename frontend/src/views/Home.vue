@@ -44,7 +44,7 @@
       </div>
 
       <!-- 右侧气泡：登录按钮 -->
-      <button class="bubble login-btn-bubble" @click="showLoginModal = true">
+      <button class="bubble login-btn-bubble" @click="handleEnterClick">
         <span class="btn-text">Enter</span>
       </button>
     </div>
@@ -53,7 +53,7 @@
     <div class="bottom-bubble">
       <div class="bubble content-bubble">
         <div class="content-section">
-          <div class="jiamid-text">JIAMID</div>
+          <div class="jiamid-text">{{ displayUsername }}</div>
         </div>
       </div>
     </div>
@@ -172,6 +172,13 @@ export default {
       timer: null
     }
   },
+  computed: {
+    displayUsername () {
+      // 如果已登录，显示 username，否则显示 JIAMID
+      const username = localStorage.getItem('username')
+      return username || 'JIAMID'
+    }
+  },
   async mounted () {
     // 检查是否有token，如果有则尝试自动登录
     await this.checkAutoLogin()
@@ -246,15 +253,50 @@ export default {
         return
       }
 
+      // 如果是从聊天页主动返回的，清除查询参数
+      if (this.$route.query.returnFromChat === 'true') {
+        this.$router.replace({ path: '/', query: {} })
+      }
+
+      // 验证token是否有效，如果无效则清除
+      try {
+        const userResponse = await api.user.getMe()
+        // token有效，更新 username 到 localStorage（如果不存在）
+        if (!localStorage.getItem('username') && userResponse.data.username) {
+          localStorage.setItem('username', userResponse.data.username)
+        }
+      } catch (error) {
+        // token无效或过期，清除localStorage中的token和username
+        localStorage.removeItem('token')
+        localStorage.removeItem('username')
+        console.log('token无效，已清除:', error.message)
+      }
+    },
+
+    async handleEnterClick () {
+      console.log('handleEnterClick 被调用')
+      // 检查是否已登录
+      const token = localStorage.getItem('token')
+      if (!token) {
+        // 未登录，显示登录模态框
+        console.log('未登录，显示登录模态框')
+        this.showLoginModal = true
+        return
+      }
+
       try {
         // 验证token是否有效
+        console.log('验证token有效性')
         await api.user.getMe()
         // token有效，直接跳转到聊天页面
+        console.log('token有效，跳转到聊天页面')
         this.$router.push('/chat')
       } catch (error) {
-        // token无效或过期，清除localStorage中的token
-        localStorage.removeItem('token')
+        // token无效或过期，清除localStorage中的token和username并显示登录模态框
         console.log('token无效，已清除:', error.message)
+        localStorage.removeItem('token')
+        localStorage.removeItem('username')
+        this.showLoginModal = true
       }
     },
 
@@ -282,6 +324,13 @@ export default {
       })
 
       localStorage.setItem('token', response.data.access_token)
+      // 登录成功后获取用户信息并保存 username
+      try {
+        const userResponse = await api.user.getMe()
+        localStorage.setItem('username', userResponse.data.username)
+      } catch (err) {
+        console.error('获取用户信息失败:', err)
+      }
       this.showLoginModal = false
       this.$router.push('/chat')
     },
@@ -295,6 +344,9 @@ export default {
         sign: this.form.sign,
         expires_at: this.form.expires_at
       })
+
+      // 注册成功后保存 username（注册时使用的是 form.username）
+      localStorage.setItem('username', this.form.username)
 
       // 注册成功后切换到登录模式，并自动填充邮箱和密码
       this.isLogin = true

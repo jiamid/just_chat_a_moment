@@ -32,7 +32,7 @@
       <!-- 完整内容（折叠时隐藏） -->
       <div v-show="!sidebarCollapsed || isMobile" class="sidebar-content">
         <!-- Logo -->
-        <div class="logo-section">
+        <div class="logo-section" @click="goToHome">
           <h1 class="logo-text">JustChatAMoment</h1>
         </div>
 
@@ -1276,6 +1276,8 @@ export default {
       try {
         const response = await api.user.getMe()
         this.username = response.data.username
+        // 保存 username 到 localStorage
+        localStorage.setItem('username', response.data.username)
       } catch (err) {
         this.$router.push('/login')
       }
@@ -1875,7 +1877,18 @@ export default {
 
     logout () {
       localStorage.removeItem('token')
+      localStorage.removeItem('username')
       this.$router.push('/')
+    },
+
+    goToHome () {
+      // 跳转到主页，但不退出登录（保留 token）
+      // 添加标记表示用户主动返回主页，避免自动跳转回聊天页
+      console.log('goToHome 被调用')
+      this.$router.push({
+        path: '/',
+        query: { returnFromChat: 'true' }
+      })
     },
 
     switchRoom (roomId) {
@@ -2663,6 +2676,14 @@ button,
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  pointer-events: auto;
+  position: relative;
+  z-index: 1002;
 }
 
 .logo-text {
@@ -2672,9 +2693,54 @@ button,
   font-size: 1.25rem;
   font-weight: 600;
   position: relative;
-  z-index: 1;
+  z-index: 2;
   line-height: 1.2;
   white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  pointer-events: auto;
+  -webkit-tap-highlight-color: transparent;
+  /* 默认状态：黑色文字 */
+  background: #000000;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: #000000;
+}
+
+.logo-section:hover .logo-text {
+  /* hover 状态：彩色渐变文字 */
+  background: linear-gradient(
+    90deg,
+    #ff0096,
+    #ff6400,
+    #ffff00,
+    #00ff96,
+    #0096ff,
+    #9600ff,
+    #ff0096
+  );
+  background-size: 200% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: gradient-shift 1.5s ease infinite;
+  transform: translate(-1px, -1px);
+}
+
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
 }
 
 .rooms-section {
@@ -4254,6 +4320,11 @@ button,
   min-height: 0;
   position: relative;
   z-index: 1;
+  /* 允许聊天消息文字选择 */
+  user-select: text;
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
 }
 
 /* 美化滚动条样式 */
@@ -4289,6 +4360,11 @@ button,
   max-width: 70%;
   word-wrap: break-word;
   position: relative;
+  /* 允许消息文字选择 */
+  user-select: text;
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
 }
 
 .own-message {

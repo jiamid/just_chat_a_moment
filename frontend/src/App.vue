@@ -37,6 +37,11 @@ body {
   margin: 0;
   padding: 0;
   font-family: 'Cubic_11', Avenir, Helvetica, Arial, sans-serif;
+  /* 全局禁止文字选择 */
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
 }
 
 * {

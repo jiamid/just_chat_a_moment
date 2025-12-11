@@ -42,11 +42,7 @@ router.beforeEach((to, from, next) => {
     return
   }
 
-  // 如果已登录但访问首页，重定向到聊天页
-  if (to.name === 'Home' && token) {
-    next('/chat')
-    return
-  }
+  // 允许已登录用户访问主页（不再自动跳转）
 
   // 验证房间号参数
   if (to.name === 'ChatRoom' && to.params.roomId) {
