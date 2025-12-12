@@ -1131,24 +1131,18 @@ export default {
         return 'rock'
       }
 
-      // 其他情况：保持当前模式（不改变）
-      return this.gestureMode || 'rock'
+      // 其他情况：返回 null，表示未识别到有效手势，保持当前模式不变
+      return null
     },
 
     // 处理手势识别结果
     handleHandResults (result) {
       // 新的 API 返回的格式是 { landmarks: [...], worldLandmarks: [...], handednesses: [...] }
       if (!result || !result.landmarks || result.landmarks.length === 0) {
-        // 如果没有检测到手，重置为石头模式（字符模式）
-        if (this.gestureMode !== 'rock') {
-          this.gestureMode = 'rock'
-          this.currentGesture = 'rock'
-          // 通知父组件手势模式变化
-          this.$emit('gesture-mode-changed', 'rock')
-        }
-        // 清空手的位置历史
+        // 如果没有检测到手，保持当前模式，不清空位置历史（用于平滑过渡）
+        // 只重置位置跟踪，但保持手势模式不变
         this.lastHandX = null
-        this.handPositionHistory = []
+        // 不清空 handPositionHistory，保持历史数据以便手重新出现时平滑过渡
         return
       }
 
@@ -1156,14 +1150,15 @@ export default {
       const hand = result.landmarks[0]
       const gesture = this.recognizeGesture(hand)
 
-      // 更新手势模式
-      if (gesture !== this.currentGesture) {
+      // 更新手势模式（只有当识别到有效手势时才更新）
+      if (gesture !== null && gesture !== this.currentGesture) {
         this.currentGesture = gesture
         this.gestureMode = gesture
         console.log('检测到手势:', gesture)
         // 通知父组件手势模式变化
         this.$emit('gesture-mode-changed', gesture)
       }
+      // 如果 gesture 为 null，表示未识别到有效手势，保持当前模式不变
 
       // 在所有模式下，检测手的水平移动来改变旋转方向（滑动手势）
       // 但只在树模式和球模式下应用旋转方向变化
