@@ -1116,27 +1116,23 @@ export default {
       const ringExtended = getFingerExtended(ringTip, ringJoint)
       const pinkyExtended = getFingerExtended(pinkyTip, pinkyJoint)
 
-      // 检测树手势：拇指和食指都伸直，且距离适中（形成L形或V形）
-      const thumbIndexDistance = Math.sqrt(
-        Math.pow(thumbTip.x - indexTip.x, 2) +
-        Math.pow(thumbTip.y - indexTip.y, 2) +
-        Math.pow(thumbTip.z - indexTip.z, 2)
-      )
-
-      // 树手势：拇指和食指都伸直，其他手指弯曲
-      if (thumbExtended && indexExtended && !middleExtended && !ringExtended && !pinkyExtended) {
-        if (thumbIndexDistance > 0.05 && thumbIndexDistance < 0.2) {
-          return 'tree'
-        }
-      }
-
-      // 布手势：所有手指都伸直
+      // 检测五根手指头：所有手指都伸直 -> 球模式
       if (thumbExtended && indexExtended && middleExtended && ringExtended && pinkyExtended) {
         return 'paper'
       }
 
-      // 石头手势：所有手指都弯曲（默认）
-      return 'rock'
+      // 检测✌️手势（V手势）：食指和中指伸直，其他手指弯曲 -> 树模式
+      if (indexExtended && middleExtended && !thumbExtended && !ringExtended && !pinkyExtended) {
+        return 'tree'
+      }
+
+      // 检测👍手势（拇指向上）：拇指伸直，其他手指弯曲 -> 字模式
+      if (thumbExtended && !indexExtended && !middleExtended && !ringExtended && !pinkyExtended) {
+        return 'rock'
+      }
+
+      // 其他情况：保持当前模式（不改变）
+      return this.gestureMode || 'rock'
     },
 
     // 处理手势识别结果
@@ -1169,49 +1165,45 @@ export default {
         this.$emit('gesture-mode-changed', gesture)
       }
 
-      // 在圣诞树和地球仪模式下，检测手的水平移动来改变旋转方向
-      if (gesture === 'tree' || gesture === 'paper') {
-        const wristX = hand[0].x // 手腕的X坐标（0-1，0在左边，1在右边）
+      // 在所有模式下，检测手的水平移动来改变旋转方向（滑动手势）
+      // 但只在树模式和球模式下应用旋转方向变化
+      const wristX = hand[0].x // 手腕的X坐标（0-1，0在左边，1在右边）
 
-        // 记录手的位置历史（用于平滑检测）
-        this.handPositionHistory.push(wristX)
-        if (this.handPositionHistory.length > 15) {
-          this.handPositionHistory.shift() // 只保留最近15帧
-        }
+      // 记录手的位置历史（用于平滑检测）
+      this.handPositionHistory.push(wristX)
+      if (this.handPositionHistory.length > 15) {
+        this.handPositionHistory.shift() // 只保留最近15帧
+      }
 
-        // 如果有足够的历史数据，检测水平移动趋势
-        if (this.handPositionHistory.length >= 10) {
-          // 计算最近5帧的平均X位置（当前）
-          const recentFrames = this.handPositionHistory.slice(-5)
-          const recentAvgX = recentFrames.reduce((a, b) => a + b, 0) / recentFrames.length
+      // 如果有足够的历史数据，检测水平移动趋势
+      if (this.handPositionHistory.length >= 10) {
+        // 计算最近5帧的平均X位置（当前）
+        const recentFrames = this.handPositionHistory.slice(-5)
+        const recentAvgX = recentFrames.reduce((a, b) => a + b, 0) / recentFrames.length
 
-          // 计算之前5帧的平均X位置（历史）
-          const olderFrames = this.handPositionHistory.slice(-10, -5)
-          const olderAvgX = olderFrames.reduce((a, b) => a + b, 0) / olderFrames.length
+        // 计算之前5帧的平均X位置（历史）
+        const olderFrames = this.handPositionHistory.slice(-10, -5)
+        const olderAvgX = olderFrames.reduce((a, b) => a + b, 0) / olderFrames.length
 
-          // 检测明显的水平移动（阈值：0.03，约3%屏幕宽度）
-          const movementThreshold = 0.03
-          const movement = recentAvgX - olderAvgX
+        // 检测明显的水平移动（阈值：0.03，约3%屏幕宽度）
+        const movementThreshold = 0.03
+        const movement = recentAvgX - olderAvgX
 
-          if (Math.abs(movement) > movementThreshold) {
-            // 向右移动（X增加）：正向旋转
-            if (movement > 0) {
-              this.rotationDirection = 1
-              console.log('检测到向右移动，正向旋转')
-            } else {
-              // 向左移动（X减少）：反向旋转
-              this.rotationDirection = -1
-              console.log('检测到向左移动，反向旋转')
-            }
+        // 只在树模式和球模式下应用旋转方向变化
+        if ((gesture === 'tree' || gesture === 'paper') && Math.abs(movement) > movementThreshold) {
+          // 向右移动（X增加）：正向旋转
+          if (movement > 0) {
+            this.rotationDirection = 1
+            console.log('检测到向右滑动，正向旋转')
+          } else {
+            // 向左移动（X减少）：反向旋转
+            this.rotationDirection = -1
+            console.log('检测到向左滑动，反向旋转')
           }
         }
-
-        this.lastHandX = wristX
-      } else {
-        // 其他模式下重置位置跟踪
-        this.lastHandX = null
-        this.handPositionHistory = []
       }
+
+      this.lastHandX = wristX
     },
 
     // 处理点击事件（摄像头不可用时切换模式）
