@@ -415,6 +415,23 @@ export default {
   position: relative;
   z-index: 1;
   background: #ffffff;
+  transition: background-color 0.3s ease;
+}
+
+/* 圣诞树模式下，主页背景变为深红色渐变 */
+.home-container.tree-mode-active {
+  background: linear-gradient(135deg, #8B0000 0%, #DC143C 50%, #8B0000 100%);
+  background-size: 200% 200%;
+  animation: christmasGradient 8s ease infinite;
+}
+
+@keyframes christmasGradient {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
 }
 
 /* 气泡基础样式 */
@@ -423,16 +440,92 @@ export default {
   border: var(--px-border, 3px) solid #000000;
   border-radius: var(--px-border-radius, 15px);
   padding: 2rem;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
   box-sizing: border-box;
   image-rendering: pixelated;
   image-rendering: -moz-crisp-edges;
   image-rendering: crisp-edges;
 }
 
-/* 圣诞树模式下，所有气泡边框变为红色 */
+/* 圣诞树模式下的气泡美化 */
 .home-container.tree-mode-active .bubble {
-  border-color: #ff0000 !important;
+  border-color: #FFD700 !important; /* 金色边框 */
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.3),
+              0 0 30px rgba(255, 215, 0, 0.2),
+              inset 0 0 10px rgba(255, 255, 255, 0.1);
+}
+
+/* Logo气泡在圣诞模式下的特殊样式 */
+.home-container.tree-mode-active .logo-bubble {
+  background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+  border-color: #FF6347 !important; /* 番茄红边框 */
+  color: #8B0000;
+}
+
+.home-container.tree-mode-active .logo-bubble .logo-text {
+  color: #8B0000;
+  text-shadow: 2px 2px 4px rgba(255, 255, 255, 0.3);
+}
+
+/* 介绍气泡在圣诞模式下的样式 */
+.home-container.tree-mode-active .intro-bubble {
+  background: linear-gradient(135deg, #FFFFFF 0%, #FFF8DC 100%);
+  border-color: #FFD700 !important;
+}
+
+/* 时间显示在圣诞模式下的美化 */
+.home-container.tree-mode-active .time-char {
+  color: #DC143C; /* 深红色 */
+  text-shadow: 2px 2px 4px rgba(255, 215, 0, 0.5),
+               0 0 10px rgba(255, 215, 0, 0.3);
+  font-weight: 900;
+}
+
+.home-container.tree-mode-active .digit-front,
+.home-container.tree-mode-active .digit-back {
+  color: #DC143C; /* 深红色 */
+  text-shadow: 2px 2px 4px rgba(255, 215, 0, 0.5),
+               0 0 10px rgba(255, 215, 0, 0.3),
+               -1px -1px 2px rgba(255, 255, 255, 0.2);
+  font-weight: 900;
+}
+
+/* 时间数字翻转时的特殊效果 */
+.home-container.tree-mode-active .flip-digit.is-flipping .digit-front,
+.home-container.tree-mode-active .flip-digit.is-flipping .digit-back {
+  color: #FFD700; /* 翻转时变为金色 */
+  text-shadow: 0 0 15px rgba(255, 215, 0, 0.8),
+               0 0 25px rgba(255, 215, 0, 0.5),
+               2px 2px 4px rgba(220, 20, 60, 0.3);
+}
+
+/* 登录按钮在圣诞模式下的样式 */
+.home-container.tree-mode-active .login-btn-bubble {
+  background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+  border-color: #FF6347 !important;
+  color: #8B0000;
+  box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4),
+              0 0 20px rgba(255, 99, 71, 0.3);
+}
+
+.home-container.tree-mode-active .login-btn-bubble:hover {
+  background: linear-gradient(135deg, #FFA500 0%, #FFD700 100%);
+  box-shadow: 0 6px 20px rgba(255, 215, 0, 0.5),
+              0 0 30px rgba(255, 99, 71, 0.4);
+  transform: translate(-2px, -2px);
+}
+
+.home-container.tree-mode-active .login-btn-bubble .btn-text {
+  color: #8B0000;
+  text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.3);
+}
+
+/* 内容气泡在圣诞模式下的样式 */
+.home-container.tree-mode-active .content-bubble {
+  background: linear-gradient(135deg, #FFFFFF 0%, #FFF8DC 100%);
+  border-color: #FFD700 !important;
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.2),
+              inset 0 0 15px rgba(255, 255, 255, 0.1);
 }
 
 /* 顶部三个气泡布局 */
