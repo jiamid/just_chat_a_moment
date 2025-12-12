@@ -435,7 +435,6 @@ export default {
 /* 顶部气泡导航栏样式 */
 .top-bubbles > .bubble {
   padding: 0.75rem 1.25rem;
-  border-radius: 6px;
 }
 
 /* Logo气泡 */
@@ -646,6 +645,7 @@ export default {
   display: flex;
   flex-direction: column;
   overflow: auto;
+  padding: 0;
 }
 
 .features {
@@ -949,7 +949,6 @@ export default {
 
   .bubble {
     padding: 1.5rem;
-    border-radius: 6px;
   }
 
   .btn-icon {

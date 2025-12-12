@@ -390,12 +390,13 @@ export default {
 
         // 初始化手部关键点检测器（使用 npm 包）
         const vision = await FilesetResolver.forVisionTasks(
-          'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm'
+          'https://cdn.jiamid.com/wasm'
         )
 
-        this.handLandmarker = await HandLandmarker.createFromOptions(vision, {
+        // 使用 markRaw 避免 Vue 响应式代理导致 MediaPipe 内部状态异常
+        this.handLandmarker = markRaw(await HandLandmarker.createFromOptions(vision, {
           baseOptions: {
-            modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
+            modelAssetPath: 'https://cdn.jiamid.com/wasm/hand_landmarker.task',
             delegate: 'GPU' // 使用 GPU 加速
           },
           numHands: 2, // 检测最多 2 只手
@@ -403,7 +404,7 @@ export default {
           minHandDetectionConfidence: 0.5,
           minHandPresenceConfidence: 0.5,
           minTrackingConfidence: 0.5
-        })
+        }))
 
         // 启动摄像头
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -412,12 +413,32 @@ export default {
         this.video.srcObject = stream
         this.video.play()
 
-        // 等待视频就绪
+        // 等待视频就绪（确保视频元数据已加载）
         await new Promise((resolve) => {
-          this.video.onloadedmetadata = () => {
+          if (this.video.readyState >= this.video.HAVE_METADATA) {
             resolve()
+          } else {
+            this.video.onloadedmetadata = () => {
+              resolve()
+            }
           }
         })
+
+        // 额外等待视频有足够数据
+        await new Promise((resolve) => {
+          if (this.video.readyState >= this.video.HAVE_ENOUGH_DATA) {
+            resolve()
+          } else {
+            this.video.oncanplay = () => {
+              resolve()
+            }
+          }
+        })
+
+        // 确保 HandLandmarker 已正确初始化
+        if (!this.handLandmarker) {
+          throw new Error('HandLandmarker 初始化失败')
+        }
 
         // 开始处理视频帧
         this.processVideo()
@@ -448,10 +469,21 @@ export default {
       if (!this.video || !this.handLandmarker) return
 
       if (this.video.readyState === this.video.HAVE_ENOUGH_DATA) {
-        // 使用新的 Tasks API 处理视频帧
-        const startTimeMs = performance.now()
-        const result = this.handLandmarker.detectForVideo(this.video, startTimeMs)
-        this.handleHandResults(result)
+        try {
+          // 使用新的 Tasks API 处理视频帧
+          const startTimeMs = performance.now()
+          const result = this.handLandmarker.detectForVideo(this.video, startTimeMs)
+          this.handleHandResults(result)
+        } catch (err) {
+          // 捕获可能的错误（如 runningMode 未正确设置）
+          if (err.message && err.message.includes('runningMode')) {
+            console.error('MediaPipe runningMode 错误:', err.message)
+            // 停止处理，避免持续报错
+            this.mediaPipeInitialized = false
+            return
+          }
+          console.warn('处理视频帧时出错:', err.message)
+        }
       }
 
       requestAnimationFrame(() => this.processVideo())
