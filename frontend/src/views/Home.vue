@@ -1,5 +1,5 @@
 <template>
-  <div class="home-container">
+  <div class="home-container" :class="{ 'tree-mode-active': isTreeMode }">
     <!-- 顶部三个气泡 -->
     <div class="top-bubbles">
       <!-- Logo气泡 -->
@@ -51,8 +51,8 @@
 
     <!-- 底部一个气泡：详细介绍 -->
     <div class="bottom-bubble">
-      <div class="bubble content-bubble">
-        <ParticleText :text="displayUsername" />
+      <div class="bubble content-bubble" :class="{ 'tree-mode': isTreeMode }">
+        <ParticleText :text="displayUsername" @gesture-mode-changed="handleGestureModeChanged" />
       </div>
     </div>
 
@@ -171,7 +171,8 @@ export default {
         expires_at: 0
       },
       countdown: 0,
-      timer: null
+      timer: null,
+      isTreeMode: false // 是否为圣诞树模式
     }
   },
   computed: {
@@ -201,6 +202,10 @@ export default {
     }
   },
   methods: {
+    // 处理手势模式变化
+    handleGestureModeChanged (mode) {
+      this.isTreeMode = mode === 'tree'
+    },
     isDigit (char) {
       return /[0-9]/.test(char)
     },
@@ -423,6 +428,11 @@ export default {
   image-rendering: pixelated;
   image-rendering: -moz-crisp-edges;
   image-rendering: crisp-edges;
+}
+
+/* 圣诞树模式下，所有气泡边框变为红色 */
+.home-container.tree-mode-active .bubble {
+  border-color: #ff0000 !important;
 }
 
 /* 顶部三个气泡布局 */
