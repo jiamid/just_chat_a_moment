@@ -1083,6 +1083,31 @@ export default {
       requestAnimationFrame(() => this.processVideo())
     },
 
+    // 切换模式（循环切换：rock -> paper -> tree -> rock -> ...）
+    switchMode (direction) {
+      const modes = ['rock', 'paper', 'tree']
+      const currentIndex = modes.indexOf(this.gestureMode)
+
+      let nextIndex
+      if (direction === 'up') {
+        // 向上滑动：向前切换
+        nextIndex = (currentIndex + 1) % modes.length
+      } else {
+        // 向下滑动：向后切换
+        nextIndex = (currentIndex - 1 + modes.length) % modes.length
+      }
+
+      const newMode = modes[nextIndex]
+      if (newMode !== this.gestureMode) {
+        this.gestureMode = newMode
+        this.currentGesture = newMode
+        console.log('模式切换:', newMode)
+        // 通知父组件手势模式变化
+        this.$emit('gesture-mode-changed', newMode)
+        this.lastModeSwitchTime = Date.now()
+      }
+    },
+
     // 处理手势识别结果
     handleHandResults (result) {
       // 新的 API 返回的格式是 { landmarks: [...], worldLandmarks: [...], handednesses: [...] }
