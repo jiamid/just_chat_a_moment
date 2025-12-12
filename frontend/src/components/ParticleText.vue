@@ -46,9 +46,11 @@ export default {
       rotationX: 0, // X轴旋转角度
       rotationY: 0, // Y轴旋转角度
       rotationDirection: 1, // 旋转方向：1为正向，-1为反向
-      // 手势位置跟踪（用于检测水平移动）
+      // 手势位置跟踪（用于检测滑动）
       lastHandX: null, // 上一帧手的位置X坐标
+      lastHandY: null, // 上一帧手的位置Y坐标
       handPositionHistory: [], // 手的位置历史（用于平滑检测）
+      lastModeSwitchTime: 0, // 上次模式切换的时间（防止频繁切换）
       // 粒子位置
       globeParticles: null, // 地球仪模式粒子位置（球面分布）
       treeParticles: null, // 树模式粒子位置
@@ -1081,195 +1083,53 @@ export default {
       requestAnimationFrame(() => this.processVideo())
     },
 
-    // 识别手势类型（优化版：更严格，不易误判）
-    recognizeGesture (landmarks) {
-      if (!landmarks || landmarks.length < 21) return null
-
-      // MediaPipe 手部关键点索引：
-      // 0: 手腕, 4: 拇指尖, 8: 食指尖, 12: 中指尖, 16: 无名指尖, 20: 小指尖
-      // 1: 拇指根, 2: 拇指中, 3: 拇指关节
-      // 5: 食指根, 6: 食指中, 7: 食指关节
-      // 9: 中指根, 10: 中指中, 11: 中指关节
-      // 13: 无名指根, 14: 无名指中, 15: 无名指关节
-      // 17: 小指根, 18: 小指中, 19: 小指关节
-      const wrist = landmarks[0]
-      const thumbTip = landmarks[4]
-      const thumbJoint = landmarks[3]
-      const thumbBase = landmarks[2]
-      const indexTip = landmarks[8]
-      const indexJoint = landmarks[6]
-      const indexBase = landmarks[5]
-      const middleTip = landmarks[12]
-      const middleJoint = landmarks[10]
-      const middleBase = landmarks[9]
-      const ringTip = landmarks[16]
-      const ringJoint = landmarks[14]
-      const ringBase = landmarks[13]
-      const pinkyTip = landmarks[20]
-      const pinkyJoint = landmarks[18]
-      const pinkyBase = landmarks[17]
-
-      // 计算两点之间的距离
-      const distance = (p1, p2) => {
-        return Math.sqrt(
-          Math.pow(p1.x - p2.x, 2) +
-          Math.pow(p1.y - p2.y, 2) +
-          Math.pow(p1.z - p2.z, 2)
-        )
-      }
-
-      // 计算手指是否伸直（使用更严格的判断：指尖到关节的距离，以及指尖到手腕的距离）
-      const getFingerExtended = (tip, joint, base, wrist) => {
-        const tipToJoint = distance(tip, joint)
-        const tipToWrist = distance(tip, wrist)
-        const baseToWrist = distance(base, wrist)
-
-        // 手指伸直的条件：
-        // 1. 指尖到关节的距离足够大（手指展开）
-        // 2. 指尖到手腕的距离大于关节到手腕的距离（手指向上）
-        return tipToJoint > 0.1 && tipToWrist > baseToWrist * 0.8
-      }
-
-      // 计算手指是否弯曲（更严格的判断）
-      const getFingerBent = (tip, joint, base, wrist) => {
-        const tipToJoint = distance(tip, joint)
-        const tipToWrist = distance(tip, wrist)
-        const baseToWrist = distance(base, wrist)
-
-        // 手指弯曲的条件：
-        // 1. 指尖到关节的距离较小
-        // 2. 指尖到手腕的距离小于关节到手腕的距离
-        return tipToJoint < 0.06 || tipToWrist < baseToWrist * 0.9
-      }
-
-      const thumbExtended = getFingerExtended(thumbTip, thumbJoint, thumbBase, wrist)
-      const indexExtended = getFingerExtended(indexTip, indexJoint, indexBase, wrist)
-      const middleExtended = getFingerExtended(middleTip, middleJoint, middleBase, wrist)
-      const ringExtended = getFingerExtended(ringTip, ringJoint, ringBase, wrist)
-      const pinkyExtended = getFingerExtended(pinkyTip, pinkyJoint, pinkyBase, wrist)
-
-      const thumbBent = getFingerBent(thumbTip, thumbJoint, thumbBase, wrist)
-      const indexBent = getFingerBent(indexTip, indexJoint, indexBase, wrist)
-      const middleBent = getFingerBent(middleTip, middleJoint, middleBase, wrist)
-      const ringBent = getFingerBent(ringTip, ringJoint, ringBase, wrist)
-      const pinkyBent = getFingerBent(pinkyTip, pinkyJoint, pinkyBase, wrist)
-
-      // 手势1：张开手掌（paper模式 - 显示球）
-      // 所有手指都伸直，且手指之间有足够距离（不是紧贴）
-      if (thumbExtended && indexExtended && middleExtended && ringExtended && pinkyExtended) {
-        // 检查手指是否分开：食指和中指的距离
-        const indexMiddleDistance = distance(indexTip, middleTip)
-        const middleRingDistance = distance(middleTip, ringTip)
-
-        // 如果手指分开足够（至少0.05），认为是张开手掌
-        if (indexMiddleDistance > 0.05 && middleRingDistance > 0.05) {
-          return 'paper'
-        }
-      }
-
-      // 手势2：剪刀手✌️（tree模式 - 显示树）
-      // 食指和中指伸直且分开，其他手指弯曲
-      if (indexExtended && middleExtended && thumbBent && ringBent && pinkyBent) {
-        // 检查食指和中指是否分开（形成V形）
-        const indexMiddleDistance = distance(indexTip, middleTip)
-
-        // 检查食指和中指是否真的分开（距离大于0.08）
-        if (indexMiddleDistance > 0.08) {
-          // 检查其他手指是否真的弯曲
-          const thumbToWrist = distance(thumbTip, wrist)
-          const ringToWrist = distance(ringTip, wrist)
-          const pinkyToWrist = distance(pinkyTip, wrist)
-          const indexToWrist = distance(indexTip, wrist)
-
-          // 确保拇指、无名指、小指比食指更靠近手腕（说明它们弯曲了）
-          if (thumbToWrist < indexToWrist * 0.9 &&
-              ringToWrist < indexToWrist * 0.9 &&
-              pinkyToWrist < indexToWrist * 0.9) {
-            return 'tree'
-          }
-        }
-      }
-
-      // 手势3：握拳（rock模式 - 显示字）
-      // 所有手指都弯曲（包括拇指）
-      if (thumbBent && indexBent && middleBent && ringBent && pinkyBent) {
-        // 检查所有指尖是否都靠近手腕（握拳的特征）
-        const thumbToWrist = distance(thumbTip, wrist)
-        const indexToWrist = distance(indexTip, wrist)
-        const middleToWrist = distance(middleTip, wrist)
-        const ringToWrist = distance(ringTip, wrist)
-        const pinkyToWrist = distance(pinkyTip, wrist)
-
-        // 计算平均距离
-        const avgDistance = (thumbToWrist + indexToWrist + middleToWrist + ringToWrist + pinkyToWrist) / 5
-        const wristToBase = distance(wrist, indexBase)
-
-        // 如果所有指尖都相对靠近手腕（平均距离小于基准距离的1.2倍），认为是握拳
-        if (avgDistance < wristToBase * 1.2) {
-          return 'rock'
-        }
-      }
-
-      // 其他情况：返回 null，表示未识别到有效手势，保持当前模式不变
-      return null
-    },
-
     // 处理手势识别结果
     handleHandResults (result) {
       // 新的 API 返回的格式是 { landmarks: [...], worldLandmarks: [...], handednesses: [...] }
       if (!result || !result.landmarks || result.landmarks.length === 0) {
         // 如果没有检测到手，保持当前模式，不清空位置历史（用于平滑过渡）
-        // 只重置位置跟踪，但保持手势模式不变
         this.lastHandX = null
+        this.lastHandY = null
         // 不清空 handPositionHistory，保持历史数据以便手重新出现时平滑过渡
         return
       }
 
-      // 识别手势（单手）
+      // 获取手腕位置（用于检测滑动）
       const hand = result.landmarks[0]
-      const gesture = this.recognizeGesture(hand)
+      const wristX = hand[0].x // 手腕的X坐标（0-1，0在左边，1在右边）
+      const wristY = hand[0].y // 手腕的Y坐标（0-1，0在上边，1在下边）
 
-      // 更新手势模式（只有当识别到有效手势时才更新）
-      if (gesture !== null && gesture !== this.currentGesture) {
-        this.currentGesture = gesture
-        this.gestureMode = gesture
-        console.log('检测到手势:', gesture)
-        // 通知父组件手势模式变化
-        this.$emit('gesture-mode-changed', gesture)
+      // 记录手的位置历史（用于平滑检测）
+      this.handPositionHistory.push({ x: wristX, y: wristY })
+      if (this.handPositionHistory.length > 20) {
+        this.handPositionHistory.shift() // 只保留最近20帧
       }
-      // 如果 gesture 为 null，表示未识别到有效手势，保持当前模式不变
 
-      // 检测旋转手势：在树模式和球模式下，通过水平滑动改变旋转方向
-      // 使用更严格的检测，避免误判
-      if (gesture === 'tree' || gesture === 'paper' || this.gestureMode === 'tree' || this.gestureMode === 'paper') {
-        const wristX = hand[0].x // 手腕的X坐标（0-1，0在左边，1在右边）
-        const wristY = hand[0].y // 手腕的Y坐标（用于检测是否在有效区域内）
+      // 如果有足够的历史数据，检测滑动趋势
+      if (this.handPositionHistory.length >= 12) {
+        // 计算最近6帧的平均位置（当前）
+        const recentFrames = this.handPositionHistory.slice(-6)
+        const recentAvgX = recentFrames.reduce((sum, frame) => sum + frame.x, 0) / recentFrames.length
+        const recentAvgY = recentFrames.reduce((sum, frame) => sum + frame.y, 0) / recentFrames.length
 
-        // 记录手的位置历史（用于平滑检测）
-        this.handPositionHistory.push({ x: wristX, y: wristY })
-        if (this.handPositionHistory.length > 20) {
-          this.handPositionHistory.shift() // 只保留最近20帧
-        }
+        // 计算之前6帧的平均位置（历史）
+        const olderFrames = this.handPositionHistory.slice(-12, -6)
+        const olderAvgX = olderFrames.reduce((sum, frame) => sum + frame.x, 0) / olderFrames.length
+        const olderAvgY = olderFrames.reduce((sum, frame) => sum + frame.y, 0) / olderFrames.length
 
-        // 如果有足够的历史数据，检测水平移动趋势
-        if (this.handPositionHistory.length >= 12) {
-          // 计算最近6帧的平均X位置（当前）
-          const recentFrames = this.handPositionHistory.slice(-6)
-          const recentAvgX = recentFrames.reduce((sum, frame) => sum + frame.x, 0) / recentFrames.length
-          const recentAvgY = recentFrames.reduce((sum, frame) => sum + frame.y, 0) / recentFrames.length
+        // 计算移动量
+        const movementX = recentAvgX - olderAvgX
+        const movementY = recentAvgY - olderAvgY
+        const absMovementX = Math.abs(movementX)
+        const absMovementY = Math.abs(movementY)
 
-          // 计算之前6帧的平均X位置（历史）
-          const olderFrames = this.handPositionHistory.slice(-12, -6)
-          const olderAvgX = olderFrames.reduce((sum, frame) => sum + frame.x, 0) / olderFrames.length
-          const olderAvgY = olderFrames.reduce((sum, frame) => sum + frame.y, 0) / olderFrames.length
+        // 滑动阈值
+        const movementThreshold = 0.04
 
-          // 检测明显的水平移动（阈值：0.04，约4%屏幕宽度，更严格）
-          const movementThreshold = 0.04
-          const movementX = recentAvgX - olderAvgX
-          const movementY = Math.abs(recentAvgY - olderAvgY)
-
-          // 确保主要是水平移动（垂直移动小于水平移动的50%），避免误判
-          if (Math.abs(movementX) > movementThreshold && movementY < Math.abs(movementX) * 0.5) {
+        // 判断是水平滑动还是垂直滑动
+        if (absMovementX > absMovementY) {
+          // 主要是水平移动：控制旋转
+          if (absMovementX > movementThreshold) {
             // 向右移动（X增加）：正向旋转
             if (movementX > 0) {
               this.rotationDirection = 1
@@ -1280,14 +1140,26 @@ export default {
               console.log('检测到向左滑动，反向旋转')
             }
           }
+        } else {
+          // 主要是垂直移动：切换模式
+          if (absMovementY > movementThreshold) {
+            // 防止频繁切换（至少间隔500ms）
+            const now = Date.now()
+            if (now - this.lastModeSwitchTime > 500) {
+              if (movementY > 0) {
+                // 向下滑动：向后切换模式
+                this.switchMode('down')
+              } else {
+                // 向上滑动：向前切换模式
+                this.switchMode('up')
+              }
+            }
+          }
         }
-
-        this.lastHandX = wristX
-      } else {
-        // 其他模式下重置位置跟踪
-        this.lastHandX = null
-        this.handPositionHistory = []
       }
+
+      this.lastHandX = wristX
+      this.lastHandY = wristY
     },
 
     // 处理点击事件（摄像头不可用时切换模式）
