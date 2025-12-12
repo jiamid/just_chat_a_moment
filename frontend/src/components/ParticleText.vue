@@ -1083,6 +1083,45 @@ export default {
       requestAnimationFrame(() => this.processVideo())
     },
 
+    // 检测五个手指是否都伸直（张开手掌）
+    isAllFingersExtended (landmarks) {
+      if (!landmarks || landmarks.length < 21) return false
+
+      // MediaPipe 手部关键点索引：
+      // 0: 手腕, 4: 拇指尖, 8: 食指尖, 12: 中指尖, 16: 无名指尖, 20: 小指尖
+      // 3: 拇指关节, 6: 食指关节, 10: 中指关节, 14: 无名指关节, 18: 小指关节
+      const thumbTip = landmarks[4]
+      const thumbJoint = landmarks[3]
+      const indexTip = landmarks[8]
+      const indexJoint = landmarks[6]
+      const middleTip = landmarks[12]
+      const middleJoint = landmarks[10]
+      const ringTip = landmarks[16]
+      const ringJoint = landmarks[14]
+      const pinkyTip = landmarks[20]
+      const pinkyJoint = landmarks[18]
+
+      // 计算每个手指是否伸直（指尖到关节的距离）
+      const getFingerExtended = (tip, joint) => {
+        const tipToJoint = Math.sqrt(
+          Math.pow(tip.x - joint.x, 2) +
+          Math.pow(tip.y - joint.y, 2) +
+          Math.pow(tip.z - joint.z, 2)
+        )
+        // 如果指尖到关节的距离大于阈值，认为手指是伸直的
+        return tipToJoint > 0.08
+      }
+
+      const thumbExtended = getFingerExtended(thumbTip, thumbJoint)
+      const indexExtended = getFingerExtended(indexTip, indexJoint)
+      const middleExtended = getFingerExtended(middleTip, middleJoint)
+      const ringExtended = getFingerExtended(ringTip, ringJoint)
+      const pinkyExtended = getFingerExtended(pinkyTip, pinkyJoint)
+
+      // 所有手指都伸直
+      return thumbExtended && indexExtended && middleExtended && ringExtended && pinkyExtended
+    },
+
     // 切换模式（循环切换：rock -> paper -> tree -> rock -> ...）
     switchMode (direction) {
       const modes = ['rock', 'paper', 'tree']
@@ -1124,6 +1163,9 @@ export default {
       const wristX = hand[0].x // 手腕的X坐标（0-1，0在左边，1在右边）
       const wristY = hand[0].y // 手腕的Y坐标（0-1，0在上边，1在下边）
 
+      // 检测五个手指是否都伸直（张开手掌）
+      const allFingersExtended = this.isAllFingersExtended(hand)
+
       // 记录手的位置历史（用于平滑检测）
       this.handPositionHistory.push({ x: wristX, y: wristY })
       if (this.handPositionHistory.length > 20) {
@@ -1153,7 +1195,7 @@ export default {
 
         // 判断是水平滑动还是垂直滑动
         if (absMovementX > absMovementY) {
-          // 主要是水平移动：控制旋转
+          // 主要是水平移动：控制旋转（所有手势都可以）
           if (absMovementX > movementThreshold) {
             // 向右移动（X增加）：正向旋转
             if (movementX > 0) {
@@ -1166,11 +1208,11 @@ export default {
             }
           }
         } else {
-          // 主要是垂直移动：切换模式
-          if (absMovementY > movementThreshold) {
-            // 防止频繁切换（至少间隔500ms）
+          // 主要是垂直移动：切换模式（只有五个手指都伸直时才切换）
+          if (absMovementY > movementThreshold && allFingersExtended) {
+            // 防止频繁切换（至少间隔2秒）
             const now = Date.now()
-            if (now - this.lastModeSwitchTime > 500) {
+            if (now - this.lastModeSwitchTime > 2000) {
               if (movementY > 0) {
                 // 向下滑动：向后切换模式
                 this.switchMode('down')
