@@ -47,10 +47,10 @@ export default {
       rotationY: 0, // Y轴旋转角度
       rotationDirection: 1, // 旋转方向：1为正向，-1为反向
       // 手势位置跟踪（用于检测滑动）
-      lastHandX: null, // 上一帧手的位置X坐标
-      lastHandY: null, // 上一帧手的位置Y坐标
-      handPositionHistory: [], // 手的位置历史（用于平滑检测）
+      leftHandPositionHistory: [], // 左手的位置历史（用于平滑检测）
+      rightHandPositionHistory: [], // 右手的位置历史（用于平滑检测）
       lastModeSwitchTime: 0, // 上次模式切换的时间（防止频繁切换）
+      lastRotationChangeTime: 0, // 上次旋转方向改变的时间（防止频繁切换）
       // 粒子位置
       globeParticles: null, // 地球仪模式粒子位置（球面分布）
       treeParticles: null, // 树模式粒子位置
@@ -993,7 +993,7 @@ export default {
             modelAssetPath: 'https://cdn.jiamid.com/wasm/hand_landmarker.task',
             delegate: 'GPU' // 使用 GPU 加速
           },
-          numHands: 1, // 检测单手
+          numHands: 2, // 检测双手（左手和右手）
           runningMode: 'VIDEO', // 视频模式
           minHandDetectionConfidence: 0.5,
           minHandPresenceConfidence: 0.5,
@@ -1152,67 +1152,59 @@ export default {
       // 新的 API 返回的格式是 { landmarks: [...], worldLandmarks: [...], handednesses: [...] }
       if (!result || !result.landmarks || result.landmarks.length === 0) {
         // 如果没有检测到手，保持当前模式，不清空位置历史（用于平滑过渡）
-        this.lastHandX = null
-        this.lastHandY = null
-        // 不清空 handPositionHistory，保持历史数据以便手重新出现时平滑过渡
         return
       }
 
-      // 获取手腕位置（用于检测滑动）
-      const hand = result.landmarks[0]
-      const wristX = hand[0].x // 手腕的X坐标（0-1，0在左边，1在右边）
-      const wristY = hand[0].y // 手腕的Y坐标（0-1，0在上边，1在下边）
+      // 分离左右手
+      let leftHand = null
+      let rightHand = null
 
-      // 检测五个手指是否都伸直（张开手掌）
-      const allFingersExtended = this.isAllFingersExtended(hand)
+      // 遍历所有检测到的手
+      for (let i = 0; i < result.landmarks.length; i++) {
+        const hand = result.landmarks[i]
+        const handedness = result.handednesses && result.handednesses[i] ? result.handednesses[i][0] : null
 
-      // 记录手的位置历史（用于平滑检测）
-      this.handPositionHistory.push({ x: wristX, y: wristY })
-      if (this.handPositionHistory.length > 20) {
-        this.handPositionHistory.shift() // 只保留最近20帧
+        if (handedness) {
+          const categoryName = handedness.categoryName || handedness.displayName || ''
+          if (categoryName.toLowerCase() === 'left') {
+            leftHand = hand
+          } else if (categoryName.toLowerCase() === 'right') {
+            rightHand = hand
+          }
+        }
       }
 
-      // 如果有足够的历史数据，检测滑动趋势
-      if (this.handPositionHistory.length >= 12) {
-        // 计算最近6帧的平均位置（当前）
-        const recentFrames = this.handPositionHistory.slice(-6)
-        const recentAvgX = recentFrames.reduce((sum, frame) => sum + frame.x, 0) / recentFrames.length
-        const recentAvgY = recentFrames.reduce((sum, frame) => sum + frame.y, 0) / recentFrames.length
+      // 处理左手：上下滑动切换模式（需要五个手指都伸直）
+      if (leftHand) {
+        const wristX = leftHand[0].x
+        const wristY = leftHand[0].y
 
-        // 计算之前6帧的平均位置（历史）
-        const olderFrames = this.handPositionHistory.slice(-12, -6)
-        const olderAvgX = olderFrames.reduce((sum, frame) => sum + frame.x, 0) / olderFrames.length
-        const olderAvgY = olderFrames.reduce((sum, frame) => sum + frame.y, 0) / olderFrames.length
+        // 检测五个手指是否都伸直（张开手掌）
+        const allFingersExtended = this.isAllFingersExtended(leftHand)
 
-        // 计算移动量
-        const movementX = recentAvgX - olderAvgX
-        const movementY = recentAvgY - olderAvgY
-        const absMovementX = Math.abs(movementX)
-        const absMovementY = Math.abs(movementY)
+        // 记录左手的位置历史
+        this.leftHandPositionHistory.push({ x: wristX, y: wristY })
+        if (this.leftHandPositionHistory.length > 20) {
+          this.leftHandPositionHistory.shift()
+        }
 
-        // 滑动阈值
-        const movementThreshold = 0.04
+        // 如果有足够的历史数据，检测垂直滑动
+        if (this.leftHandPositionHistory.length >= 12 && allFingersExtended) {
+          const recentFrames = this.leftHandPositionHistory.slice(-6)
+          const recentAvgY = recentFrames.reduce((sum, frame) => sum + frame.y, 0) / recentFrames.length
 
-        // 判断是水平滑动还是垂直滑动
-        if (absMovementX > absMovementY) {
-          // 主要是水平移动：控制旋转（所有手势都可以）
-          if (absMovementX > movementThreshold) {
-            // 向右移动（X增加）：正向旋转
-            if (movementX > 0) {
-              this.rotationDirection = 1
-              console.log('检测到向右滑动，正向旋转')
-            } else {
-              // 向左移动（X减少）：反向旋转
-              this.rotationDirection = -1
-              console.log('检测到向左滑动，反向旋转')
-            }
-          }
-        } else {
-          // 主要是垂直移动：切换模式（只有五个手指都伸直时才切换）
-          if (absMovementY > movementThreshold && allFingersExtended) {
-            // 防止频繁切换（至少间隔2秒）
+          const olderFrames = this.leftHandPositionHistory.slice(-12, -6)
+          const olderAvgY = olderFrames.reduce((sum, frame) => sum + frame.y, 0) / olderFrames.length
+
+          const movementY = recentAvgY - olderAvgY
+          const absMovementY = Math.abs(movementY)
+          const movementThreshold = 0.04
+
+          // 检测垂直滑动：切换模式
+          if (absMovementY > movementThreshold) {
+            // 防止频繁切换（至少间隔1秒）
             const now = Date.now()
-            if (now - this.lastModeSwitchTime > 2000) {
+            if (now - this.lastModeSwitchTime > 1000) {
               if (movementY > 0) {
                 // 向下滑动：向后切换模式
                 this.switchMode('down')
@@ -1225,8 +1217,49 @@ export default {
         }
       }
 
-      this.lastHandX = wristX
-      this.lastHandY = wristY
+      // 处理右手：左右滑动切换旋转
+      if (rightHand) {
+        const wristX = rightHand[0].x
+        const wristY = rightHand[0].y
+
+        // 记录右手的位置历史
+        this.rightHandPositionHistory.push({ x: wristX, y: wristY })
+        if (this.rightHandPositionHistory.length > 20) {
+          this.rightHandPositionHistory.shift()
+        }
+
+        // 如果有足够的历史数据，检测水平滑动
+        if (this.rightHandPositionHistory.length >= 12) {
+          const recentFrames = this.rightHandPositionHistory.slice(-6)
+          const recentAvgX = recentFrames.reduce((sum, frame) => sum + frame.x, 0) / recentFrames.length
+
+          const olderFrames = this.rightHandPositionHistory.slice(-12, -6)
+          const olderAvgX = olderFrames.reduce((sum, frame) => sum + frame.x, 0) / olderFrames.length
+
+          const movementX = recentAvgX - olderAvgX
+          const absMovementX = Math.abs(movementX)
+          const movementThreshold = 0.04
+
+          // 检测水平滑动：控制旋转
+          if (absMovementX > movementThreshold) {
+            // 防止频繁切换（至少间隔1秒）
+            const now = Date.now()
+            if (now - this.lastRotationChangeTime > 1000) {
+              if (movementX > 0) {
+                // 向右移动：正向旋转
+                this.rotationDirection = 1
+                console.log('右手向右滑动，正向旋转')
+                this.lastRotationChangeTime = now
+              } else {
+                // 向左移动：反向旋转
+                this.rotationDirection = -1
+                console.log('右手向左滑动，反向旋转')
+                this.lastRotationChangeTime = now
+              }
+            }
+          }
+        }
+      }
     },
 
     // 处理点击事件（摄像头不可用时切换模式）
