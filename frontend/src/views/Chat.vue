@@ -4426,7 +4426,6 @@ button,
   flex-shrink: 0; /* 防止被压缩 */
   width: 100%;
   box-sizing: border-box;
-  transition: transform 0.3s ease;
   align-items: stretch; /* 确保输入框和按钮高度一致 */
 }
 
@@ -4544,25 +4543,15 @@ button,
 
 /* 移动端键盘弹起时的输入框样式 */
 .input-wrapper.keyboard-open {
-  position: fixed;
-  bottom: 20px;
-  left: 20px;
-  right: 20px;
+  /* 保持正常的 flex 布局，不使用 fixed 定位 */
   padding: 0;
-  z-index: 998; /* 降低z-index，确保不会遮挡导航栏 */
-  transform: translateY(0);
   background: transparent; /* 确保没有背景色 */
   /* 确保保留原有的 flex 布局属性 */
   display: flex;
   gap: 8px;
   align-items: stretch;
-  width: auto; /* 使用 left/right 控制宽度 */
+  width: 100%;
   box-sizing: border-box;
-}
-
-/* 移动端导航栏展开时隐藏键盘弹起状态的输入框 */
-.input-wrapper.navbar-open.keyboard-open {
-  display: none;
 }
 
 .message-input {
@@ -4839,25 +4828,15 @@ button,
 
   /* 移动端键盘弹起时调整输入框样式 */
   .input-wrapper.keyboard-open {
+    /* 保持正常的 flex 布局，不使用 fixed 定位 */
     padding: 0;
-    position: fixed;
-    bottom: 20px; /* 保持20px底部间距 */
-    left: 20px; /* 保持20px左侧间距 */
-    right: 20px; /* 保持20px右侧间距 */
-    z-index: 998; /* 确保不会遮挡导航栏(z-index: 1000) */
-    transform: translateY(0);
     margin: 0;
     /* 确保保留原有的 flex 布局属性 */
     display: flex;
     gap: 8px;
     align-items: stretch;
-    width: auto; /* 使用 left/right 控制宽度 */
+    width: 100%;
     box-sizing: border-box;
-  }
-
-  /* 移动端导航栏展开时隐藏键盘弹起状态的输入框 */
-  .input-wrapper.navbar-open.keyboard-open {
-    display: none;
   }
 
   /* 确保移动端消息容器正确滚动 */
