@@ -1,5 +1,7 @@
 <template>
   <div class="chat-container">
+    <!-- 星空背景 -->
+    <StarBackground />
     <!-- 移动端遮罩层 -->
     <div
       v-if="isMobile && showMobileNavbar"
@@ -995,6 +997,7 @@ import { api } from '@/utils/request.js'
 import drawingMixin from '@/mixins/drawingMixin'
 import LiveWarCanvas from '@/components/LiveWarCanvas.vue'
 import UnitIcon from '@/components/UnitIcon.vue'
+import StarBackground from '@/components/StarBackground.vue'
 
 export default {
   name: 'Chat',
@@ -1143,7 +1146,8 @@ export default {
   },
   components: {
     UnitIcon,
-    LiveWarCanvas
+    LiveWarCanvas,
+    StarBackground
   },
   async mounted () {
     this.roomId = this.currentRoomId
@@ -2532,7 +2536,7 @@ html, body {
   display: flex;
   height: 100vh;
   height: 100dvh; /* 使用动态视口高度，更好地处理移动端 */
-  background: #ffffff;
+  background: transparent; /* 透明背景，显示星空 */
   overflow: hidden; /* 防止整体滚动 */
   position: fixed; /* 固定定位，防止页面滚动 */
   top: 0;

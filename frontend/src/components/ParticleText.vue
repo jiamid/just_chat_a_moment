@@ -153,7 +153,7 @@ export default {
 
       // 创建场景（使用 markRaw 避免 Vue 响应式代理）
       this.scene = markRaw(new THREE.Scene())
-      this.scene.background = new THREE.Color(0xffffff)
+      this.scene.background = null // 透明背景
 
       // 创建相机（使用 markRaw 避免 Vue 响应式代理）
       const aspect = width / height || 1
@@ -161,7 +161,7 @@ export default {
       this.camera.position.z = 400
 
       // 创建渲染器（使用 markRaw 避免 Vue 响应式代理）
-      this.renderer = markRaw(new THREE.WebGLRenderer({ canvas, antialias: true }))
+      this.renderer = markRaw(new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true }))
       this.renderer.setSize(width, height)
       this.renderer.setPixelRatio(window.devicePixelRatio)
 

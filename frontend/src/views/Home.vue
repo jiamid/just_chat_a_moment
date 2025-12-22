@@ -1,5 +1,7 @@
 <template>
   <div class="home-container" :class="{ 'tree-mode-active': isTreeMode }">
+    <!-- 星空背景 -->
+    <StarBackground />
     <!-- 顶部三个气泡 -->
     <div class="top-bubbles">
       <!-- Logo气泡 -->
@@ -143,11 +145,13 @@
 <script>
 import { api } from '@/utils/request.js'
 import ParticleText from '@/components/ParticleText.vue'
+import StarBackground from '@/components/StarBackground.vue'
 
 export default {
   name: 'Home',
   components: {
-    ParticleText
+    ParticleText,
+    StarBackground
   },
   data () {
     return {
@@ -414,7 +418,7 @@ export default {
   overflow: hidden;
   position: relative;
   z-index: 1;
-  background: #ffffff;
+  background: transparent;
   transition: background-color 0.3s ease;
 }
 
@@ -436,7 +440,7 @@ export default {
 
 /* 气泡基础样式 */
 .bubble {
-  background: #ffffff;
+  background: rgba(255, 255, 255, 0.3);
   border: var(--px-border, 3px) solid #000000;
   border-radius: var(--px-border-radius, 15px);
   padding: 2rem;
@@ -457,7 +461,7 @@ export default {
 
 /* Logo气泡在圣诞模式下的特殊样式 */
 .home-container.tree-mode-active .logo-bubble {
-  background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.3) 0%, rgba(255, 165, 0, 0.3) 100%);
   border-color: #FF6347 !important; /* 番茄红边框 */
   color: #8B0000;
 }
@@ -469,7 +473,7 @@ export default {
 
 /* 介绍气泡在圣诞模式下的样式 */
 .home-container.tree-mode-active .intro-bubble {
-  background: linear-gradient(135deg, #FFFFFF 0%, #FFF8DC 100%);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 248, 220, 0.3) 100%);
   border-color: #FFD700 !important;
 }
 
@@ -501,7 +505,7 @@ export default {
 
 /* 登录按钮在圣诞模式下的样式 */
 .home-container.tree-mode-active .login-btn-bubble {
-  background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.3) 0%, rgba(255, 165, 0, 0.3) 100%);
   border-color: #FF6347 !important;
   color: #8B0000;
   box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4),
@@ -509,7 +513,7 @@ export default {
 }
 
 .home-container.tree-mode-active .login-btn-bubble:hover {
-  background: linear-gradient(135deg, #FFA500 0%, #FFD700 100%);
+  background: linear-gradient(135deg, rgba(255, 165, 0, 0.3) 0%, rgba(255, 215, 0, 0.3) 100%);
   box-shadow: 0 6px 20px rgba(255, 215, 0, 0.5),
               0 0 30px rgba(255, 99, 71, 0.4);
   transform: translate(-2px, -2px);
@@ -522,7 +526,7 @@ export default {
 
 /* 内容气泡在圣诞模式下的样式 */
 .home-container.tree-mode-active .content-bubble {
-  background: linear-gradient(135deg, #FFFFFF 0%, #FFF8DC 100%);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 248, 220, 0.3) 100%);
   border-color: #FFD700 !important;
   box-shadow: 0 0 20px rgba(255, 215, 0, 0.2),
               inset 0 0 15px rgba(255, 255, 255, 0.1);
@@ -749,6 +753,11 @@ export default {
   flex-direction: column;
   overflow: auto;
   padding: 0;
+}
+
+/* 确保底部气泡内的内容气泡没有 padding */
+.bottom-bubble .content-bubble {
+  padding: 0 !important;
 }
 
 .features {
