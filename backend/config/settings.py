@@ -12,6 +12,16 @@ class OpenAiSettings(BaseSettings):
                                       extra='ignore')
     api_key: str = ''
 
+
+class SesSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="SES_", env_file=ENV_FILE, env_file_encoding='utf-8', extra='ignore')
+    secret: str = ''
+    secret_id: str = ''
+    secret_key: str = ''
+    template_id: int = ''
+    region:str = 'ap-hongkong'
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=ENV_FILE, env_file_encoding="utf-8", extra="ignore")
 
@@ -42,6 +52,7 @@ class Settings(BaseSettings):
         return v
 
     openai: OpenAiSettings = OpenAiSettings()
+    ses: SesSettings = SesSettings()
 
 
 settings = Settings()
