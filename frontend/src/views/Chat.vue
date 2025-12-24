@@ -1,7 +1,7 @@
 <template>
   <div class="chat-container">
-    <!-- 星空背景 -->
-    <StarBackground />
+    <!-- 皇室战争风格背景 -->
+    <ClashBackground />
     <!-- 移动端遮罩层 -->
     <div
       v-if="isMobile && showMobileNavbar"
@@ -997,7 +997,7 @@ import { api } from '@/utils/request.js'
 import drawingMixin from '@/mixins/drawingMixin'
 import LiveWarCanvas from '@/components/LiveWarCanvas.vue'
 import UnitIcon from '@/components/UnitIcon.vue'
-import StarBackground from '@/components/StarBackground.vue'
+import ClashBackground from '@/components/ClashBackground.vue'
 
 export default {
   name: 'Chat',
@@ -1147,7 +1147,7 @@ export default {
   components: {
     UnitIcon,
     LiveWarCanvas,
-    StarBackground
+    ClashBackground
   },
   async mounted () {
     this.roomId = this.currentRoomId

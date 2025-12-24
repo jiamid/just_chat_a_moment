@@ -1,7 +1,7 @@
 <template>
   <div class="home-container" :class="{ 'tree-mode-active': isTreeMode }">
-    <!-- 星空背景 -->
-    <StarBackground />
+    <!-- 皇室战争风格背景 -->
+    <ClashBackground />
     <!-- 顶部三个气泡 -->
     <div class="top-bubbles">
       <!-- Logo气泡 -->
@@ -145,13 +145,13 @@
 <script>
 import { api } from '@/utils/request.js'
 import ParticleText from '@/components/ParticleText.vue'
-import StarBackground from '@/components/StarBackground.vue'
+import ClashBackground from '@/components/ClashBackground.vue'
 
 export default {
   name: 'Home',
   components: {
     ParticleText,
-    StarBackground
+    ClashBackground
   },
   data () {
     return {
