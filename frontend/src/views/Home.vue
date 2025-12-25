@@ -1,5 +1,5 @@
 <template>
-  <div class="home-container" :class="{ 'tree-mode-active': isTreeMode }">
+  <div class="home-container">
     <!-- 皇室战争风格背景 -->
     <ClashBackground />
     <!-- 顶部三个气泡 -->
@@ -7,40 +7,22 @@
       <!-- Logo气泡 -->
       <div class="bubble logo-bubble">
         <div class="logo-section">
-          <h1 class="logo-text">JustChatAMoment</h1>
+          <h1 class="logo-text">JIAMID</h1>
         </div>
       </div>
 
-      <!-- 中间气泡：时间显示 -->
-      <div class="bubble intro-bubble">
-        <div class="intro-content">
-          <div class="time-display">
-            <div class="date-section">
-              <template v-for="(char, index) in dateString" :key="`date-${index}`">
-                <span
-                  v-if="isDigit(char)"
-                  class="flip-digit"
-                  :class="{ 'is-flipping': dateFlippingIndexes.includes(index) }"
-                >
-                  <span class="digit-front">{{ char }}</span>
-                  <span class="digit-back">{{ char }}</span>
-                </span>
-                <span v-else class="time-char">{{ char }}</span>
-              </template>
-            </div>
-            <div class="time-section">
-              <template v-for="(char, index) in timeString" :key="`time-${index}`">
-                <span
-                  v-if="isDigit(char)"
-                  class="flip-digit"
-                  :class="{ 'is-flipping': timeFlippingIndexes.includes(index) }"
-                >
-                  <span class="digit-front">{{ char }}</span>
-                  <span class="digit-back">{{ char }}</span>
-                </span>
-                <span v-else class="time-char">{{ char }}</span>
-              </template>
-            </div>
+      <!-- 中间：时间显示 -->
+      <div class="time-container">
+        <div class="time-display">
+          <div class="date-section">
+            <template v-for="(char, index) in dateString" :key="`date-${index}`">
+              <span class="time-char">{{ char }}</span>
+            </template>
+          </div>
+          <div class="time-section">
+            <template v-for="(char, index) in timeString" :key="`time-${index}`">
+              <span class="time-char">{{ char }}</span>
+            </template>
           </div>
         </div>
       </div>
@@ -51,18 +33,13 @@
       </button>
     </div>
 
-    <!-- 底部一个气泡：详细介绍 -->
-    <div class="bottom-bubble">
-      <div class="bubble content-bubble" :class="{ 'tree-mode': isTreeMode }">
-        <ParticleText :text="displayUsername" @gesture-mode-changed="handleGestureModeChanged" />
-      </div>
+    <!-- 底部展示区域 -->
+    <div class="bottom-display-area">
     </div>
 
     <!-- 登录模态框 -->
     <div v-if="showLoginModal" class="modal-overlay" @click.self="showLoginModal = false">
       <div class="login-box">
-        <button class="close-btn" @click="showLoginModal = false">×</button>
-
         <div class="form-tabs">
           <button
             :class="{ active: isLogin }"
@@ -144,13 +121,11 @@
 
 <script>
 import { api } from '@/utils/request.js'
-import ParticleText from '@/components/ParticleText.vue'
 import ClashBackground from '@/components/ClashBackground.vue'
 
 export default {
   name: 'Home',
   components: {
-    ParticleText,
     ClashBackground
   },
   data () {
@@ -161,10 +136,6 @@ export default {
       error: '',
       dateString: '',
       timeString: '',
-      previousDateString: '',
-      previousTimeString: '',
-      dateFlippingIndexes: [],
-      timeFlippingIndexes: [],
       timeTimer: null,
       form: {
         email: '',
@@ -175,15 +146,7 @@ export default {
         expires_at: 0
       },
       countdown: 0,
-      timer: null,
-      isTreeMode: false // 是否为圣诞树模式
-    }
-  },
-  computed: {
-    displayUsername () {
-      // 如果已登录，显示 username，否则显示 JIAMID
-      const username = localStorage.getItem('username')
-      return username || 'JIAMID'
+      timer: null
     }
   },
   async mounted () {
@@ -206,14 +169,6 @@ export default {
     }
   },
   methods: {
-    // 处理手势模式变化
-    handleGestureModeChanged (mode) {
-      this.isTreeMode = mode === 'tree'
-    },
-    isDigit (char) {
-      return /[0-9]/.test(char)
-    },
-
     updateTime () {
       const now = new Date()
       const year = now.getFullYear()
@@ -223,39 +178,8 @@ export default {
       const minutes = String(now.getMinutes()).padStart(2, '0')
       const seconds = String(now.getSeconds()).padStart(2, '0')
 
-      const newDateString = `${year}年${month}月${day}日`
-      const newTimeString = `${hours}:${minutes}:${seconds}`
-
-      // 检测日期哪些位置的数字发生了变化
-      if (this.previousDateString && this.previousDateString !== newDateString) {
-        this.dateFlippingIndexes = []
-        for (let i = 0; i < newDateString.length; i++) {
-          if (this.previousDateString[i] !== newDateString[i] && /[0-9]/.test(newDateString[i])) {
-            this.dateFlippingIndexes.push(i)
-          }
-        }
-        setTimeout(() => {
-          this.dateFlippingIndexes = []
-        }, 600)
-      }
-
-      // 检测时间哪些位置的数字发生了变化
-      if (this.previousTimeString && this.previousTimeString !== newTimeString) {
-        this.timeFlippingIndexes = []
-        for (let i = 0; i < newTimeString.length; i++) {
-          if (this.previousTimeString[i] !== newTimeString[i] && /[0-9]/.test(newTimeString[i])) {
-            this.timeFlippingIndexes.push(i)
-          }
-        }
-        setTimeout(() => {
-          this.timeFlippingIndexes = []
-        }, 600)
-      }
-
-      this.previousDateString = this.dateString
-      this.previousTimeString = this.timeString
-      this.dateString = newDateString
-      this.timeString = newTimeString
+      this.dateString = `${year}年${month}月${day}日`
+      this.timeString = `${hours}:${minutes}:${seconds}`
     },
 
     async checkAutoLogin () {
@@ -418,18 +342,13 @@ export default {
   overflow: hidden;
   position: relative;
   z-index: 1;
-  background: transparent;
+  background: linear-gradient(135deg, #87CEEB 0%, #4A90E2 50%, #87CEEB 100%);
+  background-size: 200% 200%;
+  animation: skyGradient 15s ease infinite;
   transition: background-color 0.3s ease;
 }
 
-/* 圣诞树模式下，主页背景变为深红色渐变 */
-.home-container.tree-mode-active {
-  background: linear-gradient(135deg, #8B0000 0%, #DC143C 50%, #8B0000 100%);
-  background-size: 200% 200%;
-  animation: christmasGradient 8s ease infinite;
-}
-
-@keyframes christmasGradient {
+@keyframes skyGradient {
   0%, 100% {
     background-position: 0% 50%;
   }
@@ -438,98 +357,19 @@ export default {
   }
 }
 
-/* 气泡基础样式 */
+/* 气泡基础样式 - Supercell风格 */
 .bubble {
-  background: rgba(255, 255, 255, 0.3);
-  border: var(--px-border, 3px) solid #000000;
-  border-radius: var(--px-border-radius, 15px);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.85) 100%);
+  border: 4px solid rgba(255, 255, 255, 0.8);
+  border-radius: 24px;
   padding: 2rem;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-sizing: border-box;
-  image-rendering: pixelated;
-  image-rendering: -moz-crisp-edges;
-  image-rendering: crisp-edges;
-}
-
-/* 圣诞树模式下的气泡美化 */
-.home-container.tree-mode-active .bubble {
-  border-color: #FFD700 !important; /* 金色边框 */
-  box-shadow: 0 0 15px rgba(255, 215, 0, 0.3),
-              0 0 30px rgba(255, 215, 0, 0.2),
-              inset 0 0 10px rgba(255, 255, 255, 0.1);
-}
-
-/* Logo气泡在圣诞模式下的特殊样式 */
-.home-container.tree-mode-active .logo-bubble {
-  background: linear-gradient(135deg, rgba(255, 215, 0, 0.3) 0%, rgba(255, 165, 0, 0.3) 100%);
-  border-color: #FF6347 !important; /* 番茄红边框 */
-  color: #8B0000;
-}
-
-.home-container.tree-mode-active .logo-bubble .logo-text {
-  color: #8B0000;
-  text-shadow: 2px 2px 4px rgba(255, 255, 255, 0.3);
-}
-
-/* 介绍气泡在圣诞模式下的样式 */
-.home-container.tree-mode-active .intro-bubble {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 248, 220, 0.3) 100%);
-  border-color: #FFD700 !important;
-}
-
-/* 时间显示在圣诞模式下的美化 */
-.home-container.tree-mode-active .time-char {
-  color: #DC143C; /* 深红色 */
-  text-shadow: 2px 2px 4px rgba(255, 215, 0, 0.5),
-               0 0 10px rgba(255, 215, 0, 0.3);
-  font-weight: 900;
-}
-
-.home-container.tree-mode-active .digit-front,
-.home-container.tree-mode-active .digit-back {
-  color: #DC143C; /* 深红色 */
-  text-shadow: 2px 2px 4px rgba(255, 215, 0, 0.5),
-               0 0 10px rgba(255, 215, 0, 0.3),
-               -1px -1px 2px rgba(255, 255, 255, 0.2);
-  font-weight: 900;
-}
-
-/* 时间数字翻转时的特殊效果 */
-.home-container.tree-mode-active .flip-digit.is-flipping .digit-front,
-.home-container.tree-mode-active .flip-digit.is-flipping .digit-back {
-  color: #FFD700; /* 翻转时变为金色 */
-  text-shadow: 0 0 15px rgba(255, 215, 0, 0.8),
-               0 0 25px rgba(255, 215, 0, 0.5),
-               2px 2px 4px rgba(220, 20, 60, 0.3);
-}
-
-/* 登录按钮在圣诞模式下的样式 */
-.home-container.tree-mode-active .login-btn-bubble {
-  background: linear-gradient(135deg, rgba(255, 215, 0, 0.3) 0%, rgba(255, 165, 0, 0.3) 100%);
-  border-color: #FF6347 !important;
-  color: #8B0000;
-  box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4),
-              0 0 20px rgba(255, 99, 71, 0.3);
-}
-
-.home-container.tree-mode-active .login-btn-bubble:hover {
-  background: linear-gradient(135deg, rgba(255, 165, 0, 0.3) 0%, rgba(255, 215, 0, 0.3) 100%);
-  box-shadow: 0 6px 20px rgba(255, 215, 0, 0.5),
-              0 0 30px rgba(255, 99, 71, 0.4);
-  transform: translate(-2px, -2px);
-}
-
-.home-container.tree-mode-active .login-btn-bubble .btn-text {
-  color: #8B0000;
-  text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.3);
-}
-
-/* 内容气泡在圣诞模式下的样式 */
-.home-container.tree-mode-active .content-bubble {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 248, 220, 0.3) 100%);
-  border-color: #FFD700 !important;
-  box-shadow: 0 0 20px rgba(255, 215, 0, 0.2),
-              inset 0 0 15px rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 8px 16px rgba(0, 0, 0, 0.15),
+    0 4px 8px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(10px);
 }
 
 /* 顶部三个气泡布局 */
@@ -566,38 +406,41 @@ export default {
   position: relative;
 }
 
-/* 介绍气泡 */
-.intro-bubble {
+/* 时间容器 */
+.time-container {
   display: flex;
   flex-direction: column;
   justify-content: center;
+  align-items: center;
 }
 
 .logo-text {
   margin: 0;
   text-align: center;
-  color: #000000;
-  font-size: 1.25rem;
-  font-weight: 600;
+  color: #FFD700;
+  font-size: 2rem;
+  font-weight: 900;
   position: relative;
   z-index: 1;
   line-height: 1.2;
   white-space: nowrap;
-}
-
-.intro-content {
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  gap: 0.5rem;
-}
-
-.clock-icon {
-  font-size: 1.5rem;
-  line-height: 1;
+  letter-spacing: 0.15em;
+  /* 3D 字体效果 - 多层阴影创造立体感 */
+  text-shadow:
+    /* 主阴影 - 右下深色，创造深度 */
+    2px 2px 0px rgba(184, 134, 11, 0.9),
+    4px 4px 0px rgba(184, 134, 11, 0.7),
+    6px 6px 0px rgba(184, 134, 11, 0.5),
+    8px 8px 0px rgba(184, 134, 11, 0.3),
+    /* 高光 - 左上亮色，创造高光 */
+    -1px -1px 0px rgba(255, 255, 255, 1),
+    -2px -2px 0px rgba(255, 255, 200, 0.8),
+    /* 外发光效果 */
+    0 0 10px rgba(255, 215, 0, 0.6),
+    0 0 20px rgba(255, 215, 0, 0.4),
+    0 0 30px rgba(255, 215, 0, 0.2);
+  /* 使用 filter 增强 3D 效果 */
+  filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.3));
 }
 
 .time-display {
@@ -624,82 +467,57 @@ export default {
 }
 
 .time-char {
-  font-size: 2rem;
+  font-size: 2.2rem;
   font-weight: 900;
   display: inline-block;
-  color: #000000;
-  text-shadow: none;
+  color: #FFD700;
   letter-spacing: 0.1em;
-}
-
-.flip-digit {
-  display: inline-block;
-  position: relative;
-  width: 1.2em;
-  height: 2em;
+  /* 固定宽度，防止数字变化时跳动 */
+  width: 1em;
   text-align: center;
-  vertical-align: middle;
-  perspective: 200px;
-}
-
-.digit-front,
-.digit-back {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  backface-visibility: hidden;
-  transition: transform 0.6s;
-  font-size: 2rem;
-  font-weight: 900;
   font-variant-numeric: tabular-nums;
-  line-height: 1;
-  color: #000000;
-  text-shadow: none;
-  letter-spacing: 0.1em;
+  /* 3D 字体效果 - 金色主题，与Logo呼应，在蓝色背景上清晰可见 */
+  text-shadow:
+    /* 主阴影 - 右下深色，创造深度 */
+    2px 2px 0px rgba(184, 134, 11, 0.9),
+    4px 4px 0px rgba(184, 134, 11, 0.7),
+    6px 6px 0px rgba(184, 134, 11, 0.5),
+    8px 8px 0px rgba(184, 134, 11, 0.3),
+    /* 高光 - 左上亮色，创造高光 */
+    -1px -1px 0px rgba(255, 255, 255, 1),
+    -2px -2px 0px rgba(255, 255, 200, 0.8),
+    /* 外发光效果 - 金色光晕 */
+    0 0 10px rgba(255, 215, 0, 0.6),
+    0 0 20px rgba(255, 215, 0, 0.4),
+    0 0 30px rgba(255, 215, 0, 0.2);
+  /* 使用 filter 增强 3D 效果 */
+  filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.3));
 }
 
-.digit-front {
-  transform: rotateX(0deg);
-}
-
-.digit-back {
-  transform: rotateX(180deg);
-}
-
-.flip-digit.is-flipping .digit-front {
-  transform: rotateX(-180deg);
-}
-
-.flip-digit.is-flipping .digit-back {
-  transform: rotateX(0deg);
-}
-
-.flip-digit:not(.is-flipping) .digit-front,
-.flip-digit:not(.is-flipping) .digit-back {
-  transition: none;
-}
-
-/* 登录按钮气泡 */
+/* 登录按钮气泡 - Supercell金色按钮风格 */
 .login-btn-bubble {
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  background: #000000;
-  border: var(--px-border, 3px) solid #000000;
-  color: white;
-  font-size: 1rem;
-  font-weight: 600;
+  background: linear-gradient(135deg, #FFD700 0%, #FFA500 50%, #FFD700 100%);
+  border: 4px solid rgba(255, 255, 255, 0.9);
+  color: #2C3E50;
+  font-size: 1.1rem;
+  font-weight: 800;
   cursor: pointer;
   position: relative;
   overflow: hidden;
   width: fit-content;
-  min-width: 120px;
-  border-radius: var(--px-border-radius, 15px);
+  min-width: 140px;
+  border-radius: 20px;
+  box-shadow:
+    0 6px 12px rgba(255, 215, 0, 0.4),
+    0 3px 6px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .login-btn-bubble::before {
@@ -709,8 +527,8 @@ export default {
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-  transition: left 0.5s;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  transition: left 0.6s;
 }
 
 .login-btn-bubble:hover::before {
@@ -718,12 +536,17 @@ export default {
 }
 
 .login-btn-bubble:hover {
-  transform: translate(-2px, -2px);
-  background: #000000;
+  transform: translateY(-3px) scale(1.05);
+  box-shadow:
+    0 8px 16px rgba(255, 215, 0, 0.5),
+    0 4px 8px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+  background: linear-gradient(135deg, #FFE44D 0%, #FFB347 50%, #FFE44D 100%);
 }
 
 .login-btn-bubble:active {
-  transform: translateY(0);
+  transform: translateY(-1px) scale(1.02);
 }
 
 .btn-icon {
@@ -732,32 +555,22 @@ export default {
 }
 
 .btn-text {
-  font-size: 1.25rem;
-  font-weight: 700;
+  font-size: 1.3rem;
+  font-weight: 800;
+  text-shadow:
+    1px 1px 2px rgba(255, 255, 255, 0.8),
+    0 0 4px rgba(255, 255, 255, 0.4);
+  letter-spacing: 0.05em;
 }
 
-/* 底部气泡 */
-.bottom-bubble {
+/* 底部展示区域 */
+.bottom-display-area {
   width: 100%;
   flex: 1;
   display: flex;
   flex-direction: column;
   min-height: 0;
-}
-
-.content-bubble {
-  width: 100%;
-  height: 100%;
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  overflow: auto;
-  padding: 0;
-}
-
-/* 确保底部气泡内的内容气泡没有 padding */
-.bottom-bubble .content-bubble {
-  padding: 0 !important;
+  /* 空白展示区域，暂时无样式 */
 }
 
 .features {
@@ -823,14 +636,19 @@ export default {
 }
 
 .login-box {
-  background: #ffffff;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.95) 100%);
   padding: 2.5rem 2rem;
-  border-radius: 8px;
-  border: var(--px-border, 3px) solid #000000;
+  border-radius: 24px;
+  border: 4px solid rgba(255, 255, 255, 0.9);
   width: 100%;
   max-width: 420px;
   position: relative;
-  animation: slideUp 0.3s ease;
+  animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow:
+    0 20px 40px rgba(0, 0, 0, 0.2),
+    0 10px 20px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
 }
 
 @keyframes slideUp {
@@ -844,39 +662,15 @@ export default {
   }
 }
 
-.close-btn {
-  position: absolute;
-  top: 5px;
-  right: 5px;
-  width: 32px;
-  height: 32px;
-  border: none;
-  background: transparent;
-  color: #000000;
-  border-radius: 50%;
-  font-size: 1.5rem;
-  line-height: 1;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.close-btn:hover {
-  background: transparent;
-  color: #000000;
-  transform: rotate(90deg);
-}
-
 .form-tabs {
   display: flex;
   margin-bottom: 1.5rem;
   gap: 0.5rem;
-  background: #ffffff;
-  padding: 0.25rem;
-  border-radius: 4px;
-  border: var(--px-border, 3px) solid #000000;
+  background: rgba(255, 255, 255, 0.6);
+  padding: 0.4rem;
+  border-radius: 16px;
+  border: 3px solid rgba(255, 255, 255, 0.8);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .form-tabs button {
@@ -884,17 +678,21 @@ export default {
   padding: 0.75rem;
   border: none;
   background: transparent;
-  color: #333333;
+  color: #7F8C8D;
   cursor: pointer;
-  transition: all 0.2s ease;
-  border-radius: 4px;
-  font-weight: 500;
-  font-size: 0.95rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 1rem;
 }
 
 .form-tabs button.active {
-  background: #000000;
+  background: linear-gradient(135deg, #4A90E2 0%, #357ABD 100%);
   color: #ffffff;
+  box-shadow:
+    0 4px 8px rgba(74, 144, 226, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 .form-group {
@@ -904,48 +702,59 @@ export default {
 .form-group label {
   display: block;
   margin-bottom: 0.5rem;
-  font-weight: 600;
-  color: #000000;
-  font-size: 0.9rem;
+  font-weight: 700;
+  color: #2C3E50;
+  font-size: 0.95rem;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
 }
 
 .form-group input {
   width: 100%;
   padding: 0.875rem 1rem;
-  border: var(--px-border, 3px) solid #000000;
-  border-radius: 4px;
+  border: 3px solid rgba(200, 200, 200, 0.6);
+  border-radius: 12px;
   font-size: 1rem;
   box-sizing: border-box;
-  background: #ffffff;
-  color: #000000;
-  transition: all 0.2s ease;
-}
-
-.form-group input:hover {
-  border-color: #000000;
-  background: #ffffff;
+  background: rgba(255, 255, 255, 0.9);
+  color: #2C3E50;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.05),
+    0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
 .form-group input:focus {
   outline: none;
-  border-color: #000000;
-  background: #ffffff;
+  border-color: #4A90E2;
+  background: rgba(255, 255, 255, 1);
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.05),
+    0 0 0 3px rgba(74, 144, 226, 0.2),
+    0 2px 8px rgba(74, 144, 226, 0.3);
 }
 
 .submit-btn {
   width: 100%;
-  padding: 0.875rem;
-  background: #000000;
-  color: white;
-  border: var(--px-border, 3px) solid #000000;
-  border-radius: 6px;
-  font-size: 1rem;
-  font-weight: 600;
+  padding: 1rem;
+  background: linear-gradient(135deg, #FFD700 0%, #FFA500 50%, #FFD700 100%);
+  color: #2C3E50;
+  border: 4px solid rgba(255, 255, 255, 0.9);
+  border-radius: 16px;
+  font-size: 1.1rem;
+  font-weight: 800;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
   margin-top: 0.5rem;
+  box-shadow:
+    0 6px 12px rgba(255, 215, 0, 0.4),
+    0 3px 6px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+  text-shadow:
+    1px 1px 2px rgba(255, 255, 255, 0.8),
+    0 0 4px rgba(255, 255, 255, 0.4);
 }
 
 .submit-btn::before {
@@ -955,8 +764,8 @@ export default {
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-  transition: left 0.5s;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  transition: left 0.6s;
 }
 
 .submit-btn:hover:not(:disabled)::before {
@@ -964,29 +773,42 @@ export default {
 }
 
 .submit-btn:hover:not(:disabled) {
-  transform: translate(-1px, -1px);
-  background: #000000;
+  transform: translateY(-3px) scale(1.02);
+  box-shadow:
+    0 8px 16px rgba(255, 215, 0, 0.5),
+    0 4px 8px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+  background: linear-gradient(135deg, #FFE44D 0%, #FFB347 50%, #FFE44D 100%);
 }
 
 .submit-btn:active:not(:disabled) {
-  transform: translateY(0);
+  transform: translateY(-1px) scale(1.01);
 }
 
 .submit-btn:disabled {
-  opacity: 0.5;
+  opacity: 0.6;
   cursor: not-allowed;
-  background: #666666;
+  background: linear-gradient(135deg, #CCCCCC 0%, #999999 100%);
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
 .error-message {
   margin-top: 1rem;
   padding: 0.875rem;
-  background: linear-gradient(135deg, rgba(196, 30, 58, 0.2) 0%, rgba(196, 30, 58, 0.15) 100%);
-  color: #ffb3b3;
-  border: var(--px-border, 3px) solid #000000;
-  border-radius: 4px;
+  background: linear-gradient(135deg, rgba(231, 76, 60, 0.15) 0%, rgba(192, 57, 43, 0.15) 100%);
+  color: #E74C3C;
+  border: 3px solid rgba(231, 76, 60, 0.4);
+  border-radius: 12px;
   text-align: center;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  box-shadow:
+    inset 0 2px 4px rgba(231, 76, 60, 0.1),
+    0 2px 4px rgba(0, 0, 0, 0.1);
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
 }
 
 .code-row {
@@ -1000,28 +822,36 @@ export default {
 
 .code-btn {
   padding: 0.75rem 1rem;
-  border: var(--px-border, 3px) solid #000000;
-  background: #ffffff;
-  color: #000000;
-  border-radius: 4px;
+  border: 3px solid rgba(74, 144, 226, 0.6);
+  background: linear-gradient(135deg, rgba(74, 144, 226, 0.1) 0%, rgba(53, 122, 189, 0.1) 100%);
+  color: #4A90E2;
+  border-radius: 12px;
   cursor: pointer;
-  font-weight: 500;
+  font-weight: 700;
   font-size: 0.9rem;
-  transition: all 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   white-space: nowrap;
+  box-shadow:
+    0 2px 4px rgba(74, 144, 226, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
 .code-btn:hover:not(:disabled) {
-  background: #ffffff;
-  color: #000000;
-  transform: translate(-1px, -1px);
+  background: linear-gradient(135deg, rgba(74, 144, 226, 0.2) 0%, rgba(53, 122, 189, 0.2) 100%);
+  color: #357ABD;
+  border-color: rgba(74, 144, 226, 0.8);
+  transform: translateY(-2px);
+  box-shadow:
+    0 4px 8px rgba(74, 144, 226, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
 .code-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  background: #f5f5f5;
-  border-color: #cccccc;
+  background: rgba(245, 245, 245, 0.8);
+  border-color: rgba(200, 200, 200, 0.6);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .login-form {
@@ -1030,7 +860,7 @@ export default {
 
 /* 占位符颜色 */
 ::placeholder {
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(127, 140, 141, 0.6);
 }
 
 /* 响应式设计 */
@@ -1085,16 +915,6 @@ export default {
     font-size: 1.5rem;
   }
 
-  .digit-front,
-  .digit-back {
-    font-size: 1.5rem;
-  }
-
-  .flip-digit {
-    width: 1em;
-    height: 1.8em;
-  }
-
   .content-title {
     font-size: 1.5rem;
   }
@@ -1106,7 +926,7 @@ export default {
   .login-box {
     padding: 2rem 1.5rem;
     max-width: 100%;
-    border-radius: 6px;
+    border-radius: 20px;
   }
 }
 </style>
