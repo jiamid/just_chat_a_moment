@@ -5,9 +5,15 @@
     <!-- 顶部三个气泡 -->
     <div class="top-bubbles">
       <!-- Logo气泡 -->
-      <div class="bubble logo-bubble">
+      <div class="logo-bubble">
         <div class="logo-section">
-          <h1 class="logo-text">JIAMID</h1>
+          <!-- 横幅飘带 -->
+          <div class="banner-ribbon">
+            <!-- 菱形图案纹理背景 -->
+            <div class="banner-pattern"></div>
+            <!-- 文字内容 -->
+            <h1 class="logo-text">JIAMID</h1>
+          </div>
         </div>
       </div>
 
@@ -27,14 +33,40 @@
         </div>
       </div>
 
-      <!-- 右侧气泡：登录按钮 -->
-      <button class="bubble login-btn-bubble" @click="handleEnterClick">
-        <span class="btn-text">Enter</span>
-      </button>
     </div>
 
     <!-- 底部展示区域 -->
     <div class="bottom-display-area">
+      <!-- 卡片轮播图 - 圆形循环 -->
+      <div class="carousel-container">
+        <div class="carousel-wheel">
+          <div
+            v-for="(card, index) in carouselCards"
+            :key="index"
+            :class="['carousel-card', { active: index === currentCardIndex }]"
+            :style="getCardStyle(index)"
+            @click="goToCard(index)"
+          >
+            <div class="card-content">
+              <h3 class="card-title">{{ card.title }}</h3>
+              <p class="card-description">{{ card.description }}</p>
+              <BattleButton v-if="card.showButton" text="Enter" @click="handleEnterClick" />
+            </div>
+          </div>
+        </div>
+        <!-- 左右切换按钮 -->
+        <button class="carousel-btn carousel-btn-prev" @click="prevCard">‹</button>
+        <button class="carousel-btn carousel-btn-next" @click="nextCard">›</button>
+        <!-- 指示器 -->
+        <div class="carousel-indicators">
+          <span
+            v-for="(card, index) in carouselCards"
+            :key="index"
+            :class="['indicator', { active: index === currentCardIndex }]"
+            @click="goToCard(index)"
+          ></span>
+        </div>
+      </div>
     </div>
 
     <!-- 登录模态框 -->
@@ -122,11 +154,13 @@
 <script>
 import { api } from '@/utils/request.js'
 import ClashBackground from '@/components/ClashBackground.vue'
+import BattleButton from '@/components/BattleButton.vue'
 
 export default {
   name: 'Home',
   components: {
-    ClashBackground
+    ClashBackground,
+    BattleButton
   },
   data () {
     return {
@@ -146,7 +180,15 @@ export default {
         expires_at: 0
       },
       countdown: 0,
-      timer: null
+      timer: null,
+      currentCardIndex: 0,
+      carouselCards: [
+        { title: 'Just Chat A Moment', description: '即刻开始，欢乐对战！\n就一会儿～', showButton: true },
+        { title: '功能二', description: '这是第二个卡片的内容描述' },
+        { title: '功能三', description: '这是第三个卡片的内容描述' },
+        { title: '功能四', description: '这是第四个卡片的内容描述' },
+        { title: '功能五', description: '这是第五个卡片的内容描述' }
+      ]
     }
   },
   async mounted () {
@@ -325,6 +367,56 @@ export default {
       } finally {
         this.loading = false
       }
+    },
+
+    // 轮播图相关方法
+    nextCard () {
+      this.currentCardIndex = (this.currentCardIndex + 1) % this.carouselCards.length
+    },
+
+    prevCard () {
+      this.currentCardIndex = (this.currentCardIndex - 1 + this.carouselCards.length) % this.carouselCards.length
+    },
+
+    goToCard (index) {
+      this.currentCardIndex = index
+    },
+
+    getCardStyle (index) {
+      const total = this.carouselCards.length
+      const angleStep = 360 / total
+      // 计算相对于当前卡片的偏移角度
+      const offset = index - this.currentCardIndex
+      // 计算实际角度（考虑循环）
+      const angle = offset * angleStep
+
+      // 圆形半径 - 根据屏幕宽度自适应
+      const isMobile = window.innerWidth <= 768
+      const radius = isMobile ? 180 : 300 // 移动端使用更小的半径
+
+      // 计算x和z位置（圆形路径，水平圆形）
+      // z坐标：cos值，中间的卡片z最大（最前面），两侧逐渐减小（在后面）
+      const radian = (angle * Math.PI) / 180
+      const x = Math.sin(radian) * radius
+      const z = Math.cos(radian) * radius // 中间的卡片z最大（正数），两侧z变小（甚至为负）
+
+      // 计算缩放比例（z越大越近，scale越大）
+      // z的范围大致是 -radius 到 radius，中间的卡片z接近radius（最大）
+      // 将z归一化到0-1范围，然后映射到scale
+      const normalizedZ = (z + radius) / (2 * radius) // 0到1之间
+      const scale = 0.5 + normalizedZ * 0.3 // 从0.5到0.8之间，中间卡片更小
+
+      // 计算透明度（后面的卡片可以稍微透明一点）
+      const opacity = normalizedZ > 0.3 ? 1 : Math.max(0.4, normalizedZ * 1.5)
+
+      // z-index：z坐标越大（越前面），z-index越大
+      const zIndex = Math.round(normalizedZ * total * 2)
+
+      return {
+        transform: `translateX(${x}px) translateZ(${z}px) scale(${scale})`,
+        opacity,
+        zIndex
+      }
     }
 
   }
@@ -372,10 +464,10 @@ export default {
   backdrop-filter: blur(10px);
 }
 
-/* 顶部三个气泡布局 */
+/* 顶部两个气泡布局 */
 .top-bubbles {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto 1fr;
   gap: 2rem;
 }
 
@@ -388,22 +480,106 @@ export default {
 .logo-bubble {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   width: fit-content;
-  max-width: 200px;
+  max-width: none;
+  min-width: 280px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  backdrop-filter: none;
+  margin-left: -2rem;
 }
 
 .logo-section {
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: center;
   width: 100%;
   padding: 0;
   background: transparent;
   border-radius: 0;
   border: none;
-  box-shadow: none;
   position: relative;
+  /* 阴影效果：左上角白色，右下角白色 */
+  filter: drop-shadow(-4px -4px 0px rgba(255, 255, 255, 1)) drop-shadow(4px 4px 0px rgba(255, 255, 255, 1));
+}
+
+/* 横幅飘带主体 */
+.banner-ribbon {
+  position: relative;
+  width: 100%;
+  height: 70px;
+  /* 背景颜色与时间字体颜色一致 #FFD700 */
+  background: #FFD700;
+  /* 直角梯形：左侧垂直，右侧倾斜，上宽下窄 */
+  clip-path: polygon(0 0, 100% 0, calc(100% - 30px) 100%, 0 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+}
+
+/* 外层边框 - 1em宽度 */
+.banner-ribbon::before {
+  content: '';
+  position: absolute;
+  top: -1em;
+  left: -1em;
+  right: -1em;
+  bottom: -1em;
+  background: transparent;
+  /* 外层边框：使用相同的斜角形状，由于扩大了1em，边框会自然形成 */
+  /* 保持相同的斜角角度，右下角偏移需要减去1em的宽度影响（约16px） */
+  clip-path: polygon(0 0, 100% 0, calc(100% - 46px) 100%, 0 100%);
+  z-index: -2;
+  pointer-events: none;
+}
+
+/* 内层边框 - 4px宽度，在1em边框内侧 */
+.banner-ribbon::after {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  right: -4px;
+  bottom: -4px;
+  background: transparent;
+  /* 内层边框跟随斜角 */
+  clip-path: polygon(0 0, 100% 0, calc(100% - 26px) 100%, 0 100%);
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* 菱形图案纹理 */
+.banner-pattern {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  /* 创建菱形网格图案 - 旋转45度的菱形，线条颜色为白色 */
+  background-image:
+    repeating-linear-gradient(
+      45deg,
+      rgba(255, 255, 255, 0.25) 0px,
+      rgba(255, 255, 255, 0.25) 1.5px,
+      transparent 1.5px,
+      transparent 18px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      rgba(255, 255, 255, 0.25) 0px,
+      rgba(255, 255, 255, 0.25) 1.5px,
+      transparent 1.5px,
+      transparent 18px
+    );
+  background-size: 25.46px 25.46px;
+  background-position: 0 0, 12.73px 12.73px;
+  opacity: 0.6;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 30px) 100%, 0 100%);
+  z-index: 0;
 }
 
 /* 时间容器 */
@@ -417,30 +593,28 @@ export default {
 .logo-text {
   margin: 0;
   text-align: center;
-  color: #FFD700;
-  font-size: 2rem;
+  color: #FFFFFF;
+  font-size: 2.2rem;
   font-weight: 900;
   position: relative;
-  z-index: 1;
-  line-height: 1.2;
+  z-index: 2;
+  line-height: 1;
   white-space: nowrap;
   letter-spacing: 0.15em;
-  /* 3D 字体效果 - 多层阴影创造立体感 */
+  padding: 0 1rem;
+  /* 3D 字体效果 - 多层阴影创造立体感，在金色背景上使用深色阴影 */
   text-shadow:
     /* 主阴影 - 右下深色，创造深度 */
-    2px 2px 0px rgba(184, 134, 11, 0.9),
-    4px 4px 0px rgba(184, 134, 11, 0.7),
-    6px 6px 0px rgba(184, 134, 11, 0.5),
-    8px 8px 0px rgba(184, 134, 11, 0.3),
+    2px 2px 0px rgba(139, 69, 19, 0.9),
+    4px 4px 0px rgba(139, 69, 19, 0.7),
+    6px 6px 0px rgba(139, 69, 19, 0.5),
     /* 高光 - 左上亮色，创造高光 */
-    -1px -1px 0px rgba(255, 255, 255, 1),
-    -2px -2px 0px rgba(255, 255, 200, 0.8),
+    -1px -1px 0px rgba(255, 255, 255, 0.8),
+    -2px -2px 0px rgba(255, 255, 220, 0.6),
     /* 外发光效果 */
-    0 0 10px rgba(255, 215, 0, 0.6),
-    0 0 20px rgba(255, 215, 0, 0.4),
-    0 0 30px rgba(255, 215, 0, 0.2);
+    0 0 8px rgba(0, 0, 0, 0.4);
   /* 使用 filter 增强 3D 效果 */
-  filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.3));
+  filter: drop-shadow(1px 1px 2px rgba(0, 0, 0, 0.5));
 }
 
 .time-display {
@@ -570,7 +744,188 @@ export default {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  /* 空白展示区域，暂时无样式 */
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 0;
+  position: relative;
+}
+
+/* 轮播图容器 */
+.carousel-container {
+  position: relative;
+  width: 100%;
+  max-width: 1200px;
+  height: 100%;
+  overflow: visible;
+  margin: 0 auto;
+  perspective: 1200px;
+}
+
+/* 轮播图圆形容器 */
+.carousel-wheel {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  perspective: 1000px;
+  transform-style: preserve-3d;
+}
+
+/* 卡片样式 - 圆形布局 */
+.carousel-card {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 300px;
+  height: 350px;
+  margin-left: -150px;
+  margin-top: -175px;
+  cursor: pointer;
+  transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-style: preserve-3d;
+}
+
+.card-content {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.85) 100%);
+  border: 4px solid rgba(255, 255, 255, 0.8);
+  border-radius: 24px;
+  padding: 2rem;
+  box-sizing: border-box;
+  box-shadow:
+    0 8px 16px rgba(0, 0, 0, 0.15),
+    0 4px 8px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(10px);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.carousel-card.active .card-content {
+  box-shadow:
+    0 12px 24px rgba(0, 0, 0, 0.2),
+    0 6px 12px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.card-title {
+  font-size: 1.4rem;
+  font-weight: 900;
+  color: #2C3E50;
+  margin: 0 0 1rem 0;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.carousel-card.active .card-title {
+  font-size: 1.6rem;
+}
+
+.card-description {
+  font-size: 1rem;
+  color: #7F8C8D;
+  text-align: center;
+  line-height: 1.6;
+  margin: 0;
+  white-space: pre-line;
+}
+
+.carousel-card.active .card-description {
+  font-size: 1.1rem;
+}
+
+/* 卡片内的按钮容器 */
+.card-content .battle-btn {
+  position: absolute;
+  bottom: 1em;
+  left: 1em;
+  right: 1em;
+  width: calc(100% - 2em);
+}
+
+/* 切换按钮 */
+.carousel-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 50px;
+  height: 50px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.85) 100%);
+  border: 4px solid rgba(255, 255, 255, 0.8);
+  border-radius: 50%;
+  font-size: 2rem;
+  font-weight: 900;
+  color: #2C3E50;
+  cursor: pointer;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow:
+    0 4px 8px rgba(0, 0, 0, 0.15),
+    0 2px 4px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+  line-height: 1;
+}
+
+.carousel-btn:hover {
+  transform: translateY(-50%) scale(1.1);
+  box-shadow:
+    0 6px 12px rgba(0, 0, 0, 0.2),
+    0 3px 6px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.carousel-btn:active {
+  transform: translateY(-50%) scale(1.05);
+}
+
+.carousel-btn-prev {
+  left: 1rem;
+}
+
+.carousel-btn-next {
+  right: 1rem;
+}
+
+/* 指示器 */
+.carousel-indicators {
+  position: absolute;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 0.5rem;
+  z-index: 10;
+}
+
+.indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.indicator.active {
+  background: rgba(255, 255, 255, 1);
+  width: 30px;
+  border-radius: 5px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.indicator:hover {
+  background: rgba(255, 255, 255, 0.8);
 }
 
 .features {
@@ -887,6 +1242,29 @@ export default {
   .logo-bubble {
     max-width: 100%;
     width: 100%;
+    min-width: auto;
+    padding: 0;
+    margin-left: -1rem;
+  }
+
+  .banner-ribbon {
+    height: 55px;
+    /* 直角梯形：左侧垂直，右侧倾斜，上宽下窄 */
+    clip-path: polygon(0 0, 100% 0, calc(100% - 22px) 100%, 0 100%);
+    border-width: 3px;
+  }
+
+  .banner-ribbon::before {
+    top: -3px;
+    left: -3px;
+    right: -3px;
+    bottom: -3px;
+    border-width: 3px;
+    clip-path: polygon(0 0, 100% 0, calc(100% - 22px) 100%, 0 100%);
+  }
+
+  .banner-pattern {
+    clip-path: polygon(0 0, 100% 0, calc(100% - 22px) 100%, 0 100%);
   }
 
   .bubble {
@@ -920,13 +1298,61 @@ export default {
   }
 
   .logo-text {
-    font-size: 1.5rem;
+    font-size: 1.6rem;
+    padding: 0 0.75rem;
+    letter-spacing: 0.1em;
   }
 
   .login-box {
     padding: 2rem 1.5rem;
     max-width: 100%;
     border-radius: 20px;
+  }
+
+  .carousel-container {
+    height: 100%;
+    max-width: 100%;
+  }
+
+  .carousel-wheel {
+    perspective: 800px;
+  }
+
+  .carousel-card {
+    width: 250px;
+    height: 300px;
+    margin-left: -125px;
+    margin-top: -150px;
+  }
+
+  .card-content {
+    padding: 1.5rem;
+  }
+
+  .card-title {
+    font-size: 1.2rem;
+  }
+
+  .carousel-card.active .card-title {
+    font-size: 1.35rem;
+  }
+
+  .card-description {
+    font-size: 0.9rem;
+  }
+
+  .carousel-btn {
+    width: 40px;
+    height: 40px;
+    font-size: 1.5rem;
+  }
+
+  .carousel-btn-prev {
+    left: 0.5rem;
+  }
+
+  .carousel-btn-next {
+    right: 0.5rem;
   }
 }
 </style>
