@@ -18,7 +18,7 @@ class SesSettings(BaseSettings):
     secret: str = ''
     secret_id: str = ''
     secret_key: str = ''
-    template_id: int = ''
+    template_id: int = 0
     region:str = 'ap-hongkong'
 
 
