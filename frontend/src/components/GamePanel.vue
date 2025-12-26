@@ -441,6 +441,11 @@ export default {
   box-sizing: border-box; /* 包含padding和border */
 }
 
+/* 移除game-top-bar中文字的阴影效果 */
+.game-top-bar .pixel-text {
+  text-shadow: none;
+}
+
 .top-bar-row {
   display: flex;
   align-items: center;
@@ -549,12 +554,6 @@ export default {
   position: relative;
   box-sizing: border-box;
   padding: 2px;
-  /* 3D凸起效果 - 外边框 */
-  box-shadow:
-    0 4px 0px rgba(0, 0, 0, 0.4),
-    0 2px 0px rgba(0, 0, 0, 0.5),
-    inset 0 2px 4px rgba(255, 255, 255, 0.1),
-    inset 0 -2px 4px rgba(0, 0, 0, 0.3);
   border-radius: 4px;
 }
 
@@ -579,21 +578,13 @@ export default {
 }
 
 .hp-bar-fill.red {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 50%, #c0392b 100%);
-  box-shadow:
-    inset 0 3px 6px rgba(255, 255, 255, 0.4),
-    inset 0 -3px 6px rgba(0, 0, 0, 0.4),
-    0 2px 4px rgba(239, 68, 68, 0.5);
+  background: #ef4444;
   justify-content: flex-start;
   padding-left: 8px;
 }
 
 .hp-bar-fill.blue {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 50%, #1e40af 100%);
-  box-shadow:
-    inset 0 3px 6px rgba(255, 255, 255, 0.4),
-    inset 0 -3px 6px rgba(0, 0, 0, 0.4),
-    0 2px 4px rgba(59, 130, 246, 0.5);
+  background: #3b82f6;
   justify-content: flex-end;
   padding-right: 8px;
 }
@@ -602,10 +593,6 @@ export default {
   font-size: 1rem;
   font-weight: 900;
   color: #fff;
-  text-shadow:
-    2px 2px 0px rgba(0, 0, 0, 0.9),
-    4px 4px 0px rgba(0, 0, 0, 0.7),
-    -1px -1px 0px rgba(255, 255, 255, 0.3);
   white-space: nowrap;
   z-index: 10;
   position: relative;
@@ -1162,10 +1149,10 @@ export default {
 }
 
 .player-stats-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
+  display: grid;
+  grid-template-columns: 2fr 4fr;
+  gap: 0.75rem;
+  align-items: stretch;
 }
 
 .energy-display {
@@ -1178,11 +1165,6 @@ export default {
   background: linear-gradient(135deg, rgba(251, 191, 36, 0.3) 0%, rgba(251, 191, 36, 0.2) 100%);
   border: none;
   border-radius: 8px;
-  box-shadow:
-    0 3px 0px rgba(184, 134, 11, 0.3),
-    0 1px 0px rgba(184, 134, 11, 0.4),
-    inset 0 2px 4px rgba(255, 255, 255, 0.3),
-    inset 0 -2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .energy-display::before {
@@ -1204,17 +1186,14 @@ export default {
   font-size: 1.2rem;
   font-weight: 900;
   color: #fbbf24;
-  text-shadow:
-    2px 2px 0px rgba(184, 134, 11, 0.8),
-    4px 4px 0px rgba(184, 134, 11, 0.6),
-    -1px -1px 0px rgba(255, 255, 255, 0.3);
   letter-spacing: 0.05em;
 }
 
 .unit-counts {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
   gap: 0.75rem;
-  align-items: center;
+  align-items: stretch;
 }
 
 .unit-count-item {
@@ -1259,54 +1238,66 @@ export default {
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.85) 100%);
   border: none;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.1s ease-out;
-  /* 3D凸起效果 */
-  box-shadow:
-    0 4px 0px rgba(0, 0, 0, 0.2),
-    0 2px 0px rgba(0, 0, 0, 0.3),
-    inset 0 2px 4px rgba(255, 255, 255, 0.4),
-    inset 0 -2px 4px rgba(0, 0, 0, 0.1);
+  overflow: visible;
 }
 
-.unit-spawn-btn:hover:not(.disabled),
-.unit-spawn-btn:active:not(.disabled) {
-  transform: translateY(2px);
+/* 红队背景 - 3D凸起效果 */
+.unit-spawn-btn.red-team:not(.disabled) {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 50%, #ef4444 100%);
+  /* 3D凸起效果：顶部亮，底部暗，外阴影 */
   box-shadow:
-    0 2px 0px rgba(0, 0, 0, 0.2),
-    inset 0 2px 4px rgba(0, 0, 0, 0.2),
+    0 4px 0px rgba(139, 69, 19, 0.6),
+    0 2px 0px rgba(139, 69, 19, 0.7),
+    inset 0 2px 4px rgba(255, 255, 255, 0.3),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* 蓝队背景 - 3D凸起效果 */
+.unit-spawn-btn.blue-team:not(.disabled) {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 50%, #3b82f6 100%);
+  /* 3D凸起效果：顶部亮，底部暗，外阴影 */
+  box-shadow:
+    0 4px 0px rgba(25, 113, 194, 0.6),
+    0 2px 0px rgba(25, 113, 194, 0.7),
+    inset 0 2px 4px rgba(255, 255, 255, 0.3),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* 点击时的按下效果 */
+.unit-spawn-btn.red-team:active:not(.disabled) {
+  transform: translateY(2px);
+  /* 按下效果：顶部暗，底部亮，减少外阴影 */
+  box-shadow:
+    0 2px 0px rgba(139, 69, 19, 0.6),
+    0 1px 0px rgba(139, 69, 19, 0.7),
+    inset 0 2px 4px rgba(0, 0, 0, 0.3),
     inset 0 -2px 4px rgba(255, 255, 255, 0.2);
 }
 
-.unit-spawn-btn.red-team:hover:not(.disabled),
-.unit-spawn-btn.red-team:active:not(.disabled) {
-  box-shadow:
-    0 2px 0px rgba(231, 76, 60, 0.5),
-    inset 0 2px 4px rgba(231, 76, 60, 0.2),
-    inset 0 -2px 4px rgba(231, 76, 60, 0.1);
-}
-
-.unit-spawn-btn.blue-team:hover:not(.disabled),
 .unit-spawn-btn.blue-team:active:not(.disabled) {
+  transform: translateY(2px);
+  /* 按下效果：顶部暗，底部亮，减少外阴影 */
   box-shadow:
-    0 2px 0px rgba(59, 130, 246, 0.5),
-    inset 0 2px 4px rgba(59, 130, 246, 0.2),
-    inset 0 -2px 4px rgba(59, 130, 246, 0.1);
+    0 2px 0px rgba(25, 113, 194, 0.6),
+    0 1px 0px rgba(25, 113, 194, 0.7),
+    inset 0 2px 4px rgba(0, 0, 0, 0.3),
+    inset 0 -2px 4px rgba(255, 255, 255, 0.2);
 }
 
 .unit-spawn-btn.disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  box-shadow:
-    0 2px 0px rgba(0, 0, 0, 0.15),
-    inset 0 2px 4px rgba(0, 0, 0, 0.1);
+  background: linear-gradient(135deg, rgba(200, 200, 200, 0.2) 0%, rgba(180, 180, 180, 0.15) 100%);
+  border: 2px solid rgba(150, 150, 150, 0.3);
+  box-shadow: none;
 }
 
 .unit-spawn-icon {
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+  filter: drop-shadow(0 4px 8px rgb(0, 0, 0));
 }
 
 .unit-spawn-info {
@@ -1319,8 +1310,10 @@ export default {
 .unit-spawn-name {
   font-size: 0.85rem;
   font-weight: 700;
-  color: #2C3E50;
-  text-shadow: 0.5px 0.5px 1px rgba(0, 0, 0, 0.1);
+  color: #FFFFFF;
+  text-shadow:
+    1px 1px 0px rgba(0, 0, 0, 0.8),
+    2px 2px 0px rgba(0, 0, 0, 0.6);
 }
 
 .unit-spawn-cost {
@@ -1503,7 +1496,11 @@ export default {
 
   .unit-counts {
     gap: 0.5rem; /* 减小单位数量之间的间距 */
-    flex-shrink: 0; /* 不允许收缩 */
+  }
+
+  .player-stats-row {
+    grid-template-columns: 2fr 4fr;
+    gap: 0.5rem; /* 移动端减小间距 */
   }
 }
 </style>

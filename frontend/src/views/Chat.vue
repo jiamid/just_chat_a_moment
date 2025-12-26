@@ -1755,7 +1755,7 @@ html, body {
   right: 0;
   bottom: 0;
   width: 100%;
-  padding: 20px; /* 为所有区域留出20px间距 */
+  padding: 5em; /* 为所有区域留出20px间距 */
   box-sizing: border-box;
   gap: 8px; /* 区域之间的间距 */
 }
@@ -2737,21 +2737,13 @@ button,
   font-size: 1rem;
   outline: none;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  background: rgba(255, 255, 255, 0.9);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.85) 100%);
   color: #2C3E50;
   box-sizing: border-box;
   box-shadow:
     inset 0 2px 4px rgba(0, 0, 0, 0.05),
     0 1px 0 rgba(255, 255, 255, 0.8);
-}
-
-.message-input:focus {
-  background: rgba(255, 255, 255, 1);
-  border-color: #4A90E2;
-  box-shadow:
-    inset 0 2px 4px rgba(0, 0, 0, 0.05),
-    0 0 0 3px rgba(74, 144, 226, 0.2),
-    0 2px 8px rgba(74, 144, 226, 0.3);
+  backdrop-filter: blur(10px);
 }
 
 .message-input:disabled {
@@ -2793,7 +2785,6 @@ button,
 }
 
 .send-btn:disabled {
-  opacity: 0.5;
   cursor: not-allowed;
   background: linear-gradient(135deg, #CCCCCC 0%, #999999 100%);
   box-shadow:
@@ -2895,7 +2886,7 @@ button,
     height: 100vh;
     height: 100dvh; /* 移动端使用动态视口高度 */
     overflow: hidden;
-    padding: 20px; /* 保持20px间距 */
+    padding: 1em; /* 保持20px间距 */
     gap: 8px;
   }
 
