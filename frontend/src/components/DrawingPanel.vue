@@ -318,6 +318,13 @@ export default {
 </script>
 
 <style scoped>
+.drawing-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
 .drawing-header {
   padding: 1rem 1.5rem; /* 与chat-header的padding保持一致 */
   background: transparent;

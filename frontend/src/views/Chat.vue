@@ -11,28 +11,11 @@
 
     <!-- 左侧导航栏 -->
     <div class="left-sidebar" :class="{
-      'mobile-show': showMobileNavbar && isMobile,
-      'collapsed': sidebarCollapsed && !isMobile
-    }">
-      <!-- 折叠/展开按钮（仅在桌面端显示） -->
-      <button
-        v-if="!isMobile"
-        class="sidebar-toggle-btn"
-        @click="toggleSidebar"
-        :title="sidebarCollapsed ? '展开菜单' : '折叠菜单'"
-      >
-        <svg v-if="sidebarCollapsed" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="9 18 15 12 9 6"></polyline>
-        </svg>
-        <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="15 18 9 12 15 6"></polyline>
-        </svg>
-      </button>
+      'mobile-show': showMobileNavbar && isMobile
+    }" v-show="!sidebarCollapsed || isMobile">
 
-      <!-- 折叠状态下的标签（已移除文字，只显示按钮） -->
-
-      <!-- 完整内容（折叠时隐藏） -->
-      <div v-show="!sidebarCollapsed || isMobile" class="sidebar-content">
+      <!-- 完整内容 -->
+      <div class="sidebar-content">
         <!-- Logo -->
         <div class="logo-section" @click="goToHome">
           <h1 class="logo-text">JustChatAMoment</h1>
@@ -122,8 +105,8 @@
       <!-- 顶部：房间信息 -->
       <div class="chat-header">
         <div class="header-left">
-          <!-- 移动端菜单按钮 -->
-          <button v-if="isMobile" @click="toggleMobileNavbar" class="menu-btn">
+          <!-- 菜单按钮（桌面端和移动端都显示） -->
+          <button @click="isMobile ? toggleMobileNavbar() : toggleSidebar()" class="menu-btn">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <line x1="3" y1="6" x2="21" y2="6"></line>
               <line x1="3" y1="12" x2="21" y2="12"></line>
@@ -206,7 +189,7 @@
         <!-- 未选择房间时的提示 -->
         <div v-if="!roomId" class="no-room-message">
           <div class="welcome-content">
-            <h3>欢迎使用 Just Chat A Moment</h3>
+            <h3>欢迎进入 Just Chat A Moment</h3>
             <p>请从左侧选择一个房间开始聊天，或者输入自定义房间号</p>
           </div>
         </div>
@@ -918,7 +901,12 @@ export default {
             this.updateRoomCount(message.content)
           } else if (message.type === 1) {
             // SYSTEM 消息显示在顶部提示条
-            this.showSystemMessage(message.content)
+            // 过滤掉用户进入和退出房间的提醒
+            const content = message.content || ''
+            const isJoinLeaveMessage = /(进入|退出|加入|离开)房间/.test(content)
+            if (!isJoinLeaveMessage) {
+              this.showSystemMessage(content)
+            }
           } else if (message.type === 5) {
             // MUSIC 消息
             console.log('收到音乐消息:', message)
@@ -1755,7 +1743,7 @@ html, body {
   right: 0;
   bottom: 0;
   width: 100%;
-  padding: 5em; /* 为所有区域留出20px间距 */
+  padding: 5.5em; /* 为所有区域留出20px间距 */
   box-sizing: border-box;
   gap: 8px; /* 区域之间的间距 */
 }
@@ -1767,7 +1755,7 @@ html, body {
   color: #2C3E50;
   display: flex;
   flex-direction: column;
-  border: 4px solid rgba(255, 255, 255, 0.8);
+  border: 4px solid rgb(255, 255, 255);
   border-radius: 24px;
   transition: width 0.3s ease, transform 0.3s ease;
   z-index: 1000;
@@ -1778,53 +1766,6 @@ html, body {
     0 4px 8px rgba(0, 0, 0, 0.1),
     inset 0 1px 0 rgba(255, 255, 255, 0.6);
   backdrop-filter: blur(10px);
-}
-
-/* 折叠状态 */
-.left-sidebar.collapsed {
-  width: 40px;
-}
-
-.left-sidebar.collapsed .sidebar-content {
-  display: none;
-}
-
-.left-sidebar.collapsed .sidebar-collapsed-label {
-  display: flex;
-}
-
-/* 折叠/展开按钮 */
-.sidebar-toggle-btn {
-  position: absolute;
-  top: 1rem;
-  right: 0.5rem;
-  width: 32px;
-  height: 32px;
-  background: transparent;
-  border: none;
-  border-radius: 0;
-  color: #000000;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1001;
-  transition: color 0.2s;
-  padding: 0;
-}
-
-.sidebar-toggle-btn:hover {
-  color: #000000;
-}
-
-/* 折叠状态下，按钮居中显示 */
-.left-sidebar.collapsed .sidebar-toggle-btn {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  right: auto;
-  transform: translate(-50%, -50%);
-  margin: 0;
 }
 
 .sidebar-content {
@@ -1853,7 +1794,6 @@ button,
 .join-team-btn,
 .game-exit-btn,
 .player-list-toggle,
-.sidebar-toggle-btn,
 .drawing-btn,
 .menu-btn {
   touch-action: manipulation; /* 禁用双击缩放，但保留点击 */
@@ -1869,10 +1809,9 @@ button,
 @media (max-width: 768px) {
   .left-sidebar {
     position: fixed;
-    top: 0;
-    left: 0;
-    height: 100vh;
-    height: 100dvh; /* 移动端使用动态视口高度 */
+    top: 0.5em;
+    bottom: 0.5em;
+    left: -8px;
     transform: translateX(-100%);
     z-index: 1000;
     display: flex;
@@ -1907,7 +1846,7 @@ button,
   margin: 0;
   text-align: center;
   color: #2C3E50;
-  font-size: 1.25rem;
+  font-size: 1.5rem;
   font-weight: 900;
   position: relative;
   z-index: 2;
@@ -1921,39 +1860,12 @@ button,
   -ms-user-select: none;
   pointer-events: auto;
   -webkit-tap-highlight-color: transparent;
-  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+  text-shadow: 0 1px 2px rgb(255, 255, 255);
 }
 
 .logo-section:hover .logo-text {
-  /* hover 状态：彩色渐变文字 */
-  background: linear-gradient(
-    90deg,
-    #ff0096,
-    #ff6400,
-    #ffff00,
-    #00ff96,
-    #0096ff,
-    #9600ff,
-    #ff0096
-  );
-  background-size: 200% 100%;
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  animation: gradient-shift 1.5s ease infinite;
-  transform: translate(-1px, -1px);
-}
-
-@keyframes gradient-shift {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
+  /* hover 状态：简单的颜色变化 */
+  color: #4A90E2;
 }
 
 .rooms-section {
@@ -2000,7 +1912,7 @@ button,
   font-size: 1rem;
   color: #2C3E50;
   font-weight: 700;
-  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+  text-shadow: 0 1px 2px rgb(255, 255, 255);
 }
 
 .room-list {
@@ -2020,7 +1932,7 @@ button,
   color: #2C3E50;
   box-shadow:
     inset 0 2px 4px rgba(0, 0, 0, 0.05),
-    0 1px 0 rgba(255, 255, 255, 0.8);
+    0 1px 0 rgb(255, 255, 255);
 }
 
 .room-item:hover {
@@ -2028,13 +1940,13 @@ button,
   box-shadow:
     0 4px 8px rgba(74, 144, 226, 0.2),
     inset 0 2px 4px rgba(0, 0, 0, 0.05),
-    0 1px 0 rgba(255, 255, 255, 0.8);
+    0 1px 0 rgb(255, 255, 255);
 }
 
 .room-item.active {
   background: linear-gradient(135deg, #4A90E2 0%, #357ABD 100%);
   color: #ffffff;
-  border-color: rgba(255, 255, 255, 0.8);
+  border-color: rgb(255, 255, 255);
   box-shadow:
     0 4px 8px rgba(74, 144, 226, 0.3),
     inset 0 1px 0 rgba(255, 255, 255, 0.3);
@@ -2056,7 +1968,7 @@ button,
   font-size: 0.9rem;
   color: #2C3E50;
   font-weight: 700;
-  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+  text-shadow: 0 1px 2px rgb(255, 255, 255);
 }
 
 .jump-input-group {
@@ -2069,7 +1981,7 @@ button,
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow:
     inset 0 2px 4px rgba(0, 0, 0, 0.05),
-    0 1px 0 rgba(255, 255, 255, 0.8);
+    0 1px 0 rgb(255, 255, 255);
 }
 
 .jump-input {
@@ -2131,7 +2043,7 @@ button,
 .user-info .username {
   font-weight: 700;
   color: #2C3E50;
-  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+  text-shadow: 0 1px 2px rgb(255, 255, 255);
 }
 
 /* 导航栏连接状态 */
@@ -2183,7 +2095,7 @@ button,
   padding: 0.75rem;
   background: linear-gradient(135deg, #E74C3C 0%, #C0392B 100%);
   color: white;
-  border: 3px solid rgba(255, 255, 255, 0.8);
+  border: 3px solid rgb(255, 255, 255);
   border-radius: 16px;
   cursor: pointer;
   font-size: 1rem;
@@ -2212,7 +2124,7 @@ button,
   min-height: 0; /* 允许收缩 */
   overflow: hidden;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.85) 100%);
-  border: 4px solid rgba(255, 255, 255, 0.8);
+  border: 4px solid rgb(255, 255, 255);
   border-radius: 24px;
   /* 确保画布区域始终在可见区域内 */
   max-height: 100vh;
@@ -2232,7 +2144,7 @@ button,
   min-height: 0; /* 允许收缩 */
   overflow: hidden;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.85) 100%);
-  border: 4px solid rgba(255, 255, 255, 0.8);
+  border: 4px solid rgb(255, 255, 255);
   border-radius: 24px;
   /* 确保游戏区域始终在可见区域内 */
   max-height: 100vh;
@@ -2325,7 +2237,7 @@ button,
 .chat-header {
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.85) 100%);
   padding: 1rem 1.5rem;
-  border: 4px solid rgba(255, 255, 255, 0.8);
+  border: 4px solid rgb(255, 255, 255);
   border-radius: 24px;
   display: flex;
   justify-content: space-between;
@@ -2337,10 +2249,6 @@ button,
   /* 统一高度为65px */
   height: 65px;
   flex-shrink: 0; /* 防止被压缩 */
-  box-shadow:
-    0 8px 16px rgba(0, 0, 0, 0.15),
-    0 4px 8px rgba(0, 0, 0, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.6);
   backdrop-filter: blur(10px);
 }
 
@@ -2358,21 +2266,15 @@ button,
   height: 40px;
   background: linear-gradient(135deg, #4A90E2 0%, #357ABD 100%);
   color: white;
-  border: 3px solid rgba(255, 255, 255, 0.8);
+  border: 3px solid rgb(255, 255, 255);
   border-radius: 16px;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow:
-    0 4px 8px rgba(74, 144, 226, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
 .menu-btn:hover {
   background: linear-gradient(135deg, #5B9BD5 0%, #4A90E2 100%);
   transform: translateY(-2px);
-  box-shadow:
-    0 6px 12px rgba(74, 144, 226, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.4);
 }
 
 .menu-btn svg {
@@ -2385,7 +2287,7 @@ button,
   font-size: 1.5rem;
   line-height: 1.2; /* 明确设置line-height，确保高度计算准确 */
   font-weight: 700;
-  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+  text-shadow: 0 1px 2px rgb(255, 255, 255);
 }
 
 .connection-status {
@@ -2436,13 +2338,9 @@ button,
   overflow: hidden;
   min-height: 0; /* 确保flex子元素可以正确收缩 */
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.85) 100%);
-  border: 4px solid rgba(255, 255, 255, 0.8);
+  border: 4px solid rgb(255, 255, 255);
   border-radius: 24px;
   position: relative;
-  box-shadow:
-    0 8px 16px rgba(0, 0, 0, 0.15),
-    0 4px 8px rgba(0, 0, 0, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.6);
   backdrop-filter: blur(10px);
 }
 
@@ -2465,7 +2363,6 @@ button,
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: #ffffff;
   border: none;
   overflow: hidden;
   min-width: 0;
@@ -2475,7 +2372,7 @@ button,
 
 .messages-container {
   flex: 1;
-  padding: 1rem 1.5rem;
+  padding: 1rem;
   overflow-y: auto;
   background: transparent;
   display: flex;
@@ -2535,7 +2432,7 @@ button,
   background: linear-gradient(135deg, #4A90E2 0%, #357ABD 100%);
   color: white;
   margin-left: auto;
-  border: 3px solid rgba(255, 255, 255, 0.8);
+  border: 3px solid rgb(255, 255, 255);
   border-radius: 18px;
   border-bottom-right-radius: 4px;
   box-shadow:
@@ -2553,7 +2450,7 @@ button,
   border-bottom-left-radius: 4px;
   box-shadow:
     inset 0 2px 4px rgba(0, 0, 0, 0.05),
-    0 1px 0 rgba(255, 255, 255, 0.8);
+    0 1px 0 rgb(255, 255, 255);
 }
 
 .message.grouped {
@@ -2611,7 +2508,7 @@ button,
 .music-menu-header-position {
   position: fixed;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.95) 100%);
-  border: 4px solid rgba(255, 255, 255, 0.8);
+  border: 4px solid rgb(255, 255, 255);
   border-radius: 24px;
   z-index: 2000;
   min-width: 200px;
@@ -2654,7 +2551,7 @@ button,
   border-bottom: 1px solid rgba(200, 200, 200, 0.3);
   color: #2C3E50;
   font-weight: 700;
-  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+  text-shadow: 0 1px 2px rgb(255, 255, 255);
 }
 
 .music-list {
@@ -2732,7 +2629,7 @@ button,
   flex: 1;
   min-width: 0; /* 允许输入框在小屏幕上收缩，避免挤出发送按钮 */
   padding: 0.75rem 1rem;
-  border: 3px solid rgba(200, 200, 200, 0.6);
+  border: 4px solid rgb(255, 255, 255);
   border-radius: 16px;
   font-size: 1rem;
   outline: none;
@@ -2740,9 +2637,6 @@ button,
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.85) 100%);
   color: #2C3E50;
   box-sizing: border-box;
-  box-shadow:
-    inset 0 2px 4px rgba(0, 0, 0, 0.05),
-    0 1px 0 rgba(255, 255, 255, 0.8);
   backdrop-filter: blur(10px);
 }
 
@@ -2761,7 +2655,7 @@ button,
   padding: 0.75rem 1.5rem;
   background: linear-gradient(135deg, #4A90E2 0%, #357ABD 100%);
   color: white;
-  border: 3px solid rgba(255, 255, 255, 0.8);
+  border: 4px solid rgb(255, 255, 255);
   border-radius: 16px;
   cursor: pointer;
   font-size: 1rem;
@@ -2770,26 +2664,17 @@ button,
   box-sizing: border-box;
   white-space: nowrap;
   min-width: fit-content; /* 确保按钮有足够宽度显示文字 */
-  box-shadow:
-    0 4px 8px rgba(74, 144, 226, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 .send-btn:hover:not(:disabled) {
   background: linear-gradient(135deg, #5B9BD5 0%, #4A90E2 100%);
   transform: translateY(-2px);
-  box-shadow:
-    0 6px 12px rgba(74, 144, 226, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.4);
 }
 
 .send-btn:disabled {
   cursor: not-allowed;
   background: linear-gradient(135deg, #CCCCCC 0%, #999999 100%);
-  box-shadow:
-    0 2px 4px rgba(0, 0, 0, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
 /* 未选择房间时的提示样式 */
@@ -2812,7 +2697,7 @@ button,
   margin-bottom: 1rem;
   font-size: 1.5rem;
   font-weight: 700;
-  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+  text-shadow: 0 1px 2px rgb(255, 255, 255);
 }
 
 .welcome-content p {
@@ -3090,23 +2975,17 @@ button,
   height: 32px;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.85) 100%);
   color: #2C3E50;
-  border: 3px solid rgba(255, 255, 255, 0.8);
+  border: 3px solid rgb(255, 255, 255);
   border-radius: 50%;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
-  box-shadow:
-    0 4px 8px rgba(0, 0, 0, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
 .music-icon-btn:hover:not(:disabled) {
   background: linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 0.95) 100%);
   transform: translateY(-2px);
-  box-shadow:
-    0 6px 12px rgba(0, 0, 0, 0.15),
-    inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
 .music-icon-btn:disabled {
@@ -3142,22 +3021,16 @@ button,
   height: 32px;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.85) 100%);
   color: #2C3E50;
-  border: 3px solid rgba(255, 255, 255, 0.8);
+  border: 3px solid rgb(255, 255, 255);
   border-radius: 50%;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   margin-right: 0.5rem;
-  box-shadow:
-    0 4px 8px rgba(0, 0, 0, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
 .drawing-icon-btn:hover:not(:disabled) {
   background: linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 0.95) 100%);
   transform: translateY(-2px);
-  box-shadow:
-    0 6px 12px rgba(0, 0, 0, 0.15),
-    inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
 .drawing-icon-btn:disabled {
@@ -3169,19 +3042,13 @@ button,
 .drawing-icon-btn.active {
   background: linear-gradient(135deg, #4A90E2 0%, #357ABD 100%);
   color: white;
-  border-color: rgba(255, 255, 255, 0.8);
-  box-shadow:
-    0 4px 8px rgba(74, 144, 226, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  border-color: rgb(255, 255, 255);
 }
 
 .drawing-icon-btn.active:hover:not(:disabled) {
   background: linear-gradient(135deg, #5B9BD5 0%, #4A90E2 100%);
   color: white;
   transform: translateY(-2px);
-  box-shadow:
-    0 6px 12px rgba(74, 144, 226, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.4);
 }
 
 /* 画图面板样式已在上面定义 */

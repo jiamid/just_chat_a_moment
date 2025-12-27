@@ -5,16 +5,8 @@
     <!-- 顶部三个气泡 -->
     <div class="top-bubbles">
       <!-- Logo气泡 -->
-      <div class="logo-bubble">
-        <div class="logo-section">
-          <!-- 横幅飘带 -->
-          <div class="banner-ribbon">
-            <!-- 菱形图案纹理背景 -->
-            <div class="banner-pattern"></div>
-            <!-- 文字内容 -->
-            <h1 class="logo-text">JIAMID</h1>
-          </div>
-        </div>
+      <div class="logo-text">
+        {{ username || 'JIAMID' }}
       </div>
 
       <!-- 中间：时间显示 -->
@@ -39,33 +31,31 @@
     <div class="bottom-display-area">
       <!-- 卡片轮播图 - 圆形循环 -->
       <div class="carousel-container">
-        <div class="carousel-wheel">
-          <div
-            v-for="(card, index) in carouselCards"
-            :key="index"
-            :class="['carousel-card', { active: index === currentCardIndex }]"
-            :style="getCardStyle(index)"
-            @click="goToCard(index)"
-          >
-            <div class="card-content">
-              <h3 class="card-title">{{ card.title }}</h3>
-              <p class="card-description">{{ card.description }}</p>
-              <BattleButton v-if="card.showButton" text="Enter" @click="handleEnterClick" />
-            </div>
+        <div
+          v-for="(card, index) in carouselCards"
+          :key="index"
+          :class="['carousel-card', { active: index === currentCardIndex }]"
+          :style="getCardStyle(index)"
+          @click="goToCard(index)"
+        >
+          <div class="card-content">
+            <h3 class="card-title">{{ card.title }}</h3>
+            <p class="card-description">{{ card.description }}</p>
+            <BattleButton v-if="card.showButton" text="Enter" @click="handleEnterClick" />
           </div>
         </div>
         <!-- 左右切换按钮 -->
         <button class="carousel-btn carousel-btn-prev" @click="prevCard">‹</button>
         <button class="carousel-btn carousel-btn-next" @click="nextCard">›</button>
-        <!-- 指示器 -->
-        <div class="carousel-indicators">
-          <span
-            v-for="(card, index) in carouselCards"
-            :key="index"
-            :class="['indicator', { active: index === currentCardIndex }]"
-            @click="goToCard(index)"
-          ></span>
-        </div>
+      </div>
+      <!-- 指示器 -->
+      <div class="carousel-indicators">
+        <span
+          v-for="(card, index) in carouselCards"
+          :key="index"
+          :class="['indicator', { active: index === currentCardIndex }]"
+          @click="goToCard(index)"
+        ></span>
       </div>
     </div>
 
@@ -171,6 +161,7 @@ export default {
       dateString: '',
       timeString: '',
       timeTimer: null,
+      username: localStorage.getItem('username') || '',
       form: {
         email: '',
         username: '',
@@ -184,10 +175,10 @@ export default {
       currentCardIndex: 0,
       carouselCards: [
         { title: 'Just Chat A Moment', description: '即刻开始，欢乐对战！\n就一会儿～', showButton: true },
-        { title: '功能二', description: '这是第二个卡片的内容描述' },
-        { title: '功能三', description: '这是第三个卡片的内容描述' },
-        { title: '功能四', description: '这是第四个卡片的内容描述' },
-        { title: '功能五', description: '这是第五个卡片的内容描述' }
+        { title: '你画我猜', description: '拿起画笔，释放创意！\n与好友一起享受画画的乐趣，\n看看谁能猜中你的大作～', showButton: false },
+        { title: 'LiveWar 对战', description: '策略与智慧的碰撞！\n组建你的军队，\n在战场上展现你的战术天赋！', showButton: false },
+        { title: '音乐共享', description: '好音乐，一起听！\n在聊天中分享你喜欢的音乐，\n让房间充满节奏感～', showButton: false },
+        { title: '多房间切换', description: '自由穿梭，随心所欲！\n支持多个房间同时在线，\n随时切换，畅聊无阻～', showButton: false }
       ]
     }
   },
@@ -242,10 +233,15 @@ export default {
         if (!localStorage.getItem('username') && userResponse.data.username) {
           localStorage.setItem('username', userResponse.data.username)
         }
+        // 更新组件中的 username
+        if (userResponse.data.username) {
+          this.username = userResponse.data.username
+        }
       } catch (error) {
         // token无效或过期，清除localStorage中的token和username
         localStorage.removeItem('token')
         localStorage.removeItem('username')
+        this.username = ''
         console.log('token无效，已清除:', error.message)
       }
     },
@@ -273,6 +269,7 @@ export default {
         console.log('token无效，已清除:', error.message)
         localStorage.removeItem('token')
         localStorage.removeItem('username')
+        this.username = ''
         this.showLoginModal = true
       }
     },
@@ -305,6 +302,7 @@ export default {
       try {
         const userResponse = await api.user.getMe()
         localStorage.setItem('username', userResponse.data.username)
+        this.username = userResponse.data.username
       } catch (err) {
         console.error('获取用户信息失败:', err)
       }
@@ -323,7 +321,9 @@ export default {
       })
 
       // 注册成功后保存 username（注册时使用的是 form.username）
-      localStorage.setItem('username', this.form.username)
+      const registeredUsername = this.form.username
+      localStorage.setItem('username', registeredUsername)
+      this.username = registeredUsername
 
       // 注册成功后切换到登录模式，并自动填充邮箱和密码
       this.isLogin = true
@@ -404,7 +404,7 @@ export default {
       // z的范围大致是 -radius 到 radius，中间的卡片z接近radius（最大）
       // 将z归一化到0-1范围，然后映射到scale
       const normalizedZ = (z + radius) / (2 * radius) // 0到1之间
-      const scale = 0.5 + normalizedZ * 0.3 // 从0.5到0.8之间，中间卡片更小
+      const scale = 0.5 + normalizedZ * 0.25 // 从0.5到0.75之间，确保不超出容器
 
       // 计算透明度（后面的卡片可以稍微透明一点）
       const opacity = normalizedZ > 0.3 ? 1 : Math.max(0.4, normalizedZ * 1.5)
@@ -426,11 +426,10 @@ export default {
 <style scoped>
 .home-container {
   height: 100vh;
-  padding: 2rem;
+  padding: 2rem 0;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 2rem;
   overflow: hidden;
   position: relative;
   z-index: 1;
@@ -467,119 +466,13 @@ export default {
 /* 顶部两个气泡布局 */
 .top-bubbles {
   display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 2rem;
+  gap:2rem;
+  padding: 2rem;
 }
 
 /* 顶部气泡导航栏样式 */
 .top-bubbles > .bubble {
   padding: 0.75rem 1.25rem;
-}
-
-/* Logo气泡 */
-.logo-bubble {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  width: fit-content;
-  max-width: none;
-  min-width: 280px;
-  background: transparent;
-  border: none;
-  box-shadow: none;
-  padding: 0;
-  backdrop-filter: none;
-  margin-left: -2rem;
-}
-
-.logo-section {
-  display: flex;
-  justify-content: flex-start;
-  align-items: center;
-  width: 100%;
-  padding: 0;
-  background: transparent;
-  border-radius: 0;
-  border: none;
-  position: relative;
-  /* 阴影效果：左上角白色，右下角白色 */
-  filter: drop-shadow(-4px -4px 0px rgba(255, 255, 255, 1)) drop-shadow(4px 4px 0px rgba(255, 255, 255, 1));
-}
-
-/* 横幅飘带主体 */
-.banner-ribbon {
-  position: relative;
-  width: 100%;
-  height: 70px;
-  /* 背景颜色与时间字体颜色一致 #FFD700 */
-  background: #FFD700;
-  /* 直角梯形：左侧垂直，右侧倾斜，上宽下窄 */
-  clip-path: polygon(0 0, 100% 0, calc(100% - 30px) 100%, 0 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: visible;
-}
-
-/* 外层边框 - 1em宽度 */
-.banner-ribbon::before {
-  content: '';
-  position: absolute;
-  top: -1em;
-  left: -1em;
-  right: -1em;
-  bottom: -1em;
-  background: transparent;
-  /* 外层边框：使用相同的斜角形状，由于扩大了1em，边框会自然形成 */
-  /* 保持相同的斜角角度，右下角偏移需要减去1em的宽度影响（约16px） */
-  clip-path: polygon(0 0, 100% 0, calc(100% - 46px) 100%, 0 100%);
-  z-index: -2;
-  pointer-events: none;
-}
-
-/* 内层边框 - 4px宽度，在1em边框内侧 */
-.banner-ribbon::after {
-  content: '';
-  position: absolute;
-  top: -4px;
-  left: -4px;
-  right: -4px;
-  bottom: -4px;
-  background: transparent;
-  /* 内层边框跟随斜角 */
-  clip-path: polygon(0 0, 100% 0, calc(100% - 26px) 100%, 0 100%);
-  z-index: -1;
-  pointer-events: none;
-}
-
-/* 菱形图案纹理 */
-.banner-pattern {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  /* 创建菱形网格图案 - 旋转45度的菱形，线条颜色为白色 */
-  background-image:
-    repeating-linear-gradient(
-      45deg,
-      rgba(255, 255, 255, 0.25) 0px,
-      rgba(255, 255, 255, 0.25) 1.5px,
-      transparent 1.5px,
-      transparent 18px
-    ),
-    repeating-linear-gradient(
-      -45deg,
-      rgba(255, 255, 255, 0.25) 0px,
-      rgba(255, 255, 255, 0.25) 1.5px,
-      transparent 1.5px,
-      transparent 18px
-    );
-  background-size: 25.46px 25.46px;
-  background-position: 0 0, 12.73px 12.73px;
-  opacity: 0.6;
-  clip-path: polygon(0 0, 100% 0, calc(100% - 30px) 100%, 0 100%);
-  z-index: 0;
 }
 
 /* 时间容器 */
@@ -593,28 +486,22 @@ export default {
 .logo-text {
   margin: 0;
   text-align: center;
-  color: #FFFFFF;
+  color: #FFD700;
   font-size: 2.2rem;
   font-weight: 900;
   position: relative;
   z-index: 2;
   line-height: 1;
   white-space: nowrap;
-  letter-spacing: 0.15em;
-  padding: 0 1rem;
-  /* 3D 字体效果 - 多层阴影创造立体感，在金色背景上使用深色阴影 */
+  letter-spacing: 0.1em;
+  /* 3D 字体效果 - 参考 time-char 样式 */
   text-shadow:
     /* 主阴影 - 右下深色，创造深度 */
-    2px 2px 0px rgba(139, 69, 19, 0.9),
-    4px 4px 0px rgba(139, 69, 19, 0.7),
-    6px 6px 0px rgba(139, 69, 19, 0.5),
+    2px 2px 0px rgba(184, 134, 11, 0.9),
     /* 高光 - 左上亮色，创造高光 */
-    -1px -1px 0px rgba(255, 255, 255, 0.8),
-    -2px -2px 0px rgba(255, 255, 220, 0.6),
-    /* 外发光效果 */
-    0 0 8px rgba(0, 0, 0, 0.4);
+    -1px -1px 0px rgba(255, 255, 255, 1);
   /* 使用 filter 增强 3D 效果 */
-  filter: drop-shadow(1px 1px 2px rgba(0, 0, 0, 0.5));
+  filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.3));
 }
 
 .time-display {
@@ -654,16 +541,8 @@ export default {
   text-shadow:
     /* 主阴影 - 右下深色，创造深度 */
     2px 2px 0px rgba(184, 134, 11, 0.9),
-    4px 4px 0px rgba(184, 134, 11, 0.7),
-    6px 6px 0px rgba(184, 134, 11, 0.5),
-    8px 8px 0px rgba(184, 134, 11, 0.3),
     /* 高光 - 左上亮色，创造高光 */
-    -1px -1px 0px rgba(255, 255, 255, 1),
-    -2px -2px 0px rgba(255, 255, 200, 0.8),
-    /* 外发光效果 - 金色光晕 */
-    0 0 10px rgba(255, 215, 0, 0.6),
-    0 0 20px rgba(255, 215, 0, 0.4),
-    0 0 30px rgba(255, 215, 0, 0.2);
+    -1px -1px 0px rgba(255, 255, 255, 1);
   /* 使用 filter 增强 3D 效果 */
   filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.3));
 }
@@ -746,8 +625,8 @@ export default {
   min-height: 0;
   align-items: center;
   justify-content: center;
-  padding: 2rem 0;
   position: relative;
+  gap: 1rem;
 }
 
 /* 轮播图容器 */
@@ -755,19 +634,15 @@ export default {
   position: relative;
   width: 100%;
   max-width: 1200px;
+  flex: 1;
+  min-height: 0;
   height: 100%;
-  overflow: visible;
+  overflow: hidden;
   margin: 0 auto;
-  perspective: 1200px;
-}
-
-/* 轮播图圆形容器 */
-.carousel-wheel {
-  position: relative;
-  width: 100%;
-  height: 100%;
   perspective: 1000px;
   transform-style: preserve-3d;
+  padding: 1rem 0;
+  box-sizing: border-box;
 }
 
 /* 卡片样式 - 圆形布局 */
@@ -775,27 +650,28 @@ export default {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 300px;
-  height: 350px;
-  margin-left: -150px;
-  margin-top: -175px;
+  width: 330px;
+  height: 440px;
+  margin-left: -165px;
+  margin-top: -220px;
   cursor: pointer;
   transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
   transform-style: preserve-3d;
+  max-width: calc(100% - 2rem);
+  max-height: calc(100% - 2rem);
+  box-sizing: border-box;
+  aspect-ratio: 3 / 4;
 }
 
 .card-content {
   width: 100%;
   height: 100%;
+  max-height: 100%;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.85) 100%);
   border: 4px solid rgba(255, 255, 255, 0.8);
   border-radius: 24px;
   padding: 2rem;
   box-sizing: border-box;
-  box-shadow:
-    0 8px 16px rgba(0, 0, 0, 0.15),
-    0 4px 8px rgba(0, 0, 0, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.6);
   backdrop-filter: blur(10px);
   display: flex;
   flex-direction: column;
@@ -803,13 +679,8 @@ export default {
   align-items: center;
   transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
-}
-
-.carousel-card.active .card-content {
-  box-shadow:
-    0 12px 24px rgba(0, 0, 0, 0.2),
-    0 6px 12px rgba(0, 0, 0, 0.15),
-    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .card-title {
@@ -898,13 +769,13 @@ export default {
 
 /* 指示器 */
 .carousel-indicators {
-  position: absolute;
-  bottom: 1rem;
-  left: 50%;
-  transform: translateX(-50%);
+  position: relative;
   display: flex;
   gap: 0.5rem;
-  z-index: 10;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 0.5rem 0;
 }
 
 .indicator {
@@ -1225,14 +1096,9 @@ export default {
     gap: 0.5rem;
   }
 
-  .home-container {
-    padding: 1rem;
-    gap: 1rem;
-  }
-
   .top-bubbles {
     grid-template-columns: 1fr;
-    gap: 1rem;
+    gap: 0.5rem;
   }
 
   .top-bubbles > .bubble {
@@ -1245,26 +1111,6 @@ export default {
     min-width: auto;
     padding: 0;
     margin-left: -1rem;
-  }
-
-  .banner-ribbon {
-    height: 55px;
-    /* 直角梯形：左侧垂直，右侧倾斜，上宽下窄 */
-    clip-path: polygon(0 0, 100% 0, calc(100% - 22px) 100%, 0 100%);
-    border-width: 3px;
-  }
-
-  .banner-ribbon::before {
-    top: -3px;
-    left: -3px;
-    right: -3px;
-    bottom: -3px;
-    border-width: 3px;
-    clip-path: polygon(0 0, 100% 0, calc(100% - 22px) 100%, 0 100%);
-  }
-
-  .banner-pattern {
-    clip-path: polygon(0 0, 100% 0, calc(100% - 22px) 100%, 0 100%);
   }
 
   .bubble {
@@ -1298,8 +1144,8 @@ export default {
   }
 
   .logo-text {
-    font-size: 1.6rem;
-    padding: 0 0.75rem;
+    font-size: 1.5rem;
+    padding: 0;
     letter-spacing: 0.1em;
   }
 
@@ -1312,17 +1158,20 @@ export default {
   .carousel-container {
     height: 100%;
     max-width: 100%;
-  }
-
-  .carousel-wheel {
+    padding: 0.5rem 0;
+    box-sizing: border-box;
     perspective: 800px;
   }
 
   .carousel-card {
-    width: 250px;
-    height: 300px;
-    margin-left: -125px;
-    margin-top: -150px;
+    width: 270px;
+    height: 360px;
+    margin-left: -135px;
+    margin-top: -180px;
+    max-width: calc(100% - 2rem);
+    max-height: calc(100% - 2rem);
+    box-sizing: border-box;
+    aspect-ratio: 3 / 4;
   }
 
   .card-content {

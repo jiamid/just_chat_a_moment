@@ -421,8 +421,6 @@ export default {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: #ffffff;
-  border-radius: 0; /* 游戏面板在气泡容器内，不需要额外圆角 */
   overflow: hidden;
 }
 
@@ -740,7 +738,6 @@ export default {
   padding: 2rem;
   box-sizing: border-box;
   z-index: 100; /* 覆盖在画布上方 */
-  box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.1);
   overflow-y: auto;
   display: flex;
   align-items: center;
@@ -794,6 +791,7 @@ export default {
   margin-bottom: 0.5rem;
   text-align: center;
   width: 100%;
+  text-shadow: none;
 }
 
 .red-team .player-list-header {
@@ -815,9 +813,7 @@ export default {
   box-sizing: border-box;
   word-wrap: break-word;
   overflow-wrap: break-word;
-  box-shadow:
-    0 2px 0px rgba(0, 0, 0, 0.1),
-    inset 0 1px 2px rgba(255, 255, 255, 0.3);
+  text-shadow: none;
 }
 
 .player-list-empty {
@@ -826,6 +822,7 @@ export default {
   font-style: italic;
   padding: 0.5rem;
   text-align: center;
+  text-shadow: none;
 }
 
 /* 游戏规则展开区域（覆盖在画布上方） */
@@ -837,20 +834,19 @@ export default {
   bottom: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.95);
+  background: rgba(255, 255, 255, 0.98);
   backdrop-filter: blur(10px);
   border: none;
   padding: 2rem;
   box-sizing: border-box;
   z-index: 100; /* 覆盖在画布上方 */
-  box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.5);
   overflow-y: auto;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   /* 美化滚动条 - Webkit (Chrome, Safari, Edge) */
   scrollbar-width: thin; /* Firefox */
-  scrollbar-color: rgba(255, 255, 255, 0.3) transparent; /* Firefox */
+  scrollbar-color: rgba(0, 0, 0, 0.2) transparent; /* Firefox */
 }
 
 /* Webkit 滚动条样式 */
@@ -859,90 +855,95 @@ export default {
 }
 
 .game-rules-container::-webkit-scrollbar-track {
-  background: transparent;
+  background: rgba(0, 0, 0, 0.05);
   border-radius: 4px;
 }
 
 .game-rules-container::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(0, 0, 0, 0.2);
   border-radius: 4px;
   transition: background 0.2s ease;
 }
 
 .game-rules-container::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.5);
+  background: rgba(0, 0, 0, 0.3);
 }
 
 .game-rules-content {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.5rem;
   max-width: 800px;
   width: 100%;
+  min-height: 0;
+  overflow: visible;
+  padding: 1rem 0;
 }
 
 .game-rules-title {
-  font-size: 1.1rem;
+  font-size: 1.2rem;
   font-weight: 700;
-  color: #fff;
+  color: #2C3E50;
   text-align: center;
-  padding-bottom: 0.5rem;
-  border-bottom: 2px solid #000000;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid rgba(0, 0, 0, 0.1);
+  margin-bottom: 0.5rem;
 }
 
 .unit-rules-list {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.25rem;
 }
 
 .unit-rule-item {
-  background: rgba(255, 255, 255, 0.1);
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  padding: 1rem;
-  border-radius: 8px;
-  box-shadow:
-    0 2px 0px rgba(0, 0, 0, 0.2),
-    inset 0 1px 2px rgba(255, 255, 255, 0.2);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.85) 100%);
+  border: 2px solid rgba(0, 0, 0, 0.1);
+  padding: 1.25rem;
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
 }
 
 .unit-rule-header {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
   font-weight: 700;
-  color: #fff;
-  text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.8);
+  color: #2C3E50;
+  text-shadow: none;
 }
 
 .unit-icon {
-  font-size: 1.2rem;
+  font-size: 1.5rem;
 }
 
 .unit-name {
   flex: 1;
-  font-size: 1rem;
+  font-size: 1.1rem;
 }
 
 .unit-cost {
-  font-size: 0.9rem;
-  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.95rem;
+  color: #7F8C8D;
+  font-weight: 600;
 }
 
 .unit-rule-details {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.9);
-  line-height: 1.4;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: #2C3E50;
+  line-height: 1.6;
+  text-shadow: none;
 }
 
 .unit-description {
-  margin-top: 0.25rem;
-  color: rgba(255, 255, 255, 0.7);
+  margin-top: 0.5rem;
+  color: #7F8C8D;
   font-style: italic;
+  font-size: 0.85rem;
 }
 
 /* 游戏结束展示 */
@@ -964,7 +965,7 @@ export default {
   text-align: center;
   padding: 2rem;
   background: rgba(0, 0, 0, 0.8);
-  border: 4px solid rgba(255, 255, 255, 0.3);
+  border: 4px solid rgb(255, 255, 255);
   border-radius: 0;
   box-shadow: 0 0 30px rgba(0, 0, 0, 0.8);
   display: flex;
@@ -1005,7 +1006,7 @@ export default {
   text-align: center;
   padding: 0.5rem 1rem;
   background: rgba(255, 255, 255, 0.1);
-  border: 2px solid rgba(255, 255, 255, 0.2);
+  border: 2px solid rgb(255, 255, 255);
   width: 100%;
   box-sizing: border-box;
 }
@@ -1039,7 +1040,7 @@ export default {
   gap: 1rem;
   padding: 1rem 1.5rem;
   background: rgba(0, 0, 0, 0.3);
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid rgb(255, 255, 255);
   min-height: fit-content;
 }
 
@@ -1332,8 +1333,6 @@ export default {
   justify-content: center;
   gap: 1rem;
   padding: 1rem 1.5rem;
-  background: #ffffff;
-  border-top: 1px solid #000000;
   min-height: fit-content;
 }
 
