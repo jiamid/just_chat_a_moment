@@ -423,9 +423,27 @@ export default {
 }
 </script>
 
+<style>
+/* 全局样式：禁止页面滚动 */
+html, body {
+  overflow: hidden;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background: transparent; /* 去除默认白色背景 */
+}
+
+#app {
+  height: 100%;
+  overflow: hidden;
+  background: transparent; /* 去除默认背景 */
+}
+</style>
+
 <style scoped>
 .home-container {
   height: 100vh;
+  height: 100dvh; /* 使用动态视口高度，更好地处理移动端 */
   padding: 2rem 0;
   box-sizing: border-box;
   display: flex;
@@ -1091,6 +1109,19 @@ export default {
 
 /* 响应式设计 */
 @media (max-width: 768px) {
+  .home-container {
+    position: fixed; /* 固定定位，防止页面滚动 */
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 100vh;
+    height: 100dvh; /* 移动端使用动态视口高度 */
+    padding: 1rem 0; /* 移动端减小上下padding */
+    overflow: hidden;
+  }
+
   .time-display {
     flex-direction: column;
     gap: 0.5rem;
@@ -1099,6 +1130,7 @@ export default {
   .top-bubbles {
     grid-template-columns: 1fr;
     gap: 0.5rem;
+    padding: 1rem; /* 移动端减小padding */
   }
 
   .top-bubbles > .bubble {
