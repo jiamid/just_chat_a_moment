@@ -426,19 +426,31 @@ export default {
       const now = Date.now()
       const x = this.gesture.x
 
-      // 连续旋转速度：以屏幕中心为 0，越靠近边缘绝对值越大
-      // centerOffset ∈ [-0.5, 0.5]，添加一个中间死区避免轻微抖动
+      // 连续旋转速度：以屏幕中心为 0
+      // 仅在靠近最边缘的一小段区域给最大速度，其余区域给固定的低速或静止（不随距离继续加速）
       let centerOffset = x - 0.5
-      const deadZone = 0.08
+      const deadZone = 0.1 // 中间静止区
       if (Math.abs(centerOffset) < deadZone) {
         centerOffset = 0
       }
 
       if (!this.gesture.isPalmOpen && centerOffset !== 0) {
         const total = this.carouselCards.length || 1
-        // 映射到每帧浮点索引增量，0.5 对应最大速度（整体比之前更慢）
-        const maxSpeedPerFrame = 0.1
-        const speed = Math.max(-maxSpeedPerFrame, Math.min(maxSpeedPerFrame, centerOffset * 0.35))
+        const sign = centerOffset > 0 ? 1 : -1
+        const absOffset = Math.abs(centerOffset)
+
+        const edgeThreshold = 0.42 // 靠近 0 或 1 的极窄边缘区域
+        const maxSpeedPerFrame = 0.06 // 边缘区域的最快速度
+        const midSpeedPerFrame = 0.02 // 介于 deadZone 和 edgeThreshold 的恒定低速
+
+        let speed = 0
+        if (absOffset >= edgeThreshold) {
+          // 最边缘：给最高速度
+          speed = sign * maxSpeedPerFrame
+        } else {
+          // 中间非静止区域：给固定低速，不过不随离边缘远近再加速
+          speed = sign * midSpeedPerFrame
+        }
 
         this.currentCardIndexFloat = (this.currentCardIndexFloat + speed + total) % total
         this.currentCardIndex = Math.round(this.currentCardIndexFloat) % total
