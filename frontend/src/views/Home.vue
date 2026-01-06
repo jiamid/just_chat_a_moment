@@ -27,7 +27,7 @@
 
     </div>
 
-    <!-- 底部展示区域 -->
+    <!-- 底部展示区域（支持手势操控卡片） -->
     <div class="bottom-display-area">
       <!-- 卡片轮播图 - 圆形循环 -->
       <div class="carousel-container">
@@ -57,7 +57,23 @@
           @click="goToCard(index)"
         ></span>
       </div>
+
+      <!-- 手势 / 鼠标光标效果（仅视觉反馈，位置与 gesture.x/y 对应） -->
+      <div
+        v-if="gestureEnabled"
+        class="gesture-cursor"
+        :class="{ 'gesture-cursor-active': gesture.isPalmOpen }"
+        :style="gestureCursorStyle"
+      ></div>
     </div>
+
+    <!-- 手势识别用隐藏视频，仅用于 MediaPipe，不在界面显示 -->
+    <video
+      ref="gestureVideo"
+      muted
+      playsinline
+      style="position:absolute; width:1px; height:1px; opacity:0; pointer-events:none;"
+    ></video>
 
     <!-- 登录模态框 -->
     <div v-if="showLoginModal" class="modal-overlay" @click.self="showLoginModal = false">
@@ -172,7 +188,20 @@ export default {
       },
       countdown: 0,
       timer: null,
+      // 手势控制相关状态
+      gesture: {
+        x: 0.5,
+        y: 0.5,
+        isPalmOpen: false,
+        isDetected: false,
+        lastMoveTime: 0,
+        lastActionTime: 0,
+        charge: 0
+      },
+      gestureEnabled: false,
+      // 轮播当前索引（整数用于高亮），同时维护一个浮点索引用于连续旋转
       currentCardIndex: 0,
+      currentCardIndexFloat: 0,
       carouselCards: [
         { title: 'Just Chat A Moment', description: '即刻开始，欢乐对战！\n就一会儿～', showButton: true },
         { title: '你画我猜', description: '拿起画笔，释放创意！\n与好友一起享受画画的乐趣，\n看看谁能猜中你的大作～', showButton: false },
@@ -180,6 +209,18 @@ export default {
         { title: '音乐共享', description: '好音乐，一起听！\n在聊天中分享你喜欢的音乐，\n让房间充满节奏感～', showButton: false },
         { title: '多房间切换', description: '自由穿梭，随心所欲！\n支持多个房间同时在线，\n随时切换，畅聊无阻～', showButton: false }
       ]
+    }
+  },
+  computed: {
+    // 光标样式：根据 0~1 的归一化坐标映射到视口，做一点缩放反馈
+    gestureCursorStyle () {
+      const x = this.gesture?.x ?? 0.5
+      const y = this.gesture?.y ?? 0.5
+      return {
+        left: `${x * 100}%`,
+        top: `${y * 100}%`,
+        transform: 'translate(-50%, -50%)'
+      }
     }
   },
   async mounted () {
@@ -190,6 +231,14 @@ export default {
     this.timeTimer = setInterval(() => {
       this.updateTime()
     }, 1000)
+
+    // 初始化手势控制（会请求摄像头权限，用来操控底部卡片左右滑动与“Enter”点击）
+    this.$nextTick(() => {
+      this.initGestureControl()
+    })
+
+    // 鼠标移动时也更新光标位置（当未检测到手势时作为替代输入）
+    window.addEventListener('mousemove', this.handleMouseMove)
   },
   beforeUnmount () {
     if (this.timer) {
@@ -200,6 +249,8 @@ export default {
       clearInterval(this.timeTimer)
       this.timeTimer = null
     }
+
+    window.removeEventListener('mousemove', this.handleMouseMove)
   },
   methods: {
     updateTime () {
@@ -271,6 +322,145 @@ export default {
         localStorage.removeItem('username')
         this.username = ''
         this.showLoginModal = true
+      }
+    },
+
+    // 加载外部脚本（用于动态加载 MediaPipe hands & camera_utils）
+    loadScript (src) {
+      return new Promise((resolve, reject) => {
+        if (document.querySelector(`script[src="${src}"]`)) {
+          resolve()
+          return
+        }
+        const script = document.createElement('script')
+        script.src = src
+        script.async = true
+        script.onload = () => resolve()
+        script.onerror = (e) => reject(e)
+        document.head.appendChild(script)
+      })
+    },
+
+    async initGestureControl () {
+      try {
+        await this.loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js')
+        await this.loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js')
+
+        const Hands = window.Hands
+        const Camera = window.Camera
+        const videoElement = this.$refs.gestureVideo
+
+        if (!Hands || !Camera || !videoElement) {
+          console.warn('手势脚本或视频元素未就绪，跳过手势控制初始化')
+          return
+        }
+
+        const hands = new Hands({
+          locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+        })
+        hands.setOptions({
+          maxNumHands: 2,
+          modelComplexity: 1,
+          minDetectionConfidence: 0.5,
+          minTrackingConfidence: 0.5
+        })
+
+        hands.onResults((results) => {
+          this.gesture.isDetected = false
+          this.gesture.isPalmOpen = false
+
+          if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0 && results.multiHandedness) {
+            for (let i = 0; i < results.multiHandedness.length; i++) {
+              const label = results.multiHandedness[i].label
+              // 使用左手控制，与 answers.html 中逻辑保持一致
+              if (label === 'Left') {
+                this.gesture.isDetected = true
+                const lm = results.multiHandLandmarks[i]
+                const tip = lm[8]
+
+                // 平滑更新 0~1 空间坐标
+                this.gesture.x += ((1 - tip.x) - this.gesture.x) * 0.4
+                this.gesture.y += (tip.y - this.gesture.y) * 0.4
+
+                // 判定是否为张开手掌
+                const tips = [8, 12, 16, 20]
+                const pips = [6, 10, 14, 18]
+                let extendedCount = 0
+                for (let k = 0; k < 4; k++) {
+                  if (lm[tips[k]].y < lm[pips[k]].y) extendedCount++
+                }
+                if (Math.abs(lm[4].x - lm[2].x) > 0.03) extendedCount++
+                this.gesture.isPalmOpen = extendedCount >= 4
+
+                this.updateCarouselByGesture()
+                break
+              }
+            }
+          } else {
+            this.gesture.charge = 0
+          }
+        })
+
+        const camera = new Camera(videoElement, {
+          onFrame: async () => {
+            await hands.send({ image: videoElement })
+          },
+          width: 320,
+          height: 240
+        })
+
+        camera.start()
+        this.gestureEnabled = true
+      } catch (e) {
+        console.warn('初始化手势控制失败：', e)
+      }
+    },
+
+    // 根据手势更新轮播：越靠近左右边缘，旋转越快；张开手掌在中间区域蓄力触发“Enter”
+    updateCarouselByGesture () {
+      if (!this.gesture.isDetected) {
+        this.gesture.charge = 0
+        return
+      }
+
+      const now = Date.now()
+      const x = this.gesture.x
+
+      // 连续旋转速度：以屏幕中心为 0，越靠近边缘绝对值越大
+      // centerOffset ∈ [-0.5, 0.5]，添加一个中间死区避免轻微抖动
+      let centerOffset = x - 0.5
+      const deadZone = 0.08
+      if (Math.abs(centerOffset) < deadZone) {
+        centerOffset = 0
+      }
+
+      if (!this.gesture.isPalmOpen && centerOffset !== 0) {
+        const total = this.carouselCards.length || 1
+        // 映射到每帧浮点索引增量，0.5 对应最大速度（整体比之前更慢）
+        const maxSpeedPerFrame = 0.1
+        const speed = Math.max(-maxSpeedPerFrame, Math.min(maxSpeedPerFrame, centerOffset * 0.35))
+
+        this.currentCardIndexFloat = (this.currentCardIndexFloat + speed + total) % total
+        this.currentCardIndex = Math.round(this.currentCardIndexFloat) % total
+      }
+
+      // 张开手掌并停在中间区域一段时间，等价于“点击 Enter”
+      const centerMin = 0.4
+      const centerMax = 0.6
+      const chargeNeed = 30 // 连续帧数
+
+      if (this.gesture.isPalmOpen && x > centerMin && x < centerMax) {
+        this.gesture.charge += 1
+        if (this.gesture.charge >= chargeNeed && now - this.gesture.lastActionTime > 1500) {
+          this.gesture.lastActionTime = now
+          this.gesture.charge = 0
+          // 只有当前卡片有按钮时才触发，默认第一张
+          if (this.currentCardIndex === 0) {
+            this.handleEnterClick()
+          }
+        }
+      } else {
+        this.gesture.charge = 0
       }
     },
 
@@ -369,17 +559,34 @@ export default {
       }
     },
 
+    // 鼠标移动更新手势光标（无手势检测时使用）
+    handleMouseMove (e) {
+      if (!this.gesture) return
+      if (this.gesture.isDetected) return
+      const w = window.innerWidth || document.documentElement.clientWidth
+      const h = window.innerHeight || document.documentElement.clientHeight
+      this.gesture.x = e.clientX / w
+      this.gesture.y = e.clientY / h
+    },
+
     // 轮播图相关方法
     nextCard () {
-      this.currentCardIndex = (this.currentCardIndex + 1) % this.carouselCards.length
+      const total = this.carouselCards.length || 1
+      this.currentCardIndexFloat = (this.currentCardIndexFloat + 1 + total) % total
+      this.currentCardIndex = Math.round(this.currentCardIndexFloat) % total
     },
 
     prevCard () {
-      this.currentCardIndex = (this.currentCardIndex - 1 + this.carouselCards.length) % this.carouselCards.length
+      const total = this.carouselCards.length || 1
+      this.currentCardIndexFloat = (this.currentCardIndexFloat - 1 + total) % total
+      this.currentCardIndex = Math.round(this.currentCardIndexFloat) % total
     },
 
     goToCard (index) {
-      this.currentCardIndex = index
+      const total = this.carouselCards.length || 1
+      const safeIndex = ((index % total) + total) % total
+      this.currentCardIndexFloat = safeIndex
+      this.currentCardIndex = safeIndex
     },
 
     getCardStyle (index) {
@@ -794,6 +1001,34 @@ html, body {
   align-items: center;
   flex-shrink: 0;
   padding: 0.5rem 0;
+}
+
+/* 手势 / 鼠标光标视觉效果（参考 answers 中的能量环） */
+.gesture-cursor {
+  position: fixed;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid rgba(68, 255, 255, 0.9);
+  box-shadow:
+    0 0 8px rgba(68, 255, 255, 0.8),
+    0 0 16px rgba(68, 255, 255, 0.6);
+  pointer-events: none;
+  z-index: 999;
+  box-sizing: border-box;
+  backdrop-filter: blur(2px);
+  transition:
+    transform 0.15s ease-out,
+    box-shadow 0.15s ease-out,
+    border-color 0.15s ease-out;
+}
+
+.gesture-cursor-active {
+  border-color: rgba(255, 255, 255, 0.95);
+  box-shadow:
+    0 0 10px rgba(255, 255, 255, 0.9),
+    0 0 24px rgba(255, 100, 100, 0.9);
+  transform: translate(-50%, -50%) scale(1.3);
 }
 
 .indicator {
