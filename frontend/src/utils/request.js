@@ -101,6 +101,18 @@ export const api = {
   music: {
     // 获取音乐配置
     getConfig: (roomId) => request.get(`/music/config/${roomId}`)
+  },
+
+  // 麦当劳 MCP / 优惠券相关
+  mcd: {
+    // 查询当前用户已保存的 MCP Token
+    getToken: () => request.get('/mcd/token'),
+
+    // 保存 / 更新 MCP Token
+    saveToken: (data) => request.post('/mcd/token', data),
+
+    // 与麦当劳 MCP AI 助手聊天
+    chat: (data) => request.post('/mcd/chat', data)
   }
 }
 

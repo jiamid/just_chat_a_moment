@@ -2,13 +2,8 @@
   <div class="home-container">
     <!-- 皇室战争风格背景 -->
     <ClashBackground />
-    <!-- 顶部三个气泡 -->
+    <!-- 顶部区域：时间 + 登录按钮 -->
     <div class="top-bubbles">
-      <!-- Logo气泡 -->
-      <div class="logo-text">
-        {{ username || 'JIAMID' }}
-      </div>
-
       <!-- 中间：时间显示 -->
       <div class="time-container">
         <div class="time-display">
@@ -23,6 +18,20 @@
             </template>
           </div>
         </div>
+      </div>
+
+      <!-- 右上角：登录 / 用户名按钮 -->
+      <div class="top-right-login">
+        <button
+          class="login-btn-bubble top-login-btn"
+          type="button"
+          :disabled="!!username"
+          @click="handleTopLoginClick"
+        >
+          <span class="btn-text">
+            {{ username || '登录' }}
+          </span>
+        </button>
       </div>
 
     </div>
@@ -58,22 +67,7 @@
         ></span>
       </div>
 
-      <!-- 手势 / 鼠标光标效果（仅视觉反馈，位置与 gesture.x/y 对应） -->
-      <div
-        v-if="gestureEnabled"
-        class="gesture-cursor"
-        :class="{ 'gesture-cursor-active': gesture.isPalmOpen }"
-        :style="gestureCursorStyle"
-      ></div>
     </div>
-
-    <!-- 手势识别用隐藏视频，仅用于 MediaPipe，不在界面显示 -->
-    <video
-      ref="gestureVideo"
-      muted
-      playsinline
-      style="position:absolute; width:1px; height:1px; opacity:0; pointer-events:none;"
-    ></video>
 
     <!-- 登录模态框 -->
     <div v-if="showLoginModal" class="modal-overlay" @click.self="showLoginModal = false">
@@ -188,40 +182,24 @@ export default {
       },
       countdown: 0,
       timer: null,
-      // 手势控制相关状态
-      gesture: {
-        x: 0.5,
-        y: 0.5,
-        isPalmOpen: false,
-        isDetected: false,
-        lastMoveTime: 0,
-        lastActionTime: 0,
-        charge: 0
-      },
-      gestureEnabled: false,
       // 轮播当前索引（整数用于高亮），同时维护一个浮点索引用于连续旋转
       currentCardIndex: 0,
       currentCardIndexFloat: 0,
       carouselCards: [
         { title: 'Just Chat A Moment', description: '即刻开始，欢乐对战！\n就一会儿～', showButton: true },
+        {
+          title: '麦当劳优惠券助手',
+          description: '连接麦当劳官方 MCP 服务，\n智能查询活动日历、查看和领取优惠券，\n让每一顿都更省钱～',
+          showButton: true,
+          route: '/ai-chat'
+        },
         { title: '你画我猜', description: '拿起画笔，释放创意！\n与好友一起享受画画的乐趣，\n看看谁能猜中你的大作～', showButton: false },
         { title: 'LiveWar 对战', description: '策略与智慧的碰撞！\n组建你的军队，\n在战场上展现你的战术天赋！', showButton: false },
-        { title: '音乐共享', description: '好音乐，一起听！\n在聊天中分享你喜欢的音乐，\n让房间充满节奏感～', showButton: false },
         { title: '多房间切换', description: '自由穿梭，随心所欲！\n支持多个房间同时在线，\n随时切换，畅聊无阻～', showButton: false }
       ]
     }
   },
   computed: {
-    // 光标样式：根据 0~1 的归一化坐标映射到视口，做一点缩放反馈
-    gestureCursorStyle () {
-      const x = this.gesture?.x ?? 0.5
-      const y = this.gesture?.y ?? 0.5
-      return {
-        left: `${x * 100}%`,
-        top: `${y * 100}%`,
-        transform: 'translate(-50%, -50%)'
-      }
-    }
   },
   async mounted () {
     // 检查是否有token，如果有则尝试自动登录
@@ -231,14 +209,6 @@ export default {
     this.timeTimer = setInterval(() => {
       this.updateTime()
     }, 1000)
-
-    // 初始化手势控制（会请求摄像头权限，用来操控底部卡片左右滑动与“Enter”点击）
-    this.$nextTick(() => {
-      this.initGestureControl()
-    })
-
-    // 鼠标移动时也更新光标位置（当未检测到手势时作为替代输入）
-    window.addEventListener('mousemove', this.handleMouseMove)
   },
   beforeUnmount () {
     if (this.timer) {
@@ -249,8 +219,6 @@ export default {
       clearInterval(this.timeTimer)
       this.timeTimer = null
     }
-
-    window.removeEventListener('mousemove', this.handleMouseMove)
   },
   methods: {
     updateTime () {
@@ -297,6 +265,18 @@ export default {
       }
     },
 
+    handleTopLoginClick () {
+      // 已登录时按钮置灰不可点击（:disabled），这里兜底直接返回
+      if (this.username) {
+        return
+      }
+      const token = localStorage.getItem('token')
+      if (!token) {
+        // 未登录，直接弹出登录框
+        this.showLoginModal = true
+      }
+    },
+
     async handleEnterClick () {
       console.log('handleEnterClick 被调用')
       // 检查是否已登录
@@ -312,9 +292,15 @@ export default {
         // 验证token是否有效
         console.log('验证token有效性')
         await api.user.getMe()
-        // token有效，直接跳转到聊天页面
-        console.log('token有效，跳转到聊天页面')
-        this.$router.push('/chat')
+        // token有效，根据当前卡片决定跳转页面
+        const currentCard = this.carouselCards[this.currentCardIndex]
+        if (currentCard && currentCard.route) {
+          console.log('token有效，跳转到自定义路由', currentCard.route)
+          this.$router.push(currentCard.route)
+        } else {
+          console.log('token有效，跳转到聊天页面')
+          this.$router.push('/chat')
+        }
       } catch (error) {
         // token无效或过期，清除localStorage中的token和username并显示登录模态框
         console.log('token无效，已清除:', error.message)
@@ -322,157 +308,6 @@ export default {
         localStorage.removeItem('username')
         this.username = ''
         this.showLoginModal = true
-      }
-    },
-
-    // 加载外部脚本（用于动态加载 MediaPipe hands & camera_utils）
-    loadScript (src) {
-      return new Promise((resolve, reject) => {
-        if (document.querySelector(`script[src="${src}"]`)) {
-          resolve()
-          return
-        }
-        const script = document.createElement('script')
-        script.src = src
-        script.async = true
-        script.onload = () => resolve()
-        script.onerror = (e) => reject(e)
-        document.head.appendChild(script)
-      })
-    },
-
-    async initGestureControl () {
-      try {
-        await this.loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js')
-        await this.loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js')
-
-        const Hands = window.Hands
-        const Camera = window.Camera
-        const videoElement = this.$refs.gestureVideo
-
-        if (!Hands || !Camera || !videoElement) {
-          console.warn('手势脚本或视频元素未就绪，跳过手势控制初始化')
-          return
-        }
-
-        const hands = new Hands({
-          locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
-        })
-        hands.setOptions({
-          maxNumHands: 2,
-          modelComplexity: 1,
-          minDetectionConfidence: 0.5,
-          minTrackingConfidence: 0.5
-        })
-
-        hands.onResults((results) => {
-          this.gesture.isDetected = false
-          this.gesture.isPalmOpen = false
-
-          if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0 && results.multiHandedness) {
-            for (let i = 0; i < results.multiHandedness.length; i++) {
-              const label = results.multiHandedness[i].label
-              // 使用左手控制，与 answers.html 中逻辑保持一致
-              if (label === 'Left') {
-                this.gesture.isDetected = true
-                const lm = results.multiHandLandmarks[i]
-                const tip = lm[8]
-
-                // 平滑更新 0~1 空间坐标
-                this.gesture.x += ((1 - tip.x) - this.gesture.x) * 0.4
-                this.gesture.y += (tip.y - this.gesture.y) * 0.4
-
-                // 判定是否为张开手掌
-                const tips = [8, 12, 16, 20]
-                const pips = [6, 10, 14, 18]
-                let extendedCount = 0
-                for (let k = 0; k < 4; k++) {
-                  if (lm[tips[k]].y < lm[pips[k]].y) extendedCount++
-                }
-                if (Math.abs(lm[4].x - lm[2].x) > 0.03) extendedCount++
-                this.gesture.isPalmOpen = extendedCount >= 4
-
-                this.updateCarouselByGesture()
-                break
-              }
-            }
-          } else {
-            this.gesture.charge = 0
-          }
-        })
-
-        const camera = new Camera(videoElement, {
-          onFrame: async () => {
-            await hands.send({ image: videoElement })
-          },
-          width: 320,
-          height: 240
-        })
-
-        camera.start()
-        this.gestureEnabled = true
-      } catch (e) {
-        console.warn('初始化手势控制失败：', e)
-      }
-    },
-
-    // 根据手势更新轮播：越靠近左右边缘，旋转越快；张开手掌在中间区域蓄力触发“Enter”
-    updateCarouselByGesture () {
-      if (!this.gesture.isDetected) {
-        this.gesture.charge = 0
-        return
-      }
-
-      const now = Date.now()
-      const x = this.gesture.x
-
-      // 连续旋转速度：以屏幕中心为 0
-      // 仅在靠近最边缘的一小段区域给最大速度，其余区域给固定的低速或静止（不随距离继续加速）
-      let centerOffset = x - 0.5
-      const deadZone = 0.1 // 中间静止区
-      if (Math.abs(centerOffset) < deadZone) {
-        centerOffset = 0
-      }
-
-      if (!this.gesture.isPalmOpen && centerOffset !== 0) {
-        const total = this.carouselCards.length || 1
-        const sign = centerOffset > 0 ? 1 : -1
-        const absOffset = Math.abs(centerOffset)
-
-        const edgeThreshold = 0.42 // 靠近 0 或 1 的极窄边缘区域
-        const maxSpeedPerFrame = 0.06 // 边缘区域的最快速度
-        const midSpeedPerFrame = 0.02 // 介于 deadZone 和 edgeThreshold 的恒定低速
-
-        let speed = 0
-        if (absOffset >= edgeThreshold) {
-          // 最边缘：给最高速度
-          speed = sign * maxSpeedPerFrame
-        } else {
-          // 中间非静止区域：给固定低速，不过不随离边缘远近再加速
-          speed = sign * midSpeedPerFrame
-        }
-
-        this.currentCardIndexFloat = (this.currentCardIndexFloat + speed + total) % total
-        this.currentCardIndex = Math.round(this.currentCardIndexFloat) % total
-      }
-
-      // 张开手掌并停在中间区域一段时间，等价于“点击 Enter”
-      const centerMin = 0.4
-      const centerMax = 0.6
-      const chargeNeed = 30 // 连续帧数
-
-      if (this.gesture.isPalmOpen && x > centerMin && x < centerMax) {
-        this.gesture.charge += 1
-        if (this.gesture.charge >= chargeNeed && now - this.gesture.lastActionTime > 1500) {
-          this.gesture.lastActionTime = now
-          this.gesture.charge = 0
-          // 只有当前卡片有按钮时才触发，默认第一张
-          if (this.currentCardIndex === 0) {
-            this.handleEnterClick()
-          }
-        }
-      } else {
-        this.gesture.charge = 0
       }
     },
 
@@ -509,7 +344,6 @@ export default {
         console.error('获取用户信息失败:', err)
       }
       this.showLoginModal = false
-      this.$router.push('/chat')
     },
 
     async register () {
@@ -569,16 +403,6 @@ export default {
       } finally {
         this.loading = false
       }
-    },
-
-    // 鼠标移动更新手势光标（无手势检测时使用）
-    handleMouseMove (e) {
-      if (!this.gesture) return
-      if (this.gesture.isDetected) return
-      const w = window.innerWidth || document.documentElement.clientWidth
-      const h = window.innerHeight || document.documentElement.clientHeight
-      this.gesture.x = e.clientX / w
-      this.gesture.y = e.clientY / h
     },
 
     // 轮播图相关方法
@@ -700,16 +524,24 @@ html, body {
   backdrop-filter: blur(10px);
 }
 
-/* 顶部两个气泡布局 */
+/* 顶部气泡布局：左侧时间，右侧登录按钮 */
 .top-bubbles {
   display: grid;
-  gap:2rem;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 2rem;
   padding: 2rem;
 }
 
-/* 顶部气泡导航栏样式 */
-.top-bubbles > .bubble {
-  padding: 0.75rem 1.25rem;
+.top-right-login {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.top-login-btn {
+  min-width: 96px;
+  text-align: center;
 }
 
 /* 时间容器 */
@@ -718,27 +550,6 @@ html, body {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-}
-
-.logo-text {
-  margin: 0;
-  text-align: center;
-  color: #FFD700;
-  font-size: 2.2rem;
-  font-weight: 900;
-  position: relative;
-  z-index: 2;
-  line-height: 1;
-  white-space: nowrap;
-  letter-spacing: 0.1em;
-  /* 3D 字体效果 - 参考 time-char 样式 */
-  text-shadow:
-    /* 主阴影 - 右下深色，创造深度 */
-    2px 2px 0px rgba(184, 134, 11, 0.9),
-    /* 高光 - 左上亮色，创造高光 */
-    -1px -1px 0px rgba(255, 255, 255, 1);
-  /* 使用 filter 增强 3D 效果 */
-  filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.3));
 }
 
 .time-display {
@@ -837,6 +648,21 @@ html, body {
 
 .login-btn-bubble:active {
   transform: translateY(-1px) scale(1.02);
+}
+
+.login-btn-bubble:disabled {
+  cursor: default;
+}
+
+.login-btn-bubble:disabled:hover,
+.login-btn-bubble:disabled:active {
+  transform: none;
+  box-shadow:
+    0 6px 12px rgba(255, 215, 0, 0.4),
+    0 3px 6px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+  background: linear-gradient(135deg, #FFD700 0%, #FFA500 50%, #FFD700 100%);
 }
 
 .btn-icon {
@@ -1013,34 +839,6 @@ html, body {
   align-items: center;
   flex-shrink: 0;
   padding: 0.5rem 0;
-}
-
-/* 手势 / 鼠标光标视觉效果（参考 answers 中的能量环） */
-.gesture-cursor {
-  position: fixed;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  border: 2px solid rgba(68, 255, 255, 0.9);
-  box-shadow:
-    0 0 8px rgba(68, 255, 255, 0.8),
-    0 0 16px rgba(68, 255, 255, 0.6);
-  pointer-events: none;
-  z-index: 999;
-  box-sizing: border-box;
-  backdrop-filter: blur(2px);
-  transition:
-    transform 0.15s ease-out,
-    box-shadow 0.15s ease-out,
-    border-color 0.15s ease-out;
-}
-
-.gesture-cursor-active {
-  border-color: rgba(255, 255, 255, 0.95);
-  box-shadow:
-    0 0 10px rgba(255, 255, 255, 0.9),
-    0 0 24px rgba(255, 100, 100, 0.9);
-  transform: translate(-50%, -50%) scale(1.3);
 }
 
 .indicator {
