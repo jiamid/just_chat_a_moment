@@ -15,7 +15,7 @@ class OpenAiSettings(BaseSettings):
 class GeminiAiSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="GEMINI_", env_file=ENV_FILE, env_file_encoding='utf-8',
                                       extra='ignore')
-    api_key: str = 'AIzaSyAXnvTzIWLnCCZrB5Ix9yk5rg4Fz4STwNQ'
+    api_key: str = ''
     base_url: str = 'https://generativelanguage.googleapis.com/v1beta/openai/'
 
 class SesSettings(BaseSettings):
