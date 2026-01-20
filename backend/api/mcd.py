@@ -77,7 +77,7 @@ async def set_mcd_token(
     await db.commit()
     await db.refresh(user_settings)
 
-    return McdTokenResponse(data=McdTokenInfo(token=settings.mcd_mcp_token))
+    return McdTokenResponse(data=McdTokenInfo(token=user_settings.mcd_mcp_token))
 
 
 @router.post("/chat", response_model=McdChatResponse)
