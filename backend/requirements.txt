@@ -15,3 +15,8 @@ email-validator
 pydantic_validation_decorator
 loguru
 httpx
+langchain
+langchain-openai
+langgraph
+langchain-mcp-adapters
+mcp

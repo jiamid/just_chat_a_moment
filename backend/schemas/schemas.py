@@ -45,3 +45,35 @@ class TokenResponse(BaseResponse):
 
 class UserInfoResponse(BaseResponse):
     data: UserRead
+
+
+class McdChatRequest(BaseModel):
+    """麦当劳 MCP 聊天请求"""
+
+    message: str
+
+
+class McdChatAnswer(BaseModel):
+    answer: str
+
+
+class McdChatResponse(BaseResponse):
+    """麦当劳 MCP 聊天响应"""
+
+    data: McdChatAnswer
+
+
+class McdTokenUpdateRequest(BaseModel):
+    """更新 / 设置 MCP Token"""
+
+    token: str
+
+
+class McdTokenInfo(BaseModel):
+    token: str | None = None
+
+
+class McdTokenResponse(BaseResponse):
+    """返回当前用户的 MCP Token 信息"""
+
+    data: McdTokenInfo
