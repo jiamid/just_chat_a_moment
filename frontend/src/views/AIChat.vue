@@ -17,12 +17,13 @@
       </div>
 
       <!-- MCP Token 设置 -->
-      <div class="token-panel">
+      <!-- 未设置：保持原有面板；已设置：收缩为按钮 + 模态框 -->
+      <div v-if="!hasToken" class="token-panel">
         <h2 class="panel-title">MCP Token 设置</h2>
         <p class="panel-desc">
           请填写你在
           <a
-            href="https://github.com/M-China/mcd-mcp-server"
+            href="https://open.mcd.cn/mcp"
             target="_blank"
             rel="noopener noreferrer"
           >mcd-mcp-server</a>
@@ -44,6 +45,53 @@
         </div>
         <div v-if="tokenSavedTip" class="token-tip">
           {{ tokenSavedTip }}
+        </div>
+      </div>
+
+      <div v-else class="token-panel-collapsed">
+        <button class="token-toggle-btn" type="button" @click="showTokenModal = true">
+          <span class="token-toggle-text">
+            MCP Token 已设置（点击查看 / 修改）
+          </span>
+        </button>
+      </div>
+
+      <!-- Token 设置模态框（仅在已设置时显示） -->
+      <div
+        v-if="showTokenModal"
+        class="token-modal-overlay"
+        @click.self="showTokenModal = false"
+      >
+        <div class="token-modal">
+          <div class="token-panel token-panel-in-modal">
+            <h2 class="panel-title">MCP Token 设置</h2>
+            <p class="panel-desc">
+              请填写你在
+              <a
+                href="https://open.mcd.cn/mcp"
+                target="_blank"
+                rel="noopener noreferrer"
+              >mcd-mcp-server</a>
+              申请到的 MCP Token。Token 会安全存储在服务端（按账号绑定），用于后续 AI 领券与查询。
+            </p>
+            <div class="token-row">
+              <input
+                v-model="mcpToken"
+                :type="showToken ? 'text' : 'password'"
+                class="token-input"
+                placeholder="请输入你的 McDonald's MCP Token"
+              />
+              <button class="token-action-btn" type="button" @click="toggleShowToken">
+                {{ showToken ? '隐藏' : '显示' }}
+              </button>
+              <button class="token-action-btn primary" type="button" @click="saveToken">
+                保存
+              </button>
+            </div>
+            <div v-if="tokenSavedTip" class="token-tip">
+              {{ tokenSavedTip }}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -111,7 +159,9 @@ export default {
       username: localStorage.getItem('username') || '',
       mcpToken: '',
       showToken: false,
+      hasToken: false, // 是否已经在服务端成功保存过（或服务端返回已有 token）
       tokenSavedTip: '',
+      showTokenModal: false,
       userInput: '',
       loading: false,
       error: '',
@@ -138,6 +188,8 @@ export default {
       const resp = await api.mcd.getToken()
       this.mcpToken = resp.data?.token || ''
       if (this.mcpToken) {
+        // 说明服务端已保存过，视为「已设置」
+        this.hasToken = true
         // 同步一份到本地，便于下次打开时占位
         localStorage.setItem('mcd_mcp_token', this.mcpToken)
       } else {
@@ -165,6 +217,10 @@ export default {
         const resp = await api.mcd.saveToken({ token: this.mcpToken })
         this.mcpToken = resp.data?.token || this.mcpToken
         localStorage.setItem('mcd_mcp_token', this.mcpToken || '')
+        // 只有保存到服务端成功后，才认为「已设置」，从而折叠为按钮
+        this.hasToken = true
+        // 如果当前在模态框中，保存成功后自动关闭
+        this.showTokenModal = false
         this.tokenSavedTip = '已保存到服务器，登录后可随时使用。'
         setTimeout(() => {
           this.tokenSavedTip = ''
@@ -349,6 +405,58 @@ export default {
   margin-top: 0.5rem;
   font-size: 0.85rem;
   color: #27ae60;
+}
+
+.token-panel-collapsed {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.token-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  border-radius: 999px;
+  border: 3px solid rgba(255, 255, 255, 0.9);
+  background: linear-gradient(135deg, #ffd700, #ffa500);
+  color: #2c3e50;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow:
+    0 4px 8px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  font-size: 0.95rem;
+}
+
+.token-toggle-text {
+  white-space: nowrap;
+}
+
+.token-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+.token-modal {
+  max-width: 480px;
+  width: 100%;
+}
+
+.token-panel-in-modal {
+  max-height: 80vh;
+  overflow-y: auto;
 }
 
 .chat-layout {
