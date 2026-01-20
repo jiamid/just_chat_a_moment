@@ -66,16 +66,16 @@ async def set_mcd_token(
     result = await db.execute(
         select(UserSettings).where(UserSettings.user_id == current_user.id)
     )
-    settings = result.scalar_one_or_none()
+    user_settings = result.scalar_one_or_none()
 
-    if settings is None:
-        settings = UserSettings(user_id=current_user.id, mcd_mcp_token=token)
-        db.add(settings)
+    if user_settings is None:
+        user_settings = UserSettings(user_id=current_user.id, mcd_mcp_token=token)
+        db.add(user_settings)
     else:
-        settings.mcd_mcp_token = token
+        user_settings.mcd_mcp_token = token
 
     await db.commit()
-    await db.refresh(settings)
+    await db.refresh(user_settings)
 
     return McdTokenResponse(data=McdTokenInfo(token=settings.mcd_mcp_token))
 
@@ -99,14 +99,14 @@ async def mcd_chat(
     result = await db.execute(
         select(UserSettings).where(UserSettings.user_id == current_user.id)
     )
-    settings = result.scalar_one_or_none()
-    if settings is None or not settings.mcd_mcp_token:
+    user_settings = result.scalar_one_or_none()
+    if user_settings is None or not user_settings.mcd_mcp_token:
         raise HTTPException(
             status_code=400,
             detail="请先在 MCP Token 设置中填写并保存 Token，才能开始聊天",
         )
 
-    mcp_token = settings.mcd_mcp_token
+    mcp_token = user_settings.mcd_mcp_token
 
     logger.info(f"[MCD] user_id={current_user.id} query={user_query}")
 
