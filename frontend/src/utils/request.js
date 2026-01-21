@@ -14,7 +14,7 @@ import config from '@/config'
 // 创建axios实例
 const request = axios.create({
   baseURL: config.getApiUrl(),
-  timeout: 10000,
+  timeout: 60000,
   headers: {
     'Content-Type': 'application/json'
   }

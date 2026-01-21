@@ -110,9 +110,16 @@ async def mcd_chat(
 
     logger.info(f"[MCD] user_id={current_user.id} query={user_query}")
 
-    # 初始化 LLM（这里默认使用 OpenAI，可根据 config.settings 调整）
-    # llm = ChatOpenAI(model="gemini-2.5-flash", base_url=settings.gemini.base_url,api_key=settings.gemini.api_key, temperature=0)
-    llm = ChatOpenAI(model="qwen3-max", base_url=settings.qwen.base_url,api_key=settings.qwen.api_key, temperature=0)
+    # 初始化 LLM（这里默认使用通义千问 qwen3-max，可根据 config.settings 调整）
+    # 默认超时往往是 10s 左右，这里显式设置更长一点，避免正常 MCP 调用频繁超时
+    # timeout 单位为秒
+    llm = ChatOpenAI(
+        model="qwen3-max",
+        base_url=settings.qwen.base_url,
+        api_key=settings.qwen.api_key,
+        temperature=0,
+        timeout=60,
+    )
 
     # MCP Server 配置
     # langchain-mcp-adapters 需要的是 "transport" 字段，而不是官方 JSON 里的 "type"
