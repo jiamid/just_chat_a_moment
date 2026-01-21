@@ -111,7 +111,8 @@ async def mcd_chat(
     logger.info(f"[MCD] user_id={current_user.id} query={user_query}")
 
     # 初始化 LLM（这里默认使用 OpenAI，可根据 config.settings 调整）
-    llm = ChatOpenAI(model="gemini-2.5-flash", base_url=settings.gemini.base_url,api_key=settings.gemini.api_key, temperature=0)
+    # llm = ChatOpenAI(model="gemini-2.5-flash", base_url=settings.gemini.base_url,api_key=settings.gemini.api_key, temperature=0)
+    llm = ChatOpenAI(model="qwen3-max", base_url=settings.qwen.base_url,api_key=settings.qwen.api_key, temperature=0)
 
     # MCP Server 配置
     # langchain-mcp-adapters 需要的是 "transport" 字段，而不是官方 JSON 里的 "type"
@@ -160,6 +161,19 @@ async def mcd_chat(
 
         return McdChatResponse(data=McdChatAnswer(answer=answer))
     except Exception as e:
+        # 统一记录详细错误，方便排查
         logger.exception(f"[MCD] 调用 MCP / LangChain 失败: {e}")
-        raise HTTPException(status_code=500, detail="麦当劳 MCP 服务暂时不可用，请稍后重试")
+
+        msg = str(e)
+        # 针对上游模型（如阿里云百炼 / 通义千问）账户欠费等场景给出更友好的提示
+        if "Arrearage" in msg or "overdue-payment" in msg or "Access denied" in msg:
+            raise HTTPException(
+                status_code=502,
+                detail="上游 AI 服务账户异常（可能欠费或被限制），请联系管理员处理后再试",
+            )
+
+        raise HTTPException(
+            status_code=500,
+            detail="麦当劳 MCP 服务暂时不可用，请稍后重试",
+        )
 

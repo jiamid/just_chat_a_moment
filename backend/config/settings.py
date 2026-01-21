@@ -18,6 +18,12 @@ class GeminiAiSettings(BaseSettings):
     api_key: str = ''
     base_url: str = 'https://generativelanguage.googleapis.com/v1beta/openai/'
 
+class QwenAiSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="QWEN_", env_file=ENV_FILE, env_file_encoding='utf-8',
+                                      extra='ignore')
+    api_key: str = ''
+    base_url: str = 'https://dashscope.aliyuncs.com/compatible-mode/v1'
+
 class SesSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="SES_", env_file=ENV_FILE, env_file_encoding='utf-8', extra='ignore')
     secret: str = ''
@@ -58,6 +64,7 @@ class Settings(BaseSettings):
 
     openai: OpenAiSettings = OpenAiSettings()
     gemini: GeminiAiSettings = GeminiAiSettings()
+    qwen: QwenAiSettings = QwenAiSettings()
     ses: SesSettings = SesSettings()
 
 
