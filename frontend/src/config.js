@@ -15,17 +15,17 @@ const config = {
 }
 
 // 获取完整的WebSocket URL
-config.getWsUrl = function (roomId, token) {
+config.getWsUrl = function (roomType, roomId, token) {
   const { protocol, host, port } = this.ws
 
   // 如果配置了host和port，使用绝对URL
   if (host && port) {
-    return `${protocol}://${host}:${port}/room/ws/${roomId}?token=${token}`
+    return `${protocol}://${host}:${port}/room/ws/${roomType}/${roomId}?token=${token}`
   }
 
   // 否则使用相对路径，通过nginx代理
   const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  return `${wsProtocol}//${window.location.host}/room/ws/${roomId}?token=${token}`
+  return `${wsProtocol}//${window.location.host}/room/ws/${roomType}/${roomId}?token=${token}`
 }
 
 // 获取API基础URL

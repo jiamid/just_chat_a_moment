@@ -69,39 +69,8 @@
       </div>
     </div>
 
-    <!-- 中间游戏区域（仅在游戏面板打开时显示，桌面端，且不在画画模式） -->
-    <div v-if="showGamePanel && roomId && !isMobile && !showDrawingPanel" class="game-area">
-      <GamePanel
-        :gameState="gameState"
-        :gameOverInfo="gameOverInfo"
-        :isConnected="isConnected"
-        :unitTypesConfig="unitTypesConfig"
-        @join-game="joinGame"
-        @leave-game="leaveGame"
-        @select-and-spawn-unit="selectAndSpawnUnit"
-      />
-    </div>
-
-    <!-- 中间画布区域（仅在画图面板打开时显示，桌面端，且不在游戏模式） -->
-    <div v-if="showDrawingPanel && roomId && !isMobile && !showGamePanel" class="drawing-area">
-      <DrawingPanel
-        :currentDrawer="currentDrawer"
-        :username="username"
-        :isConnected="isConnected"
-        :isMobile="isMobile"
-        :drawerTimeRemaining="drawerTimeRemaining"
-        :roomId="roomId"
-        :ChatMessage="ChatMessage"
-        :WsEnvelope="WsEnvelope"
-        :ws="ws"
-      />
-    </div>
-
     <!-- 右侧聊天区域 -->
-    <div class="right-chat" :class="{
-      'with-drawing': showDrawingPanel && roomId && !showGamePanel,
-      'with-game': showGamePanel && roomId
-    }">
+    <div class="right-chat">
       <!-- 顶部：房间信息 -->
       <div class="chat-header">
         <div class="header-left">
@@ -117,34 +86,6 @@
           <h2 v-else>选择房间开始聊天</h2>
         </div>
         <div class="connection-status" v-if="roomId">
-          <!-- 画图按钮 -->
-          <button
-            @click="toggleDrawingPanel"
-            :disabled="!isConnected"
-            class="drawing-icon-btn"
-            :class="{ 'active': showDrawingPanel }"
-            title="你画我猜"
-          >
-            <svg width="24" height="24" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
-              <path d="M512 1024C229.888 1024 0 794.112 0 512S229.888 0 512 0s512 229.888 512 512c0 30.72-2.56 60.928-8.192 90.624-11.776 66.56-95.232 67.584-175.616 68.608-49.664 0.512-111.616 1.536-127.488 20.992-24.576 29.696-22.528 85.504-20.48 139.776 3.072 77.312 6.144 164.352-77.312 181.76-33.28 6.656-68.096 10.24-102.912 10.24z m0-970.24c-252.416 0-458.24 205.312-458.24 458.24s205.312 458.24 458.24 458.24c31.232 0 61.952-3.072 92.16-9.216 34.816-7.168 37.376-46.08 34.304-126.976-2.048-61.44-4.608-130.56 32.768-176.128 32.256-38.912 98.304-39.424 168.448-40.448 50.176-0.512 118.784-1.536 122.88-24.576 4.608-26.624 7.168-53.76 7.168-80.896 0.512-252.416-205.312-458.24-457.728-458.24z" fill="currentColor"></path>
-              <path d="M462.336 319.488c-61.44 0-111.616-50.176-111.616-111.616s50.176-111.616 111.616-111.616 111.616 50.176 111.616 111.616-49.664 111.616-111.616 111.616z m0-169.472c-31.744 0-57.856 26.112-57.856 57.856s26.112 57.856 57.856 57.856c31.744 0 57.856-26.112 57.856-57.856s-25.6-57.856-57.856-57.856zM246.784 475.136c-54.784 0-99.84-44.544-99.84-99.84 0-54.784 44.544-99.84 99.84-99.84 54.784 0 99.84 44.544 99.84 99.84-0.512 54.784-45.056 99.84-99.84 99.84z m0-145.92c-25.088 0-45.568 20.48-45.568 45.568s20.48 45.568 45.568 45.568 45.568-20.48 45.568-45.568-20.48-45.568-45.568-45.568zM738.816 484.352c-68.608 0-123.904-55.808-123.904-123.904s55.808-123.904 123.904-123.904c68.096 0 123.904 55.808 123.904 123.904s-55.808 123.904-123.904 123.904z m0-194.048c-38.4 0-70.144 31.232-70.144 70.144 0 38.4 31.232 70.144 70.144 70.144S808.96 399.36 808.96 360.448c0-38.4-31.744-70.144-70.144-70.144zM270.848 693.248c-41.472 0-75.264-33.792-75.264-75.264S229.376 542.72 270.848 542.72s75.264 33.792 75.264 75.264-33.792 75.264-75.264 75.264z m0-97.28c-11.776 0-21.504 9.728-21.504 21.504s9.728 21.504 21.504 21.504c11.776 0 21.504-9.728 21.504-21.504s-9.728-21.504-21.504-21.504zM464.896 826.368c-34.816 0-63.488-28.672-63.488-63.488 0-34.816 28.16-63.488 63.488-63.488s63.488 28.16 63.488 63.488-28.672 63.488-63.488 63.488z m0-72.704c-5.12 0-9.216 4.096-9.216 9.216s4.096 9.216 9.216 9.216 9.216-4.096 9.216-9.216c0-4.608-4.096-9.216-9.216-9.216z" fill="currentColor"></path>
-            </svg>
-          </button>
-          <!-- LiveWar 按钮 -->
-          <button
-            @click="toggleGamePanel"
-            :disabled="!isConnected"
-            class="drawing-icon-btn"
-            :class="{ 'active': showGamePanel }"
-            title="LiveWar 对战"
-            style="margin-right: 0.5rem;"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <!-- 经典钻石形状：上面梯形，下面三角形 -->
-              <path d="M12 2 L18 8 L12 14 L6 8 Z"/>
-              <path d="M6 8 L12 14 L18 8 L12 20 Z"/>
-            </svg>
-          </button>
           <!-- 音乐选择按钮 -->
           <div class="music-container-header">
             <button
@@ -196,38 +137,10 @@
 
         <!-- 已选择房间时的内容 -->
         <template v-else>
-          <!-- 移动端游戏面板（桌面端游戏面板在中间区域） -->
-          <div v-if="showGamePanel && isMobile" class="game-panel-mobile">
-            <GamePanel
-              :gameState="gameState"
-              :gameOverInfo="gameOverInfo"
-              :isConnected="isConnected"
-              :unitTypesConfig="unitTypesConfig"
-              @join-game="joinGame"
-              @leave-game="leaveGame"
-              @select-and-spawn-unit="selectAndSpawnUnit"
-            />
-          </div>
-
-          <div v-if="showDrawingPanel && isMobile" class="drawing-panel mobile-drawing-panel">
-            <DrawingPanel
-              :currentDrawer="currentDrawer"
-              :username="username"
-              :isConnected="isConnected"
-              :isMobile="isMobile"
-              :drawerTimeRemaining="drawerTimeRemaining"
-              :roomId="roomId"
-              :ChatMessage="ChatMessage"
-              :WsEnvelope="WsEnvelope"
-              :ws="ws"
-            />
-          </div>
-
-          <!-- 消息列表：移动端显示游戏面板时隐藏 -->
+          <!-- 消息列表 -->
           <div
             class="messages-container"
             ref="messagesContainer"
-            v-if="!(isMobile && showGamePanel)"
           >
             <!-- 系统消息提示条 -->
             <div v-if="systemMessage" ref="systemNotification" class="system-notification" :style="systemNotificationStyle">
@@ -242,23 +155,13 @@
                 <span class="username">{{ message.user }}</span>
               </div>
               <div class="message-content">{{ message.content }}</div>
-              <!-- 申请画画消息的同意按钮 -->
-              <div v-if="message.isDrawingRequest && currentDrawer === username && message.user !== username" class="drawing-request-action">
-                <button
-                  @click="approveDrawingRequest(message.user)"
-                  :disabled="!isConnected"
-                  class="approve-btn-inline"
-                >
-                  同意
-                </button>
-              </div>
             </div>
           </div>
         </template>
       </div>
 
-      <!-- 底部：输入区域（移动端游戏时隐藏） -->
-      <div class="input-wrapper" v-if="roomId && !(isMobile && showGamePanel)" :class="{
+      <!-- 底部：输入区域 -->
+      <div class="input-wrapper" v-if="roomId" :class="{
         'keyboard-open': isKeyboardOpen && isMobile && !showMobileNavbar,
         'navbar-open': showMobileNavbar && isMobile
       }">
@@ -286,16 +189,13 @@
 import protobuf from 'protobufjs'
 import config from '@/config'
 import { api } from '@/utils/request.js'
-import drawingMixin from '@/mixins/drawingMixin'
 import ClashBackground from '@/components/ClashBackground.vue'
-import GamePanel from '@/components/GamePanel.vue'
-import DrawingPanel from '@/components/DrawingPanel.vue'
 
 export default {
-  name: 'Chat',
-  mixins: [drawingMixin],
+  name: 'ChatRoom',
   data () {
     return {
+      roomType: 'chat', // 房间类型
       username: '',
       roomId: null,
       messages: [],
@@ -365,36 +265,10 @@ export default {
   computed: {
     currentRoomId () {
       return this.$route.params.roomId ? parseInt(this.$route.params.roomId) : null
-    },
-    redTeamPlayers () {
-      if (!this.gameState) return []
-      // 尝试从多个可能的位置获取玩家列表
-      const players = this.gameState.players || []
-      const teams = (this.gameState.room && this.gameState.room.teams) || {}
-
-      return players.filter(p => {
-        const playerId = p.userId || p.id
-        const playerTeam = p.team || teams[playerId]
-        return playerTeam === 'red'
-      })
-    },
-    blueTeamPlayers () {
-      if (!this.gameState) return []
-      // 尝试从多个可能的位置获取玩家列表
-      const players = this.gameState.players || []
-      const teams = (this.gameState.room && this.gameState.room.teams) || {}
-
-      return players.filter(p => {
-        const playerId = p.userId || p.id
-        const playerTeam = p.team || teams[playerId]
-        return playerTeam === 'blue'
-      })
     }
   },
   components: {
-    ClashBackground,
-    GamePanel,
-    DrawingPanel
+    ClashBackground
   },
   async mounted () {
     this.roomId = this.currentRoomId
@@ -410,17 +284,6 @@ export default {
     }
   },
   watch: {
-    // 监听游戏面板和画画面板，自动收起菜单
-    showGamePanel (newVal) {
-      if (newVal && !this.isMobile) {
-        this.sidebarCollapsed = true
-      }
-    },
-    showDrawingPanel (newVal) {
-      if (newVal && !this.isMobile) {
-        this.sidebarCollapsed = true
-      }
-    },
     async '$route.params.roomId' (newRoomId) {
       const roomId = newRoomId ? parseInt(newRoomId) : null
       if (roomId !== this.roomId) {
@@ -849,7 +712,7 @@ export default {
 
     connectWebSocket () {
       const token = localStorage.getItem('token')
-      const wsUrl = config.getWsUrl(this.roomId, token)
+      const wsUrl = config.getWsUrl(this.roomType, this.roomId, token)
 
       // 重置连接状态
       this.isConnected = false
@@ -882,13 +745,7 @@ export default {
 
           const envelope = this.WsEnvelope.decode(data)
 
-          // 先处理游戏消息（如果有）
-          if (envelope.game && this.GameMessage) {
-            console.log('[WebSocket] Received game message:', envelope.game.type, envelope.game)
-            this.handleGameMessage(envelope.game)
-          }
-
-          // 再处理聊天/画图消息
+          // 处理聊天消息（纯聊天房间不支持游戏和画图）
           if (!envelope.chat) {
             return
           }
@@ -948,99 +805,6 @@ export default {
                 this.scrollToBottom()
               }, 100)
             })
-          } else if (message.type === 6) {
-            // DRAWING 消息 - 画图数据
-            // 如果用户正在绘制，忽略接收到的画图数据（避免覆盖正在绘制的内容）
-            if (this.isDrawingActive && message.user === this.username) {
-              return
-            }
-            // 如果画图面板未打开，先打开画图面板
-            if (!this.showDrawingPanel) {
-              this.showDrawingPanel = true
-              this.$nextTick(() => {
-                this.initCanvas()
-                // 监听窗口大小变化，重新初始化画布
-                window.addEventListener('resize', this.handleResize)
-                // 画布初始化后加载图片
-                setTimeout(() => {
-                  this.handleDrawingData(message.content)
-                }, 100)
-              })
-            } else {
-              // 画图面板已打开，直接加载图片
-              this.handleDrawingData(message.content)
-            }
-          } else if (message.type === 7) {
-            // DRAWING_REQUEST 消息 - 申请画画
-            // 在聊天框中显示申请消息
-            if (message.user !== this.username) {
-              // 如果当前用户是画画人，添加到申请列表（用于跟踪）
-              if (this.currentDrawer === this.username) {
-                if (!this.drawingRequests.includes(message.user)) {
-                  this.drawingRequests.push(message.user)
-                }
-              }
-              // 在聊天框中显示申请消息，标记为申请画画消息
-              const requestMessage = {
-                id: Date.now() + Math.random(),
-                user: message.user,
-                content: `${message.user} 申请画画`,
-                timestamp: message.timestamp,
-                isOwn: message.user === this.username,
-                type: 'system',
-                isDrawingRequest: true // 标记为申请画画消息
-              }
-              this.messages.push(requestMessage)
-              this.$nextTick(() => {
-                this.scrollToBottom()
-              })
-            }
-          } else if (message.type === 8) {
-            // DRAWING_CLEAR 消息 - 清空画布
-            this.clearCanvas()
-          } else if (message.type === 9) {
-            // DRAWING_STATE 消息 - 画画人状态
-            const newDrawer = message.content || null
-            const wasDrawer = this.currentDrawer === this.username
-            const oldDrawer = this.currentDrawer
-            this.currentDrawer = newDrawer
-
-            // 如果画画人变更，清理申请列表
-            if (newDrawer !== oldDrawer) {
-              this.drawingRequests = []
-              // 如果当前用户不再是drawer，隐藏所有申请消息的同意按钮
-              if (newDrawer !== this.username) {
-                this.messages.forEach(m => {
-                  if (m.isDrawingRequest) {
-                    m.isDrawingRequest = false
-                  }
-                })
-              }
-            }
-
-            // 如果当前用户成为画画人，启动倒计时
-            if (newDrawer === this.username && !wasDrawer) {
-              this.drawerStartTime = Date.now()
-              this.drawerTimeRemaining = 600 // 10分钟
-              this.startDrawerTimer()
-            } else if (newDrawer !== this.username) {
-              // 如果当前用户不再是画画人，停止倒计时
-              this.stopDrawerTimer()
-            }
-
-            // 如果有画画人且画图面板未打开，自动打开画图面板
-            if (this.currentDrawer && !this.showDrawingPanel) {
-              this.showDrawingPanel = true
-              this.$nextTick(() => {
-                this.initCanvas()
-                // 监听窗口大小变化，重新初始化画布
-                window.addEventListener('resize', this.handleResize)
-              })
-            }
-            // 如果没有画画人了，清空画布（如果当前用户是退出者）
-            if (!this.currentDrawer && this.showDrawingPanel) {
-              this.clearCanvas()
-            }
           } else {
             // 用户文本消息
             const newMessage = {
@@ -1147,7 +911,7 @@ export default {
       if (roomId !== this.roomId) {
         this.currentRoomCount = 0 // 重置房间人数
         this.addToRecentRooms(roomId)
-        this.$router.push(`/chat/${roomId}`)
+        this.$router.push(`/room/chat/${roomId}`)
         // 移动端切换房间后隐藏导航栏
         if (this.isMobile) {
           this.showMobileNavbar = false
@@ -1223,7 +987,7 @@ export default {
       if (roomId && roomId > 0) {
         this.jumpRoomId = ''
         this.addToRecentRooms(roomId)
-        this.switchRoom(roomId)
+        this.$router.push(`/room/chat/${roomId}`)
       }
     },
 
@@ -1296,9 +1060,11 @@ export default {
       if (this.showMusicMenu && this.$refs.musicButton) {
         this.$nextTick(() => {
           const buttonRect = this.$refs.musicButton.getBoundingClientRect()
+          // 菜单左边缘对齐到按钮左边缘
           this.musicMenuStyle = {
             top: `${buttonRect.bottom + 8}px`,
-            right: `${window.innerWidth - buttonRect.right}px`
+            left: `${buttonRect.left}px`,
+            right: 'auto'
           }
         })
       }
@@ -1525,173 +1291,6 @@ export default {
     // 停止音乐播放
     stopMusic () {
       this.stopCurrentMusic()
-    },
-
-    // ====== LiveWar 简化逻辑 ======
-    toggleGamePanel () {
-      // 如果打开游戏面板，先关闭画画面板（互斥）
-      if (!this.showGamePanel && this.showDrawingPanel) {
-        this.showDrawingPanel = false
-      }
-      this.showGamePanel = !this.showGamePanel
-    },
-
-    handleGameMessage (msg) {
-      if (!this.GameMessage) return
-
-      // 根据类型更新本地状态
-      if (msg.type === this.GameMessage.Type.GAME_STATE && msg.game_state) {
-        this.gameState = msg.game_state
-        this.gameLogs = msg.game_state.logs || []
-        this.gamePlayers = msg.game_state.players || []
-        this.gameTeamStats = msg.game_state.team_stats || { red: null, blue: null }
-        this.inGame = !!(msg.game_state.player && msg.game_state.player.team)
-      } else if (msg.type === this.GameMessage.Type.ERROR && msg.error) {
-        // 只显示自己的错误消息，不显示其他人的能量不足等提醒
-        const errorMessage = msg.error.message || ''
-        // 如果是能量不足的错误，不显示（因为错误消息是广播给所有玩家的，其他人的能量不足不应该显示）
-        if (errorMessage.includes('能量不足')) {
-          // 不显示其他人的能量不足提醒
-          return
-        }
-        // 其他错误消息正常显示
-        this.showSystemMessage(errorMessage)
-      } else if (msg.type === this.GameMessage.Type.GAME_OVER && msg.game_over) {
-        const info = msg.game_over
-        const winner = info.winner || 'red'
-        const winnerName = info.winner_name || (winner === 'red' ? 'RED' : 'BLUE')
-
-        // 获取胜利方队员列表
-        const winnerPlayers = winner === 'red' ? this.redTeamPlayers : this.blueTeamPlayers
-
-        this.gameOverInfo = {
-          winner,
-          winnerName,
-          winnerPlayers: winnerPlayers.map(p => p.name || p.username || 'Unknown'),
-          gameOverTime: Date.now()
-        }
-
-        this.showSystemMessage(`LiveWar 结束，${winnerName} 获胜`)
-
-        // 10秒后清除游戏结束信息
-        setTimeout(() => {
-          this.gameOverInfo = null
-        }, 10000)
-      }
-
-      // 更新gameState中的winner信息
-      if (msg.type === this.GameMessage.Type.GAME_STATE && msg.game_state) {
-        if (msg.game_state.winner && !this.gameOverInfo) {
-          // 如果游戏已结束但还没有显示结束信息，设置结束信息
-          const winner = msg.game_state.winner
-          const winnerName = winner === 'red' ? 'RED' : 'BLUE'
-          const winnerPlayers = winner === 'red' ? this.redTeamPlayers : this.blueTeamPlayers
-
-          this.gameOverInfo = {
-            winner,
-            winnerName,
-            winnerPlayers: winnerPlayers.map(p => p.name || p.username || 'Unknown'),
-            gameOverTime: Date.now()
-          }
-
-          // 10秒后清除游戏结束信息
-          setTimeout(() => {
-            this.gameOverInfo = null
-          }, 10000)
-        }
-      }
-    },
-
-    joinGame (team) {
-      console.log('joinGame called', { team, isConnected: this.isConnected, hasWsEnvelope: !!this.WsEnvelope, hasGameMessage: !!this.GameMessage, username: this.username })
-
-      if (!this.isConnected) {
-        console.warn('Cannot join game: WebSocket not connected')
-        this.showSystemMessage('WebSocket 未连接，无法加入游戏')
-        return
-      }
-
-      if (!this.WsEnvelope) {
-        console.warn('Cannot join game: WsEnvelope not loaded')
-        this.showSystemMessage('Protobuf 未加载，请刷新页面重试')
-        return
-      }
-
-      if (!this.GameMessage) {
-        console.warn('Cannot join game: GameMessage not loaded')
-        this.showSystemMessage('游戏消息类型未加载，请刷新页面重试')
-        return
-      }
-
-      if (!this.username) {
-        console.warn('Cannot join game: username not set')
-        this.showSystemMessage('用户名未设置，无法加入游戏')
-        return
-      }
-
-      try {
-        const joinReq = { name: this.username, team }
-        console.log('Creating GameMessage with:', joinReq)
-
-        const gameMsg = this.GameMessage.create({
-          type: this.GameMessage.Type.JOIN_GAME,
-          join_game: joinReq
-        })
-        console.log('GameMessage created:', gameMsg)
-
-        const envelope = this.WsEnvelope.create({ game: gameMsg })
-        console.log('WsEnvelope created:', envelope)
-
-        const buf = this.WsEnvelope.encode(envelope).finish()
-        console.log('Sending game message, buffer length:', buf.length)
-
-        this.ws.send(buf)
-        this.showGamePanel = true
-        console.log('Game join message sent successfully')
-      } catch (e) {
-        console.error('joinGame failed', e)
-        this.showSystemMessage(`加入游戏失败: ${e.message || '未知错误'}`)
-      }
-    },
-
-    leaveGame () {
-      if (!this.isConnected || !this.WsEnvelope || !this.GameMessage) return
-      try {
-        const gameMsg = this.GameMessage.create({
-          type: this.GameMessage.Type.LEAVE_GAME,
-          leave_game: {}
-        })
-        const envelope = this.WsEnvelope.create({ game: gameMsg })
-        const buf = this.WsEnvelope.encode(envelope).finish()
-        this.ws.send(buf)
-      } catch (e) {
-        console.error('leaveGame failed', e)
-      }
-    },
-
-    selectAndSpawnUnit (unitTypeKey) {
-      if (!this.isConnected || !this.WsEnvelope || !this.GameMessage) return
-      try {
-        // 先选择单位类型
-        const selectMsg = this.GameMessage.create({
-          type: this.GameMessage.Type.SELECT_UNIT,
-          select_unit: { unit_type: unitTypeKey }
-        })
-        const selectEnv = this.WsEnvelope.create({ game: selectMsg })
-        const selectBuf = this.WsEnvelope.encode(selectEnv).finish()
-        this.ws.send(selectBuf)
-
-        // 然后立即生成
-        const spawnMsg = this.GameMessage.create({
-          type: this.GameMessage.Type.SPAWN_UNIT,
-          spawn_unit: {}
-        })
-        const spawnEnv = this.WsEnvelope.create({ game: spawnMsg })
-        const spawnBuf = this.WsEnvelope.encode(spawnEnv).finish()
-        this.ws.send(spawnBuf)
-      } catch (e) {
-        console.error('selectAndSpawnUnit failed', e)
-      }
     }
 
   },

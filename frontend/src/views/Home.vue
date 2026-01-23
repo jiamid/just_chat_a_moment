@@ -186,16 +186,15 @@ export default {
       currentCardIndex: 0,
       currentCardIndexFloat: 0,
       carouselCards: [
-        { title: 'Just Chat A Moment', description: '即刻开始，欢乐对战！\n就一会儿～', showButton: true },
+        { title: 'Just Chat A Moment', description: '即刻开始，欢乐对战！\n就一会儿～', showButton: true, route: '/room/chat/1' },
         {
           title: '麦当劳优惠券助手',
           description: '连接麦当劳官方 MCP 服务，\n智能查询活动日历、查看和领取优惠券，\n让每一顿都更省钱～',
           showButton: true,
           route: '/ai-chat'
         },
-        { title: '你画我猜', description: '拿起画笔，释放创意！\n与好友一起享受画画的乐趣，\n看看谁能猜中你的大作～', showButton: false },
-        { title: 'LiveWar 对战', description: '策略与智慧的碰撞！\n组建你的军队，\n在战场上展现你的战术天赋！', showButton: false },
-        { title: '多房间切换', description: '自由穿梭，随心所欲！\n支持多个房间同时在线，\n随时切换，畅聊无阻～', showButton: false }
+        { title: '你画我猜房间', description: '拿起画笔，释放创意！\n与好友一起享受画画的乐趣，\n看看谁能猜中你的大作～', showButton: true, route: '/room/drawing/1' },
+        { title: 'LiveWar 游戏房间', description: '策略与智慧的碰撞！\n组建你的军队，\n在战场上展现你的战术天赋！', showButton: true, route: '/room/live_war/1' }
       ]
     }
   },
