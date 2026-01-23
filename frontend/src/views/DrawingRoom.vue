@@ -65,7 +65,7 @@
               <button v-else-if="roomId && hasEverConnected" @click="reconnect" class="reconnect-btn">重连</button>
             </div>
           </div>
-          <button @click="logout" class="logout-btn">退出登录</button>
+          <button @click="goToHome" class="logout-btn">返回大厅</button>
         </div>
       </div>
     </div>

@@ -25,7 +25,6 @@
         <button
           class="login-btn-bubble top-login-btn"
           type="button"
-          :disabled="!!username"
           @click="handleTopLoginClick"
         >
           <span class="btn-text">
@@ -148,6 +147,18 @@
         </form>
       </div>
     </div>
+
+    <!-- 退出登录确认模态框 -->
+    <div v-if="showLogoutModal" class="modal-overlay" @click.self="showLogoutModal = false">
+      <div class="logout-confirm-box">
+        <h3>确认退出登录</h3>
+        <p>确定要退出登录吗？</p>
+        <div class="logout-buttons">
+          <button class="cancel-btn" @click="showLogoutModal = false">取消</button>
+          <button class="confirm-btn" @click="handleLogout">确认</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -165,6 +176,7 @@ export default {
   data () {
     return {
       showLoginModal: false,
+      showLogoutModal: false,
       isLogin: true,
       loading: false,
       error: '',
@@ -265,8 +277,9 @@ export default {
     },
 
     handleTopLoginClick () {
-      // 已登录时按钮置灰不可点击（:disabled），这里兜底直接返回
+      // 如果已登录，显示退出登录确认模态框
       if (this.username) {
+        this.showLogoutModal = true
         return
       }
       const token = localStorage.getItem('token')
@@ -274,6 +287,14 @@ export default {
         // 未登录，直接弹出登录框
         this.showLoginModal = true
       }
+    },
+
+    handleLogout () {
+      // 清除登录信息
+      localStorage.removeItem('token')
+      localStorage.removeItem('username')
+      this.username = ''
+      this.showLogoutModal = false
     },
 
     async handleEnterClick () {
@@ -1144,6 +1165,103 @@ html, body {
 
 .login-form {
   margin-top: 1rem;
+}
+
+/* 退出登录确认模态框 */
+.logout-confirm-box {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.95) 100%);
+  padding: 2.5rem 2rem;
+  border-radius: 24px;
+  border: 4px solid rgba(255, 255, 255, 0.9);
+  width: 100%;
+  max-width: 400px;
+  position: relative;
+  animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow:
+    0 20px 40px rgba(0, 0, 0, 0.2),
+    0 10px 20px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  text-align: center;
+}
+
+.logout-confirm-box h3 {
+  margin: 0 0 1rem 0;
+  color: #2C3E50;
+  font-size: 1.5rem;
+  font-weight: 800;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+}
+
+.logout-confirm-box p {
+  margin: 0 0 2rem 0;
+  color: #7F8C8D;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.logout-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.logout-buttons button {
+  flex: 1;
+  padding: 0.875rem 1.5rem;
+  border: 4px solid rgba(255, 255, 255, 0.9);
+  border-radius: 16px;
+  font-size: 1rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.8);
+}
+
+.cancel-btn {
+  background: linear-gradient(135deg, #95A5A6 0%, #7F8C8D 100%);
+  color: #ffffff;
+  box-shadow:
+    0 6px 12px rgba(149, 165, 166, 0.4),
+    0 3px 6px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+}
+
+.cancel-btn:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow:
+    0 8px 16px rgba(149, 165, 166, 0.5),
+    0 4px 8px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+  background: linear-gradient(135deg, #AAB7B8 0%, #95A5A6 100%);
+}
+
+.confirm-btn {
+  background: linear-gradient(135deg, #E74C3C 0%, #C0392B 100%);
+  color: #ffffff;
+  box-shadow:
+    0 6px 12px rgba(231, 76, 60, 0.4),
+    0 3px 6px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+}
+
+.confirm-btn:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow:
+    0 8px 16px rgba(231, 76, 60, 0.5),
+    0 4px 8px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+  background: linear-gradient(135deg, #EC7063 0%, #E74C3C 100%);
+}
+
+.logout-buttons button:active {
+  transform: translateY(0) scale(1);
 }
 
 /* 占位符颜色 */
