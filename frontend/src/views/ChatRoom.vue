@@ -91,7 +91,6 @@
             <button
               ref="musicButton"
               @click="toggleMusicMenu"
-              :disabled="!isConnected"
               class="music-icon-btn"
               :class="{ 'playing': isPlaying }"
               title="选择音乐"
@@ -106,7 +105,7 @@
             </button>
 
             <!-- 音乐选择菜单 -->
-            <div v-if="showMusicMenu" class="music-menu music-menu-header-position" :style="musicMenuStyle" @click.stop>
+            <div v-if="showMusicMenu" class="music-menu music-menu-header-position" @click.stop>
               <div class="music-menu-header">
                 <span>选择音乐</span>
               </div>
@@ -195,7 +194,7 @@ export default {
   name: 'ChatRoom',
   data () {
     return {
-      roomType: 'chat', // 房间类型
+      roomType: 'chat', // 房间类型，由路由决定：chat / gobang
       username: '',
       roomId: null,
       messages: [],
@@ -271,6 +270,8 @@ export default {
     ClashBackground
   },
   async mounted () {
+    // 根据当前路由设置房间类型（纯聊天 / 五子棋）
+    this.updateRoomTypeFromRoute()
     this.roomId = this.currentRoomId
     this.loadRecentRooms()
     this.checkMobileDevice()
@@ -287,6 +288,8 @@ export default {
     async '$route.params.roomId' (newRoomId) {
       const roomId = newRoomId ? parseInt(newRoomId) : null
       if (roomId !== this.roomId) {
+        // 路由切换时同步更新房间类型
+        this.updateRoomTypeFromRoute()
         this.roomId = roomId
         this.messages = [] // 清空消息
         this.currentRoomCount = 0 // 重置房间人数
@@ -325,6 +328,14 @@ export default {
     }
   },
   methods: {
+    // 根据路由名称更新房间类型：普通聊天 / 五子棋
+    updateRoomTypeFromRoute () {
+      if (this.$route && this.$route.name === 'GobangRoom') {
+        this.roomType = 'gobang'
+      } else {
+        this.roomType = 'chat'
+      }
+    },
     // 初始化音频系统
     initAudio () {
       try {
@@ -911,7 +922,8 @@ export default {
       if (roomId !== this.roomId) {
         this.currentRoomCount = 0 // 重置房间人数
         this.addToRecentRooms(roomId)
-        this.$router.push(`/room/chat/${roomId}`)
+        // 根据当前房间类型跳转到对应的路由
+        this.$router.push(`/room/${this.roomType}/${roomId}`)
         // 移动端切换房间后隐藏导航栏
         if (this.isMobile) {
           this.showMobileNavbar = false
@@ -987,7 +999,8 @@ export default {
       if (roomId && roomId > 0) {
         this.jumpRoomId = ''
         this.addToRecentRooms(roomId)
-        this.$router.push(`/room/chat/${roomId}`)
+        // 根据当前房间类型跳转到对应的路由
+        this.$router.push(`/room/${this.roomType}/${roomId}`)
       }
     },
 
@@ -1057,17 +1070,6 @@ export default {
 
     toggleMusicMenu () {
       this.showMusicMenu = !this.showMusicMenu
-      if (this.showMusicMenu && this.$refs.musicButton) {
-        this.$nextTick(() => {
-          const buttonRect = this.$refs.musicButton.getBoundingClientRect()
-          // 菜单左边缘对齐到按钮左边缘
-          this.musicMenuStyle = {
-            top: `${buttonRect.bottom + 8}px`,
-            left: `${buttonRect.left}px`,
-            right: 'auto'
-          }
-        })
-      }
     },
 
     hideMusicMenu () {
@@ -2112,6 +2114,8 @@ button,
   z-index: 2000;
   min-width: 200px;
   max-width: 300px;
+  top: 80px;
+  right: 32px;
   animation: slideDown 0.2s ease-out;
   box-shadow:
     0 8px 16px rgba(0, 0, 0, 0.15),

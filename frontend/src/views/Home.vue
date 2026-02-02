@@ -205,6 +205,12 @@ export default {
           showButton: true,
           route: '/ai-chat'
         },
+        {
+          title: '五子棋对战房间',
+          description: '经典黑白棋，一决高下！\n每个房间只允许一局对战，\n旁人只能围观吃瓜～',
+          showButton: true,
+          route: '/room/gobang/1'
+        },
         { title: '你画我猜房间', description: '拿起画笔，释放创意！\n与好友一起享受画画的乐趣，\n看看谁能猜中你的大作～', showButton: true, route: '/room/drawing/1' },
         { title: 'LiveWar 游戏房间', description: '策略与智慧的碰撞！\n组建你的军队，\n在战场上展现你的战术天赋！', showButton: true, route: '/room/live_war/1' }
       ]

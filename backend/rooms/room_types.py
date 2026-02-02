@@ -6,3 +6,4 @@ class RoomType(str, Enum):
     CHAT = "chat"  # 纯聊天房间
     DRAWING = "drawing"  # 你画我猜房间
     LIVE_WAR = "live_war"  # LiveWar游戏房间
+    GOBANG = "gobang"  # 五子棋游戏房间（黑白对战 + 观战）

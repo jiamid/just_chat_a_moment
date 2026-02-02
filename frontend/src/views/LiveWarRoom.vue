@@ -123,7 +123,6 @@
             <button
               ref="musicButton"
               @click="toggleMusicMenu"
-              :disabled="!isConnected"
               class="music-icon-btn"
               :class="{ 'playing': isPlaying }"
               title="选择音乐"
@@ -138,7 +137,7 @@
             </button>
 
             <!-- 音乐选择菜单 -->
-            <div v-if="showMusicMenu" class="music-menu music-menu-header-position" :style="musicMenuStyle" @click.stop>
+            <div v-if="showMusicMenu" class="music-menu music-menu-header-position" @click.stop>
               <div class="music-menu-header">
                 <span>选择音乐</span>
               </div>
@@ -1149,17 +1148,6 @@ export default {
 
     toggleMusicMenu () {
       this.showMusicMenu = !this.showMusicMenu
-      if (this.showMusicMenu && this.$refs.musicButton) {
-        this.$nextTick(() => {
-          const buttonRect = this.$refs.musicButton.getBoundingClientRect()
-          // 菜单左边缘对齐到按钮左边缘
-          this.musicMenuStyle = {
-            top: `${buttonRect.bottom + 8}px`,
-            left: `${buttonRect.left}px`,
-            right: 'auto'
-          }
-        })
-      }
     },
 
     hideMusicMenu () {
@@ -2373,6 +2361,8 @@ button,
   z-index: 2000;
   min-width: 200px;
   max-width: 300px;
+  top: 80px;
+  right: 32px;
   animation: slideDown 0.2s ease-out;
   box-shadow:
     0 8px 16px rgba(0, 0, 0, 0.15),

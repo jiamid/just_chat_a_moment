@@ -9,7 +9,13 @@ from config.settings import settings
 from db.db import AsyncSessionLocal
 from models.models import User
 from protos import chat_pb2, game_pb2
-from rooms import RoomType, chat_room_manager, drawing_room_manager, live_war_room_manager
+from rooms import (
+    RoomType,
+    chat_room_manager,
+    drawing_room_manager,
+    live_war_room_manager,
+    gobang_room_manager,
+)
 
 router = APIRouter(prefix="/room/ws", tags=["ws"])
 
@@ -57,6 +63,8 @@ async def websocket_endpoint(
         manager = drawing_room_manager
     elif room_type_enum == RoomType.LIVE_WAR:
         manager = live_war_room_manager
+    elif room_type_enum == RoomType.GOBANG:
+        manager = gobang_room_manager
     else:
         await websocket.close(code=1008, reason=f"Unsupported room type: {room_type}")
         return
@@ -90,7 +98,7 @@ async def websocket_endpoint(
                 # 无法解析则忽略
                 continue
 
-            # 处理游戏消息（仅LiveWar游戏房间）
+            # 处理游戏消息（仅 LiveWar 游戏房间）
             if envelope.HasField("game"):
                 if room_type_enum == RoomType.LIVE_WAR:
                     await manager.handle_game_message(room_id, websocket, envelope.game)
