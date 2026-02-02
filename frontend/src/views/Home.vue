@@ -35,37 +35,24 @@
 
     </div>
 
-    <!-- 底部展示区域（支持手势操控卡片） -->
+    <!-- 底部展示区域 - 卡片平铺 -->
     <div class="bottom-display-area">
-      <!-- 卡片轮播图 - 圆形循环 -->
-      <div class="carousel-container">
+      <div class="bottom-display-inner">
+      <div class="cards-grid">
         <div
-          v-for="(card, index) in carouselCards"
+          v-for="(card, index) in featureCards"
           :key="index"
-          :class="['carousel-card', { active: index === currentCardIndex }]"
-          :style="getCardStyle(index)"
-          @click="goToCard(index)"
+          class="feature-card"
+          @click="handleCardClick(card)"
         >
           <div class="card-content">
             <h3 class="card-title">{{ card.title }}</h3>
             <p class="card-description">{{ card.description }}</p>
-            <BattleButton v-if="card.showButton" text="Enter" @click="handleEnterClick" />
+            <BattleButton v-if="card.showButton" text="Enter" @click.stop="handleCardClick(card)" />
           </div>
         </div>
-        <!-- 左右切换按钮 -->
-        <button class="carousel-btn carousel-btn-prev" @click="prevCard">‹</button>
-        <button class="carousel-btn carousel-btn-next" @click="nextCard">›</button>
       </div>
-      <!-- 指示器 -->
-      <div class="carousel-indicators">
-        <span
-          v-for="(card, index) in carouselCards"
-          :key="index"
-          :class="['indicator', { active: index === currentCardIndex }]"
-          @click="goToCard(index)"
-        ></span>
       </div>
-
     </div>
 
     <!-- 登录模态框 -->
@@ -194,10 +181,7 @@ export default {
       },
       countdown: 0,
       timer: null,
-      // 轮播当前索引（整数用于高亮），同时维护一个浮点索引用于连续旋转
-      currentCardIndex: 0,
-      currentCardIndexFloat: 0,
-      carouselCards: [
+      featureCards: [
         { title: 'Just Chat A Moment', description: '即刻开始，欢乐对战！\n就一会儿～', showButton: true, route: '/room/chat/1' },
         {
           title: '麦当劳优惠券助手',
@@ -303,38 +287,27 @@ export default {
       this.showLogoutModal = false
     },
 
-    async handleEnterClick () {
-      console.log('handleEnterClick 被调用')
-      // 检查是否已登录
+    handleCardClick (card) {
       const token = localStorage.getItem('token')
       if (!token) {
-        // 未登录，显示登录模态框
-        console.log('未登录，显示登录模态框')
         this.showLoginModal = true
         return
       }
 
-      try {
-        // 验证token是否有效
-        console.log('验证token有效性')
-        await api.user.getMe()
-        // token有效，根据当前卡片决定跳转页面
-        const currentCard = this.carouselCards[this.currentCardIndex]
-        if (currentCard && currentCard.route) {
-          console.log('token有效，跳转到自定义路由', currentCard.route)
-          this.$router.push(currentCard.route)
-        } else {
-          console.log('token有效，跳转到聊天页面')
-          this.$router.push('/chat')
-        }
-      } catch (error) {
-        // token无效或过期，清除localStorage中的token和username并显示登录模态框
-        console.log('token无效，已清除:', error.message)
-        localStorage.removeItem('token')
-        localStorage.removeItem('username')
-        this.username = ''
-        this.showLoginModal = true
-      }
+      api.user.getMe()
+        .then(() => {
+          if (card && card.route) {
+            this.$router.push(card.route)
+          } else {
+            this.$router.push('/chat')
+          }
+        })
+        .catch(() => {
+          localStorage.removeItem('token')
+          localStorage.removeItem('username')
+          this.username = ''
+          this.showLoginModal = true
+        })
     },
 
     async handleSubmit () {
@@ -428,63 +401,6 @@ export default {
         this.error = err.message || '获取验证码失败'
       } finally {
         this.loading = false
-      }
-    },
-
-    // 轮播图相关方法
-    nextCard () {
-      const total = this.carouselCards.length || 1
-      this.currentCardIndexFloat = (this.currentCardIndexFloat + 1 + total) % total
-      this.currentCardIndex = Math.round(this.currentCardIndexFloat) % total
-    },
-
-    prevCard () {
-      const total = this.carouselCards.length || 1
-      this.currentCardIndexFloat = (this.currentCardIndexFloat - 1 + total) % total
-      this.currentCardIndex = Math.round(this.currentCardIndexFloat) % total
-    },
-
-    goToCard (index) {
-      const total = this.carouselCards.length || 1
-      const safeIndex = ((index % total) + total) % total
-      this.currentCardIndexFloat = safeIndex
-      this.currentCardIndex = safeIndex
-    },
-
-    getCardStyle (index) {
-      const total = this.carouselCards.length
-      const angleStep = 360 / total
-      // 计算相对于当前卡片的偏移角度
-      const offset = index - this.currentCardIndex
-      // 计算实际角度（考虑循环）
-      const angle = offset * angleStep
-
-      // 圆形半径 - 根据屏幕宽度自适应
-      const isMobile = window.innerWidth <= 768
-      const radius = isMobile ? 180 : 300 // 移动端使用更小的半径
-
-      // 计算x和z位置（圆形路径，水平圆形）
-      // z坐标：cos值，中间的卡片z最大（最前面），两侧逐渐减小（在后面）
-      const radian = (angle * Math.PI) / 180
-      const x = Math.sin(radian) * radius
-      const z = Math.cos(radian) * radius // 中间的卡片z最大（正数），两侧z变小（甚至为负）
-
-      // 计算缩放比例（z越大越近，scale越大）
-      // z的范围大致是 -radius 到 radius，中间的卡片z接近radius（最大）
-      // 将z归一化到0-1范围，然后映射到scale
-      const normalizedZ = (z + radius) / (2 * radius) // 0到1之间
-      const scale = 0.5 + normalizedZ * 0.25 // 从0.5到0.75之间，确保不超出容器
-
-      // 计算透明度（后面的卡片可以稍微透明一点）
-      const opacity = normalizedZ > 0.3 ? 1 : Math.max(0.4, normalizedZ * 1.5)
-
-      // z-index：z坐标越大（越前面），z-index越大
-      const zIndex = Math.round(normalizedZ * total * 2)
-
-      return {
-        transform: `translateX(${x}px) translateZ(${z}px) scale(${scale})`,
-        opacity,
-        zIndex
       }
     }
 
@@ -715,177 +631,93 @@ html, body {
   align-items: center;
   justify-content: center;
   position: relative;
-  gap: 1rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
 
-/* 轮播图容器 */
-.carousel-container {
-  position: relative;
+.bottom-display-inner {
+  width: 100%;
+  padding: 1rem;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* 卡片平铺网格 */
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.5rem;
   width: 100%;
   max-width: 1200px;
-  flex: 1;
-  min-height: 0;
-  height: 100%;
-  overflow: hidden;
   margin: 0 auto;
-  perspective: 1000px;
-  transform-style: preserve-3d;
-  padding: 1rem 0;
   box-sizing: border-box;
 }
 
-/* 卡片样式 - 圆形布局 */
-.carousel-card {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 330px;
-  height: 440px;
-  margin-left: -165px;
-  margin-top: -220px;
+.feature-card {
   cursor: pointer;
-  transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-  transform-style: preserve-3d;
-  max-width: calc(100% - 2rem);
-  max-height: calc(100% - 2rem);
-  box-sizing: border-box;
-  aspect-ratio: 3 / 4;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 24px;
 }
 
-.card-content {
+.feature-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+}
+
+.feature-card .card-content {
   width: 100%;
   height: 100%;
-  max-height: 100%;
+  min-height: 200px;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.85) 100%);
   border: 4px solid rgba(255, 255, 255, 0.8);
   border-radius: 24px;
-  padding: 2rem;
+  padding: 1.5rem;
   box-sizing: border-box;
   backdrop-filter: blur(10px);
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
   align-items: center;
-  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
+  box-shadow:
+    0 8px 16px rgba(0, 0, 0, 0.1),
+    0 4px 8px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
-.card-title {
-  font-size: 1.4rem;
+.feature-card .card-title {
+  font-size: 1.2rem;
   font-weight: 900;
   color: #2C3E50;
-  margin: 0 0 1rem 0;
+  margin: 0 0 0.75rem 0;
   text-align: center;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.carousel-card.active .card-title {
-  font-size: 1.6rem;
-}
-
-.card-description {
-  font-size: 1rem;
+.feature-card .card-description {
+  font-size: 0.95rem;
   color: #7F8C8D;
   text-align: center;
-  line-height: 1.6;
-  margin: 0;
+  line-height: 1.5;
+  margin: 0 0 1rem 0;
   white-space: pre-line;
+  flex: 1;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-.carousel-card.active .card-description {
-  font-size: 1.1rem;
-}
-
-/* 卡片内的按钮容器 */
-.card-content .battle-btn {
-  position: absolute;
-  bottom: 1em;
-  left: 1em;
-  right: 1em;
-  width: calc(100% - 2em);
-}
-
-/* 切换按钮 */
-.carousel-btn {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 50px;
-  height: 50px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.85) 100%);
-  border: 4px solid rgba(255, 255, 255, 0.8);
-  border-radius: 50%;
-  font-size: 2rem;
-  font-weight: 900;
-  color: #2C3E50;
-  cursor: pointer;
-  z-index: 10;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow:
-    0 4px 8px rgba(0, 0, 0, 0.15),
-    0 2px 4px rgba(0, 0, 0, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.6);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  user-select: none;
-  line-height: 1;
-}
-
-.carousel-btn:hover {
-  transform: translateY(-50%) scale(1.1);
-  box-shadow:
-    0 6px 12px rgba(0, 0, 0, 0.2),
-    0 3px 6px rgba(0, 0, 0, 0.15),
-    inset 0 1px 0 rgba(255, 255, 255, 0.8);
-}
-
-.carousel-btn:active {
-  transform: translateY(-50%) scale(1.05);
-}
-
-.carousel-btn-prev {
-  left: 1rem;
-}
-
-.carousel-btn-next {
-  right: 1rem;
-}
-
-/* 指示器 */
-.carousel-indicators {
-  position: relative;
-  display: flex;
-  gap: 0.5rem;
-  justify-content: center;
-  align-items: center;
-  flex-shrink: 0;
-  padding: 0.5rem 0;
-}
-
-.indicator {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.5);
-  border: 2px solid rgba(255, 255, 255, 0.8);
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.indicator.active {
-  background: rgba(255, 255, 255, 1);
-  width: 30px;
-  border-radius: 5px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-.indicator:hover {
-  background: rgba(255, 255, 255, 0.8);
+.feature-card .card-content .battle-btn {
+  margin-top: auto;
+  width: 100%;
 }
 
 .features {
@@ -1355,53 +1187,23 @@ html, body {
     border-radius: 20px;
   }
 
-  .carousel-container {
-    height: 100%;
-    max-width: 100%;
+  .cards-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
     padding: 0.5rem 0;
-    box-sizing: border-box;
-    perspective: 800px;
   }
 
-  .carousel-card {
-    width: 270px;
-    height: 360px;
-    margin-left: -135px;
-    margin-top: -180px;
-    max-width: calc(100% - 2rem);
-    max-height: calc(100% - 2rem);
-    box-sizing: border-box;
-    aspect-ratio: 3 / 4;
+  .feature-card .card-content {
+    padding: 1.25rem;
   }
 
-  .card-content {
-    padding: 1.5rem;
+  .feature-card .card-title {
+    font-size: 1.1rem;
   }
 
-  .card-title {
-    font-size: 1.2rem;
-  }
-
-  .carousel-card.active .card-title {
-    font-size: 1.35rem;
-  }
-
-  .card-description {
+  .feature-card .card-description {
     font-size: 0.9rem;
-  }
-
-  .carousel-btn {
-    width: 40px;
-    height: 40px;
-    font-size: 1.5rem;
-  }
-
-  .carousel-btn-prev {
-    left: 0.5rem;
-  }
-
-  .carousel-btn-next {
-    right: 0.5rem;
+    -webkit-line-clamp: 3;
   }
 }
 </style>
